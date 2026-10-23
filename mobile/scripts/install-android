@@ -2,10 +2,10 @@
 # The owner's everyday Enloq build on the Android phone (ADR 38 Q26, Q31): a
 # release build with the JavaScript embedded, so it runs without this Mac.
 # Connect the phone with USB debugging on, or from the VPS over its tunnel
-# (scripts/phone-adb). Expo signs release builds with React Native's shared
-# debug key, so a build from either machine installs over the previous release
-# build and keeps its pairing; the Enloq Dev development build is a separate
-# app.
+# (scripts/phone-adb). Release builds are signed with Enloq's private release
+# key (ADR 43 Q5), so this builds only where the key is, on the VPS or where
+# ENLOQ_ANDROID_SIGNING_DIR names a copy, and installs over a Saved Build
+# keeping its pairing; the Enloq Dev development build is a separate app.
 set -eu
 cd "$(dirname "$0")/.."
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1 CI=1

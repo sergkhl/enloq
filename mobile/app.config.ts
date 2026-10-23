@@ -39,6 +39,47 @@ const withDevelopmentVariant: ConfigPlugin = (config) => {
   ]);
 };
 
+// ADR 43 Q5: release builds, Saved Builds included, are signed with Enloq's
+// private release key, kept outside Git beside the VPS service or wherever
+// ENLOQ_ANDROID_SIGNING_DIR names. Without it a release build fails instead of
+// falling back to the public debug key, which Enloq Dev keeps.
+const RELEASE_SIGNING = `
+        release {
+            def dir = System.getenv('ENLOQ_ANDROID_SIGNING_DIR') ?: System.getProperty('user.home') + '/pi-workspace/enloq-service/android-signing'
+            def key = file("\${dir}/release.properties")
+            if (key.isFile()) {
+                def values = new Properties()
+                key.withInputStream { values.load(it) }
+                storeFile file("\${dir}/release.p12")
+                storePassword values.getProperty('storePassword')
+                keyAlias values.getProperty('keyAlias')
+                keyPassword values.getProperty('keyPassword')
+            } else {
+                gradle.taskGraph.whenReady { graph ->
+                    if (graph.allTasks.any { it.project == project && it.name.endsWith('Release') })
+                        throw new GradleException("No Android release key in \${dir}: release builds never fall back to the debug key (docs/mobile.md).")
+                }
+            }
+        }`;
+
+const withReleaseKey: ConfigPlugin = (config) =>
+  withAppBuildGradle(config, (gradle) => {
+    let contents = gradle.modResults.contents;
+    if (!contents.includes("signingConfigs.release"))
+      contents = contents
+        .replace(
+          /(buildTypes\s*\{[\s\S]*?\brelease\s*\{[^}]*?)signingConfig signingConfigs\.debug/,
+          "$1signingConfig signingConfigs.release",
+        )
+        .replace(/signingConfigs\s*\{/, (opening) => opening + RELEASE_SIGNING);
+    if (!contents.includes("signingConfig signingConfigs.release"))
+      throw new Error(
+        "Expo's build.gradle changed: release builds would keep the debug key.",
+      );
+    gradle.modResults.contents = contents;
+    return gradle;
+  });
+
 // Development builds open straight into the app: no developer-menu
 // introduction or menu at launch and no floating button over the header, so
 // journeys (MC5) start from the app's own screen. The menu still opens with
@@ -115,23 +156,25 @@ export default ({ config, projectRoot }: ConfigContext): ExpoConfig => {
   return withoutPushEntitlement(
     withQuietFirebase(
       withQuietDevMenu(
-        withDevelopmentVariant({
-          ...(config as ExpoConfig),
-          extra: {
-            ...config.extra,
-            server: SERVER,
-            ...(BUILD.commit ? { build: BUILD } : {}),
-          },
-          android: {
-            ...config.android,
-            ...(firebase ? { googleServicesFile: GOOGLE_SERVICES } : {}),
-          },
-          ios: {
-            ...config.ios,
-            infoPlist: { ...config.ios?.infoPlist, ...DEV_MENU },
-            ...(team ? { appleTeamId: team } : {}),
-          },
-        }),
+        withReleaseKey(
+          withDevelopmentVariant({
+            ...(config as ExpoConfig),
+            extra: {
+              ...config.extra,
+              server: SERVER,
+              ...(BUILD.commit ? { build: BUILD } : {}),
+            },
+            android: {
+              ...config.android,
+              ...(firebase ? { googleServicesFile: GOOGLE_SERVICES } : {}),
+            },
+            ios: {
+              ...config.ios,
+              infoPlist: { ...config.ios?.infoPlist, ...DEV_MENU },
+              ...(team ? { appleTeamId: team } : {}),
+            },
+          }),
+        ),
       ),
     ),
   );

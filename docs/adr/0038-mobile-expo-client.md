@@ -53,9 +53,10 @@ generated on demand and never committed, with no EAS build, Expo account or
 over-the-air update, and telemetry off. iOS builds run on the Mac, which
 Xcode needs. Android builds run on the Mac and on the VPS, and the VPS makes
 both the release app and Enloq Dev; Saved Builds come from the VPS
-([ADR 43](0043-installable-android-builds-and-phone-setup.md)). Both machines
-sign Android builds with React Native's shared debug key, so either machine's
-build installs over the other's and keeps its pairing. iPhone builds are
+([ADR 43](0043-installable-android-builds-and-phone-setup.md)). Release
+builds are signed with Enloq's private release key, kept on the VPS (ADR 43
+Q5), so a release build installs over another and keeps its pairing; Enloq
+Dev keeps React Native's shared debug key. iPhone builds are
 signed by the owner's free Personal Team (Q26): each install stops launching
 seven days after signing and the phone needs Developer Mode. The simulator
 and active work use a development build that loads JavaScript from Metro; the
@@ -215,10 +216,6 @@ copy (ADR 44 Q11).
   processing rule; it starts no AI work the web could not start.
 - Android push depends on Google Play and FCM. iPhone use needs a weekly
   reinstall and has no push until enrollment.
-- Known limit: the shared debug key is public, so anyone can sign an APK that
-  Android accepts as an update to Enloq; Enloq APKs are installed only from
-  the Saved Build or a development machine, and a private release key is an
-  open follow-up ([mobile runbook](../mobile.md)).
 - Known limit: images cached by the platform's loader (Fresco on Android, the
   URL cache on iOS) outlive a forgotten phone until the system evicts them or
   the app's data is cleared.

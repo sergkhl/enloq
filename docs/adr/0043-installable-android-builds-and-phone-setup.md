@@ -49,10 +49,14 @@ APK on the VPS from a clean committed `HEAD`, refusing uncommitted changes as
 `./scripts/deploy` does, at low priority and for arm64-v8a only (Q6), then
 hands it to the service. The agent runs it after deploying any change to
 `mobile/`, `shared/` or the API schema, and the owner can run it at any time.
-APKs keep React Native's shared debug key, so one installs over an existing
-Enloq and keeps its pairing, and one fixed Android version code, so any APK
-installs over any other. The app shows `Enloq <version> · <commit> · <build
-date>` in Settings (ADR 45 Q4).
+Release APKs are signed with Enloq's own private release key, kept on the VPS
+outside both checkouts and the service container and never committed; the
+app's config writes the signing into every regenerated Android project, and a
+release build without the key fails rather than falling back to React
+Native's public debug key, which Enloq Dev keeps. So one APK installs over an
+existing Enloq and keeps its pairing, and with one fixed Android version code
+any APK installs over any other. The app shows `Enloq <version> · <commit> ·
+<build date>` in Settings (ADR 45 Q4).
 
 **The S25 (Q6).** Android 16 with Google Play: arm64-v8a only, with FCM push.
 
@@ -108,8 +112,8 @@ deletes nothing in Saved Messages.
 
 **Developer verification (Q12).** Decided later. If a phone refuses an APK,
 the owner turns on Android's Advanced Flow once; adb installs stay exempt.
-Registering under a limited-distribution account, which needs a private
-signing key and one reinstall and pairing per phone, is not adopted now.
+Registering under a limited-distribution account with the release key (Q5)
+is not adopted now.
 
 **Checks (Q13).** Desktop browser checks are not required. Work is checked by
 `./scripts/check`, whose phone-size web journeys replaced the desktop
@@ -177,8 +181,10 @@ The units' names, which code comments cite:
   reaches all apps on certified devices in 2027. Unregistered apps then install
   from a file only with Android's Advanced Flow (a one-time one-day wait, then
   for seven days or indefinitely) or through adb, which stays exempt.
-  Registering Enloq would mean a signing key of the owner's own instead of the
-  shared debug key, which Q12 leaves for later.
+  Registering Enloq with its release key is left for later (Q12).
+- Only the release key can sign an update to an installed Enloq. Losing it
+  means every phone uninstalls Enloq and pairs again, so the owner keeps a
+  backup.
 - Open: a trusted-device entry from the S9+'s earlier app, uninstalled when
   the app was renamed, is still active on the VPS service. Forgetting it in
   Settings → Privacy is the owner's.

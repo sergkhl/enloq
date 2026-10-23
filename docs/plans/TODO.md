@@ -60,11 +60,6 @@ None of these is adopted, implemented or authorized.
   relay's section in [operations](../operations.md); then list the
   inert leftovers for the owner to delete (`~/pi-workspace/ntfy`, the
   service's `ntfy-publish-token`, the `enloq-phone` Keychain password).
-- **A private Android release key** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md)
-  Q5, Q12): APKs are signed with React Native's public debug key, so any APK
-  signed with it can install over Enloq. Replace it with a release key kept
-  privately on both build machines, never committed; each phone then
-  reinstalls Enloq once and pairs again.
 - **Leftover sound settings** ([ADR 44](../adr/0044-mobile-only-web-in-the-apps-design.md)):
   the service still keeps ADR 20's sound presets and custom sound
   (`sound_preset`, `GET`/`POST /api/notifications/sound`), which no client
@@ -105,6 +100,18 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
+- **The Android release key's backup** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md)
+  Q5, [mobile](../mobile.md#the-android-phone)): copy both files of
+  `~/pi-workspace/enloq-service/android-signing/` to private storage off the
+  VPS, never into a checkout, and check the copy opens. Without the key no
+  update installs over Enloq.
+- **Reinstalling Enloq once on each phone** (ADR 43 Q5): an Enloq signed with
+  the old debug key refuses Saved Builds signed with the release key. On each
+  phone with the release Enloq (the S25, and the S9+ beside Enloq Dev):
+  **Disconnect from enloq.globesoul.com** at the foot of Settings, uninstall
+  Enloq, install the pinned Saved Build, Connect with the code, then turn
+  notifications back on. Forget the phone's old entry in Settings → Privacy →
+  Trusted browsers and devices if it is still listed.
 - **The newest Saved Build** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md),
   [ADR 50](../adr/0050-icon-tabs-saved-messages-and-one-saved-build.md)):
   install it from the pinned message in the Owner Account's Saved Messages as

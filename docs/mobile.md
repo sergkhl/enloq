@@ -99,16 +99,31 @@ It builds native code for the connected phone's processor only, installs and
 starts the release app. Enloq Dev is a separate app with its own pairing and
 never replaces it.
 
-**Signing is a known limit.** Expo signs release builds, Saved Builds
-included, with React Native's well-known debug key, which every prebuild
-recreates. So a release build from the Mac or the VPS installs over the
-previous one and keeps its pairing; every Saved Build also keeps version code
-1, so any kept APK installs over any other. But the key is public: anyone can
-sign an APK that Android accepts as an update to Enloq and that inherits its
-data, the stored credential included.
-Install Enloq APKs only from the Saved Build or a development machine.
-Replacing the debug key with a private release key is an open follow-up; the
-switch means uninstalling once and pairing again.
+**Signing.** Release builds, Saved Builds included, are signed with Enloq's
+private release key (ADR 43 Q5), so only its holder can make an APK that
+Android accepts as an update to Enloq. Any release build installs over the
+previous one and keeps its pairing, and every Saved Build keeps version code
+1, so any kept APK installs over any other. Enloq Dev keeps React Native's
+public debug key.
+
+The key lives on the VPS in `~/pi-workspace/enloq-service/android-signing/`
+(mode 700): `release.p12`, a PKCS12 keystore holding the RSA 4096 key
+`enloq-release`, valid until 2054, and `release.properties` with its alias and
+password, both mode 600. It sits outside both checkouts, so a fresh clone
+never loses it, and outside `secrets/`, so the service container never sees
+it. Never print, commit or copy it into a checkout; the owner keeps its
+backup. Losing it means every phone uninstalls Enloq and pairs again. A build
+elsewhere, such as `install-android` on the Mac, needs a copy of that folder
+named by `ENLOQ_ANDROID_SIGNING_DIR`. `mobile/app.config.ts` writes the
+signing into every regenerated `mobile/android`; a release build without the
+key fails rather than falling back to the debug key.
+
+The certificate's SHA-256 fingerprint is
+`6C:B4:D0:CC:79:93:7A:00:95:55:FE:33:27:F8:25:41:66:96:AD:23:D5:DA:8A:07:1C:F6:B5:72:C5:61:14:B1`;
+`apksigner verify --print-certs <apk>` (in the SDK's `build-tools/36.0.0`)
+shows an APK's. An Enloq signed with the earlier debug key refuses an update
+signed with this one: uninstall it once, install the Saved Build and pair
+again.
 
 ### Android builds on the VPS
 
