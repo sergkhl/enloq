@@ -1,0 +1,251 @@
+/* Message Selection and deletion in the Enloq app's design (ADR 46 CU4). */
+
+/* While selecting, each original sits beside its round checkbox; a tap
+   anywhere on the row adds or removes it. */
+.selecting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+/* The bubble keeps the stream's own alignment and width beside the mark. */
+.selecting-bubble {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.selecting-row.ineligible {
+  cursor: default;
+  opacity: 0.55;
+}
+.selecting-row.chosen .message-bubble {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.select-mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--accent);
+}
+.select-mark:disabled {
+  visibility: hidden;
+}
+.deleting-original {
+  font-size: 12px;
+  color: var(--muted);
+}
+.app-bubble.outgoing .deleting-original {
+  color: var(--paper);
+  opacity: 0.85;
+}
+
+/* The composer keeps its layout, and hides while the bar takes its place. */
+.composer-slot {
+  display: contents;
+}
+.composer-slot[hidden] {
+  display: none;
+}
+
+/* What stopped a review, above the bar. */
+.selection-error {
+  margin: 0;
+  padding: 6px 16px 0;
+  border-top: 1px solid var(--line);
+  color: var(--danger);
+}
+
+/* "N selected" with Delete and Cancel, in the composer's place. */
+.selection-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+.selection-bar strong {
+  flex: 1;
+  font-size: 17px;
+}
+.selection-bar button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--accent);
+}
+.selection-bar .selection-delete {
+  color: var(--danger);
+}
+.selection-bar button:disabled {
+  opacity: 0.4;
+}
+
+/* The review sheet. */
+.sheet-bottom.deletion-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100dvh - 60px);
+  padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.deletion-review h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.deletion-destination {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.deletion-destination div {
+  display: flex;
+  gap: 8px;
+}
+.deletion-destination dt {
+  min-width: 72px;
+  color: var(--muted);
+}
+.deletion-destination dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.deletion-count {
+  margin: 0;
+  font-weight: 600;
+}
+.deletion-previews {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40dvh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.deletion-previews li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+}
+.deletion-previews small {
+  color: var(--muted);
+}
+.deletion-previews p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.deletion-media {
+  font-size: 14px;
+  color: var(--muted);
+}
+.deletion-error {
+  margin: 0;
+  color: var(--danger);
+}
+.deletion-unconfirmed {
+  margin: 0;
+  color: var(--muted);
+}
+.deletion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sheet-button {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+}
+.sheet-button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+.sheet-button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+.sheet-button:disabled {
+  opacity: 0.5;
+}
+
+/* Operation cards under the latest message. */
+.deletion-cards {
+  display: flex;
+  align-self: stretch;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.deletion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.deletion-card strong {
+  font-size: 15px;
+}
+.deletion-card p {
+  margin: 0;
+  color: var(--muted);
+}
+.deletion-card progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.deletion-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.deletion-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+}
+.deletion-card-actions button:disabled {
+  opacity: 0.45;
+}

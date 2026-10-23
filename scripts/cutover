@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+umask 077
+exec uv run --locked python -m enloq.cutover "$@"

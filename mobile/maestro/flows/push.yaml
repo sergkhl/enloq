@@ -1,0 +1,25 @@
+# Android push settings (MC6, ADR 38), in Settings →
+# Notifications (ADR 45 Q3, ADR 47 Q6): turning notifications on registers Enloq
+# Dev with FCM and gives the fixture its token; the fixture's test push goes
+# to its fake sender, and turning them off deletes the token again.
+appId: ${APP_ID}
+---
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- tapOn: "Notifications.*"
+- tapOn:
+    id: "push-switch"
+- extendedWaitUntil:
+    visible: "Send a test notification"
+    timeout: 30000
+- tapOn: "Send a test notification"
+- assertVisible: "Test sent."
+- tapOn:
+    id: "push-switch"
+- extendedWaitUntil:
+    notVisible: "Send a test notification"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Back"
+- assertVisible: "Account: Demo account. Switch account"

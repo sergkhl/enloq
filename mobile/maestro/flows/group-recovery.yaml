@@ -1,0 +1,33 @@
+# Group recovery (ADR 46 CU6) on the fixture's authored retained group: the
+# folded Retained group work at the foot of Groups, the group opened
+# read-only with its saved draft, and its paused send reviewed and resumed
+# once access returned. Nothing reaches Telegram: the fixture's fake
+# transport sends. The list ends on Private, as it began.
+appId: ${APP_ID}
+---
+- tapOn:
+    text: "Groups"
+- scrollUntilVisible:
+    element: "Retained group work.*"
+    timeout: 30000
+- tapOn: "Retained group work.*"
+- tapOn: "Retained authored discussion.*"
+- extendedWaitUntil:
+    visible: "Not sent message"
+    timeout: 20000
+- assertVisible: "Saved draft . Retained group work"
+# Its actions are in its sheet, opened from its "!" (ADR 51 Q4).
+- tapOn: "Not sent: message actions"
+- tapOn: "Review and resume"
+- extendedWaitUntil:
+    visible: "Resume paused send"
+    timeout: 20000
+- assertVisible: "Resume within .*"
+- tapOn: "Resume send"
+- extendedWaitUntil:
+    notVisible: "Not sent message"
+    timeout: 30000
+- tapOn: "Back to conversations"
+- tapOn:
+    text: "Private"
+- assertVisible: "Account: Demo account. Switch account"

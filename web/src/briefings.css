@@ -1,0 +1,152 @@
+.group-days {
+  min-width: 0;
+  width: 100%;
+}
+/* The date band (ADR 34): green-tinted and pinned to the top of
+   the stream while its day scrolls past, with today's briefing slot at the
+   right end. The tint is mixed into the paper so pinned text stays opaque. */
+.briefing-day-band {
+  --band: color-mix(in srgb, var(--accent) 14%, var(--paper));
+  position: sticky;
+  top: calc(-1 * var(--stream-pad-top, 0px));
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin: 1.6rem 0 0.8rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--band);
+  border-bottom: 2px solid var(--accent);
+}
+.briefing-day-heading {
+  grid-column: 2;
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+.briefing-slot {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 32px;
+  padding: 0.2rem 0.65rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+button.briefing-slot.act {
+  background: var(--accent);
+  color: var(--paper);
+}
+button.briefing-slot.retry {
+  background: #f6dfb0;
+  color: #6b4500;
+}
+@media (prefers-color-scheme: dark) {
+  button.briefing-slot.retry {
+    background: #4a3812;
+    color: #f3cd78;
+  }
+}
+.briefing-new {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  width: 100%;
+  margin-top: 18px;
+}
+.briefing-new-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.briefing-topic {
+  margin-bottom: 1rem;
+}
+.briefing-topic h4 {
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+  font-weight: 700;
+}
+.briefing-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.briefing-participants button {
+  font-size: inherit;
+  padding: 0 0.25rem;
+  min-height: 24px;
+}
+.briefing-hidden-source {
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+.daily-briefing {
+  margin: 0.5rem 0 0.8rem;
+  max-width: 100%;
+}
+.briefing-text {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.briefing-text p {
+  margin: 0 0 0.65rem;
+}
+.briefing-source-tools {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.4rem 0;
+}
+.briefing-coverage,
+.briefing-missing,
+.briefing-source-tools small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.briefing-coverage,
+.briefing-missing {
+  display: block;
+  margin: 0.3rem 0;
+}
+.briefing-citations {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.briefing-citations button,
+.briefing-originals,
+.briefing-source-tools button {
+  font-size: 0.75rem;
+  min-height: 28px;
+  padding: 0.2rem 0.4rem;
+}
+.briefing-citations button {
+  border: 0;
+  color: var(--accent);
+}

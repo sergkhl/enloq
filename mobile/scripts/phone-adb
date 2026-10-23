@@ -1,0 +1,49 @@
+#!/bin/sh
+# Android development from the VPS reaches the phone over wg-easy's tunnel
+# (ADR 38 Q51). Android 10 has no wireless debugging: the phone's adb listens
+# on the network after a USB command until it restarts, or for good once boot
+# sets it up, which needs root through Magisk (Superuser access: Apps and ADB).
+#
+#   mobile/scripts/phone-adb network            # on the Mac, phone on USB
+#   mobile/scripts/phone-adb connect [address]  # on the VPS, phone on the tunnel
+#   mobile/scripts/phone-adb boot               # either, phone rooted
+#
+# The first connect from the VPS shows "Allow USB debugging?" on the phone;
+# choose Always allow. The tunnel address is remembered for later connects.
+set -eu
+cd "$(dirname "$0")/.."
+. scripts/android-env
+remembered="../.local/phone-tunnel-address"
+case "${1:-}" in
+network)
+  "$adb" -d tcpip 5555
+  ;;
+connect)
+  address=${2:-$(cat "$remembered" 2>/dev/null || true)}
+  if [ -z "$address" ]; then
+    echo "Give the phone's tunnel address, as wg-easy shows it." >&2
+    exit 2
+  fi
+  "$adb" connect "$address:5555"
+  (umask 077 && mkdir -p ../.local && printf '%s\n' "$address" >"$remembered")
+  ;;
+boot)
+  # After a restart network adb comes back, the boot script brings back the
+  # tunnel WireGuard ran before it, and Doze leaves WireGuard running. Android's
+  # Always-on VPN would start WireGuard too early (see phone-boot.sh).
+  "$adb" push scripts/phone-boot.sh /data/local/tmp/enloq-tunnel.sh >/dev/null
+  "$adb" shell "su -c '
+    setprop persist.adb.tcp.port 5555 &&
+    cp /data/local/tmp/enloq-tunnel.sh /data/adb/service.d/enloq-tunnel.sh &&
+    chown root:root /data/adb/service.d/enloq-tunnel.sh &&
+    chmod 755 /data/adb/service.d/enloq-tunnel.sh &&
+    rm /data/local/tmp/enloq-tunnel.sh &&
+    if [ \$(settings get secure always_on_vpn_app) = com.wireguard.android ]; then
+      settings delete secure always_on_vpn_app; fi &&
+    dumpsys deviceidle whitelist +com.wireguard.android'"
+  ;;
+*)
+  echo "Usage: mobile/scripts/phone-adb network | connect [address] | boot" >&2
+  exit 2
+  ;;
+esac

@@ -1,0 +1,71 @@
+# Trust and accounts in the app (ADR 43 IB5, IB6): the trusted list, in
+# Settings → Privacy (ADR 45 Q4, ADR 47 Q6), marks this phone; Manage accounts switches the Demo
+# account's AI processing off and on (ADR 46 CU3), adds an account through
+# the fixture's synthetic login, whose code is 12345, then logs it out and
+# removes its local data, so the Demo account is shown again.
+appId: ${APP_ID}
+---
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- tapOn: "Privacy.*"
+- extendedWaitUntil:
+    visible: "This phone · Last used.*"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Back"
+- tapOn: "Account: Demo account. Switch account"
+- tapOn: "Manage accounts"
+- tapOn: "AI processing for Demo account"
+- extendedWaitUntil:
+    visible:
+      text: "AI processing for Demo account"
+      checked: false
+    timeout: 15000
+- tapOn: "AI processing for Demo account"
+- extendedWaitUntil:
+    visible:
+      text: "AI processing for Demo account"
+      checked: true
+    timeout: 15000
+- tapOn: "Add account"
+- extendedWaitUntil:
+    visible: "Synthetic login for this offline demo.*"
+    timeout: 15000
+- tapOn: "Log in by phone number"
+- tapOn: "Phone number"
+- inputText: "+12025550007"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Login code"
+    timeout: 15000
+- tapOn: "Login code"
+# Telegram's five-digit code submits itself on its last digit (ADR 47 Q3).
+- inputText: "12345"
+- extendedWaitUntil:
+    visible: "Account: Demo 7. Switch account"
+    timeout: 30000
+- tapOn: "Account: Demo 7. Switch account"
+- tapOn: "Manage accounts"
+# The new account is listed last; About you (ADR 55 Q21) made each row
+# taller, so its Log out is scrolled to first.
+- scrollUntilVisible:
+    element:
+      text: "Log out"
+      index: 2
+- tapOn:
+    text: "Log out"
+    index: 2
+- tapOn: "Confirm logout"
+- extendedWaitUntil:
+    visible: "Remove local data"
+    timeout: 15000
+- tapOn: "Remove local data"
+- tapOn: "Remove local data"
+- extendedWaitUntil:
+    notVisible: "Remove local data"
+    timeout: 15000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "Account: Demo account. Switch account"
+    timeout: 15000

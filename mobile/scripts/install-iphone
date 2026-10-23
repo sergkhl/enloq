@@ -1,0 +1,42 @@
+#!/bin/sh
+# ADR 38 Q26: the owner's everyday Enloq build on the iPhone. It is a Release
+# build with the JavaScript embedded, signed by the free Personal Team, so iOS
+# stops launching it seven days after signing. Run this at least weekly with
+# the iPhone connected; the app keeps its pairing across reinstalls.
+set -eu
+cd "$(dirname "$0")/.."
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1 CI=1
+team=$(defaults export com.apple.dt.Xcode - | python3 -I -c '
+import plistlib, sys
+teams = plistlib.loads(sys.stdin.buffer.read()).get("IDEProvisioningTeamByIdentifier", {})
+free = [t.get("teamID", "") for ts in teams.values() for t in ts if t.get("isFreeProvisioningTeam")]
+print(free[0] if free else "")
+')
+if [ -z "$team" ]; then
+  echo "Add your Apple ID in Xcode > Settings > Accounts, then run this again." >&2
+  exit 1
+fi
+listing=$(mktemp)
+trap 'rm -f "$listing"' EXIT
+xcrun devicectl list devices --json-output "$listing" >/dev/null
+device=$(python3 -I -c '
+import json, sys
+devices = json.load(open(sys.argv[1]))["result"]["devices"]
+phones = [
+    d["hardwareProperties"]["udid"]
+    for d in devices
+    if d.get("hardwareProperties", {}).get("platform") == "iOS"
+    and d.get("connectionProperties", {}).get("pairingState") == "paired"
+    and d.get("connectionProperties", {}).get("tunnelState") != "unavailable"
+]
+print(phones[0] if phones else "")
+' "$listing")
+if [ -z "$device" ]; then
+  echo "Connect and unlock the iPhone, then run this again." >&2
+  exit 1
+fi
+export ENLOQ_APPLE_TEAM_ID="$team"
+# Write the Personal Team into the generated project first: without it Expo
+# would choose among every signing identity on this Mac.
+npx expo prebuild --platform ios --no-install >/dev/null
+exec npx expo run:ios --device "$device" --configuration Release --no-bundler

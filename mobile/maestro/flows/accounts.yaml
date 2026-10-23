@@ -1,0 +1,9 @@
+# Account switching (MC2): the fixture's second account replaces the first.
+appId: ${APP_ID}
+---
+- tapOn: "Account: Demo account. Switch account"
+- tapOn:
+    id: "account-2"
+- extendedWaitUntil:
+    visible: "Account: Second demo account. Switch account"
+    timeout: 15000

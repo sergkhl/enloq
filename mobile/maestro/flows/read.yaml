@@ -1,0 +1,13 @@
+# Reading (MC2): a conversation in both reading views. iOS reads a bubble as
+# one label (header, text and footer), so text is matched inside it.
+appId: ${APP_ID}
+---
+- tapOn: "Alex · weekend plans.*"
+- extendedWaitUntil:
+    visible: ".*Can you bring the board game on Saturday\\?.*"
+    timeout: 15000
+- tapOn: "AI view"
+- assertVisible: ".*Can you bring the board game on Saturday\\?.*"
+- tapOn: "AI view"
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

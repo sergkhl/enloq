@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+uv run --locked python scripts/schema.py
+cd web
+npx --no-install openapi-typescript ../config/api-schema.json -o src/api-schema.d.ts
+# The Enloq app (ADR 38) reads the same DTOs; its TypeScript 6 cannot host
+# openapi-typescript, so the web's generator writes both copies.
+npx --no-install openapi-typescript ../config/api-schema.json -o ../mobile/src/api-schema.d.ts

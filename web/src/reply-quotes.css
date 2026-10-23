@@ -1,0 +1,83 @@
+/* Reply Quotes (ADR 41): the replied-to message above a reply's content. */
+.reply-quote-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  margin: 8px 0 0;
+  padding: 4px 10px 5px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 3px 8px 8px 3px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+}
+button.reply-quote-box {
+  cursor: pointer;
+}
+button.reply-quote-box:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.reply-quote-sender {
+  overflow: hidden;
+  color: var(--accent);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reply-quote-date {
+  color: var(--muted);
+  font-weight: 400;
+}
+/* The body fills the bubble's width without widening the bubble. */
+.reply-quote-body {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 0;
+  min-width: 100%;
+}
+.reply-quote-body svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.reply-quote-body span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reply-quote-body:is(
+  [data-kind="unknown"],
+  [data-kind="pending"],
+  [data-kind="story"]
+) {
+  color: var(--muted);
+}
+/* A jump's brief highlight on the replied-to message or its bubble. */
+.reply-jump-highlight {
+  animation: reply-jump 1.6s ease-out;
+}
+@keyframes reply-jump {
+  0%,
+  50% {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reply-jump-highlight {
+    animation: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+}

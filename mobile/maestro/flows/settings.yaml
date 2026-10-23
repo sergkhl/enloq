@@ -1,0 +1,78 @@
+# Settings (ADR 45 ST5), a menu since ADR 47 Q6, on the fixture: the gear
+# opens it; Budget changes and restores the Group Briefing Budget, AI turns
+# Suggestions off and on again and edits a guidance field and resets it, and
+# Privacy's Pair a phone shows its QR code, cancelled on leaving. Every value
+# ends as it began.
+appId: ${APP_ID}
+---
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- tapOn: "Budget.*"
+- scrollUntilVisible:
+    element: "Change Group Briefing Budget limit"
+- tapOn: "Change Group Briefing Budget limit"
+- tapOn: "Group Briefing Budget per day in dollars"
+- eraseText
+- inputText: "3"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: ".*of \\$3\\.00 today.*"
+    timeout: 15000
+- tapOn: "Change Group Briefing Budget limit"
+- tapOn: "Group Briefing Budget per day in dollars"
+- eraseText
+- inputText: "2"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: ".*of \\$2\\.00 today.*"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "AI.*"
+- scrollUntilVisible:
+    element:
+      id: "suggestions-switch"
+- tapOn:
+    id: "suggestions-switch"
+- assertVisible:
+    id: "suggestions-switch"
+    checked: false
+- tapOn:
+    id: "suggestions-switch"
+- assertVisible:
+    id: "suggestions-switch"
+    checked: true
+- scrollUntilVisible:
+    element: "Guidance.*"
+- tapOn: "Guidance.*"
+- scrollUntilVisible:
+    element: "Neutral, Default"
+- tapOn: "Neutral, Default"
+- tapOn:
+    id: "guidance-text"
+- inputText: " Journey edit."
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible:
+    text: "Reset to default"
+    enabled: true
+- tapOn: "Reset to default"
+- tapOn: "Confirm reset"
+- extendedWaitUntil:
+    visible:
+      text: "Reset to default"
+      enabled: false
+    timeout: 15000
+- tapOn: "Back"
+- assertVisible: "Neutral, Default"
+- tapOn: "Back"
+- tapOn: "Back"
+- tapOn: "Privacy.*"
+- tapOn: "Pair a phone"
+- extendedWaitUntil:
+    visible: "Pairing QR code"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Back"
+- tapOn: "Back"
+- assertVisible: "Account: Demo account. Switch account"

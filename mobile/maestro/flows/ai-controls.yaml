@@ -1,0 +1,100 @@
+# AI controls and the Correspondent Profile (ADR 46 CU3) on the fixture's
+# authored chats: the profile's Telegram details, Remember this chat Off by
+# default (ADR 56 Q9) and what the person cares about (ADR 55) on "Message
+# details", the not-analysed note on "Mixed block", and Rewrite earlier
+# messages on "Earlier". Retry is left to the web journey and the app's
+# tests: a failing engine in the shared fixture would fail the other flows.
+# Selectors stay ASCII: without a UTF-8 locale Maestro misreads the rest.
+# A chat in the list may sit above where an earlier flow left it, so each
+# search looks up first, then down.
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element: "Message details.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Message details.*"
+    timeout: 30000
+- tapOn: "Message details.*"
+# The header's button names the emotion when one shows (ADR 47).
+- extendedWaitUntil:
+    visible: "Message details, .*open profile"
+    timeout: 15000
+- tapOn: "Message details, .*open profile"
+- extendedWaitUntil:
+    visible: "Morgan Lee"
+    timeout: 15000
+- assertVisible: "@authored_morgan"
+- assertVisible: "Authored bio for the journeys."
+- scrollUntilVisible:
+    element:
+      id: "remember-this-chat"
+- assertVisible:
+    id: "remember-this-chat"
+    checked: false
+- scrollUntilVisible:
+    element:
+      id: "takeaway-new"
+- tapOn:
+    id: "takeaway-new"
+- inputText: "Prefers calls on Friday"
+# The profile's Suggestions choice (ADR 56) pushes the field low enough for
+# the keyboard to cover its counter, so the counter is read once it closes.
+- hideKeyboard
+- assertVisible: "23/300 bytes"
+# Traits have an Add of their own, named Add trait note.
+- tapOn: "Add note"
+# Earlier flows' messages may have grown the memory: scroll to the entry.
+- scrollUntilVisible:
+    element: "Added or edited by you"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "Clear."
+- tapOn: "Clear."
+- tapOn: "Clear memory"
+- scrollUntilVisible:
+    element: "Nothing noted yet."
+    direction: UP
+    timeout: 30000
+# Copy chat link left the header for the profile (ADR 47 Q8).
+- scrollUntilVisible:
+    element: "Copy chat link"
+- tapOn: "Copy chat link"
+# Its note shows below the button, which now ends the longer profile.
+- scrollUntilVisible:
+    element: "Chat link copied"
+- tapOn: "Back"
+- tapOn: "Back to conversations"
+- scrollUntilVisible:
+    element: "Mixed block.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Mixed block.*"
+    timeout: 30000
+- tapOn: "Mixed block.*"
+- extendedWaitUntil:
+    visible: "Not analysed: File contract.pdf"
+    timeout: 20000
+- tapOn: "Back to conversations"
+- scrollUntilVisible:
+    element: "Earlier.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Earlier.*"
+    timeout: 30000
+- tapOn: "Earlier.*"
+- scrollUntilVisible:
+    element: "2 earlier blocks are not rewritten"
+    direction: UP
+- tapOn: "Rewrite earlier messages"
+- extendedWaitUntil:
+    notVisible: "2 earlier blocks are not rewritten"
+    timeout: 30000
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

@@ -1,0 +1,61 @@
+/* Saved submissions without a native message yet (ADR 26), drawn as the
+   owner's sent bubbles (ADR 51 Q3): `.app-bubble.outgoing` gives the look,
+   and only the time line tells the state. */
+.message-bubble.pending-send.state-cancelled {
+  opacity: 0.6;
+}
+.pending-send .reply-quote-box {
+  margin: 0 0 6px;
+}
+.pending-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pending-images img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.pending-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+/* A send that needs the owner: a red "!" and its word, which open its sheet. */
+.pending-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: #a3302a;
+  font: inherit;
+  font-weight: 600;
+}
+.pending-note {
+  display: block;
+  color: inherit;
+}
+/* A paused send's review error, under its bubble. */
+.pending-reason {
+  display: block;
+  align-self: flex-end;
+  color: var(--muted);
+}
+.delivery-mark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--accent);
+  vertical-align: middle;
+}
+@media (prefers-color-scheme: dark) {
+  .pending-alert {
+    color: #f0a08a;
+  }
+}

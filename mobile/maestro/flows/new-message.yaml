@@ -1,0 +1,32 @@
+# New Message (ADR 51 Q15-Q19): the pencil in the gear's old place on Private
+# lists chats, then contacts, searches Telegram's people for three typed
+# characters and opens the chosen person's chat, which stays out of the
+# seven-day list until a message.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/new-message-people
+      ACCOUNT: "1"
+- tapOn: "New message"
+- extendedWaitUntil:
+    visible: "Chats"
+    timeout: 15000
+# The fixture has many chats; typing narrows the list to contacts and
+# Telegram's people search.
+- tapOn: "Search people"
+- inputText: "zoe"
+- extendedWaitUntil:
+    visible: "Global search"
+    timeout: 15000
+- assertVisible: "Zoe Contact, @zoe_contact"
+- takeScreenshot: new-message-1-search
+- tapOn: "Zoe Public, @zoe_public"
+- extendedWaitUntil:
+    visible: "Message.*"
+    timeout: 15000
+- assertVisible: "Zoe Public.*"
+- takeScreenshot: new-message-2-chat
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

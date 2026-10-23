@@ -1,0 +1,226 @@
+/* Played and shown media in the Enloq app's design (ADR 46 CU1). Outgoing
+   bubbles draw on the accent, so their media take the paper colour. */
+.media-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.media-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.spin {
+  animation: media-spin 1s linear infinite;
+}
+@keyframes media-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A voice note: play, the waveform, the time and the speed. */
+.voice-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.voice-play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--paper);
+}
+.outgoing .voice-play {
+  background: var(--paper);
+  color: var(--accent);
+}
+.voice-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.voice-wave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  cursor: pointer;
+  touch-action: none;
+}
+.voice-wave:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.voice-wave span {
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.voice-wave span.played {
+  opacity: 1;
+}
+.outgoing .voice-wave span {
+  background: var(--paper);
+}
+.voice-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.voice-time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.outgoing .voice-time {
+  color: var(--paper);
+}
+.voice-speed {
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.outgoing .voice-speed {
+  color: var(--paper);
+}
+
+/* A video message's circle and a video's frame. */
+.video-circle {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--line);
+}
+.video-circle video,
+.video-card > img,
+.gif-box > img,
+.gif-box > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.video-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  pointer-events: none;
+}
+.video-overlay button {
+  pointer-events: auto;
+}
+.video-card {
+  position: relative;
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--line);
+}
+video.video-card {
+  background: #000;
+}
+.video-play {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 45%);
+  color: #fff;
+}
+.video-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 45%);
+  color: #fff;
+  font-size: 12px;
+}
+
+/* GIFs and stickers. */
+.gif-box {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--line);
+}
+.gif-box > img,
+.gif-box > video {
+  object-fit: contain;
+}
+.sticker-box {
+  width: 128px;
+  height: 128px;
+}
+.sticker-box > img,
+.sticker-box > video,
+.sticker-box .tgs-animation {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A document or a music file. */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.outgoing .file-card {
+  border-color: var(--paper);
+  color: var(--paper);
+}
+.file-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.file-text strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  color: var(--ink);
+}
+.outgoing .file-text strong {
+  color: var(--paper);
+}
+.file-text small {
+  color: var(--muted);
+}
+.outgoing .file-text small {
+  color: var(--paper);
+}

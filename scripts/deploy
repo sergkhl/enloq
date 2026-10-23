@@ -1,0 +1,93 @@
+#!/bin/sh
+# Run on the VPS from the development checkout (ADR 40): build the committed
+# tree into an image and run it as the service in its own compose folder.
+#   ./scripts/deploy             build HEAD, start it, restore the old image if unhealthy
+#   ./scripts/deploy --rollback  run the previously deployed image again
+set -eu
+cd "$(dirname "$0")/.."
+umask 077
+service="${ENLOQ_SERVICE_DIR:-$HOME/pi-workspace/enloq-service}"
+container=enloq
+
+running_image() {
+  sed -n 's/^IMAGE=//p' "$service/.env" 2>/dev/null || true
+}
+
+run() {
+  # IMAGE is the deploy's own line; the rest of .env (EDGE_NETWORK) is kept.
+  {
+    grep -v '^IMAGE=' "$service/.env" 2>/dev/null || true
+    printf 'IMAGE=%s\n' "$1"
+  } >"$service/.env.next"
+  mv "$service/.env.next" "$service/.env"
+  (cd "$service" && docker compose up -d --remove-orphans)
+}
+
+healthy() {
+  tries=0
+  while [ "$tries" -lt 60 ]; do
+    state=$(docker inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || echo missing)
+    case "$state" in
+      healthy) return 0 ;;
+      unhealthy) return 1 ;;
+    esac
+    tries=$((tries + 1))
+    sleep 3
+  done
+  return 1
+}
+
+if [ "${1:-}" = "--rollback" ]; then
+  previous=$(cat "$service/previous-image" 2>/dev/null || true)
+  [ -n "$previous" ] || { echo "No previous image to roll back to." >&2; exit 1; }
+  current=$(running_image)
+  run "$previous"
+  healthy || { echo "The rolled-back service is not healthy: docker logs $container" >&2; exit 1; }
+  printf '%s\n' "$current" >"$service/previous-image"
+  echo "Rolled back to $previous."
+  exit 0
+elif [ "$#" -gt 0 ]; then
+  echo "usage: ./scripts/deploy [--rollback]" >&2
+  exit 2
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Commit or stash first: the service runs committed revisions only." >&2
+  exit 1
+fi
+commit=$(git rev-parse HEAD)
+image="enloq:$(git rev-parse --short=12 HEAD)"
+echo "Building $image…"
+git archive --format=tar HEAD | docker build --quiet --file deploy/Dockerfile \
+  --label "org.opencontainers.image.revision=$commit" --tag "$image" - >/dev/null
+
+# The service folder holds private data, config and secrets (0700/0600).
+mkdir -p "$service/data" "$service/config" "$service/secrets"
+chmod 700 "$service" "$service/data" "$service/config" "$service/secrets"
+cp deploy/compose.yaml "$service/compose.yaml"
+[ -f "$service/config/app.env" ] || cp deploy/app.env.example "$service/config/app.env"
+
+current=$(running_image)
+run "$image"
+if ! healthy; then
+  echo "The new service is not healthy: docker logs $container" >&2
+  if [ -n "$current" ] && [ "$current" != "$image" ]; then
+    run "$current"
+    echo "Restored $current." >&2
+  fi
+  exit 1
+fi
+if [ -n "$current" ] && [ "$current" != "$image" ]; then
+  printf '%s\n' "$current" >"$service/previous-image"
+fi
+printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$commit" >>"$service/deployments.log"
+
+# Keep only the running and previous images.
+keep=" $image $(cat "$service/previous-image" 2>/dev/null || true) "
+docker image ls enloq --format '{{.Repository}}:{{.Tag}}' | while read -r old; do
+  case "$keep" in
+    *" $old "*) ;;
+    *) docker image rm "$old" >/dev/null 2>&1 || true ;;
+  esac
+done
+echo "Deployed $image."

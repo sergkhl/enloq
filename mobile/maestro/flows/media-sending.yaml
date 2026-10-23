@@ -1,0 +1,62 @@
+# GIF and sticker sending (ADR 46 CU5) on the fixture's authored "GIF and
+# sticker fixture" chat: the paperclip's GIFs, a saved GIF staged above the
+# composer, prepared and sent with a caption, then Stickers, the Pattern pack
+# and a sticker sent on its own. Nothing reaches Telegram: the fixture's fake
+# transport sends. Selectors stay ASCII.
+# A chat in the list may sit above where an earlier flow left it, so each
+# search looks up first, then down.
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element: "GIF and sticker fixture.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "GIF and sticker fixture.*"
+    timeout: 30000
+- tapOn: "GIF and sticker fixture.*"
+- extendedWaitUntil:
+    visible: "Attach"
+    timeout: 15000
+- tapOn: "Attach"
+- tapOn: "GIFs"
+- extendedWaitUntil:
+    visible: "Select GIF Loop MP4"
+    timeout: 30000
+- tapOn: "Select GIF Loop MP4"
+- extendedWaitUntil:
+    visible: "Selected GIF"
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: "Preparing GIF.*"
+    timeout: 30000
+- tapOn: "Message"
+- inputText: "A looping caption"
+- hideKeyboard
+- tapOn: "Send"
+- extendedWaitUntil:
+    notVisible: "Selected GIF"
+    timeout: 20000
+- tapOn: "Attach"
+- tapOn: "Stickers"
+- extendedWaitUntil:
+    visible: "Pattern pack"
+    timeout: 30000
+- tapOn: "Pattern pack"
+- extendedWaitUntil:
+    visible: "Select sticker Pattern static"
+    timeout: 30000
+- tapOn: "Select sticker Pattern static"
+- extendedWaitUntil:
+    visible: "Selected sticker"
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: "Preparing sticker.*"
+    timeout: 30000
+- tapOn: "Send"
+- extendedWaitUntil:
+    notVisible: "Selected sticker"
+    timeout: 20000
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

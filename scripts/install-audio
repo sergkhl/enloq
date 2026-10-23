@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+umask 077
+cd "$(dirname "$0")/.."
+uv sync --project audio --locked
+audio/.venv/bin/python scripts/download-whisper.py

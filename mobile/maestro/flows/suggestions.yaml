@@ -1,0 +1,113 @@
+# Useful response suggestions (ADR 49) on the fixture: answer stances above
+# the composer (Q4, Q8) fold, and the server keeps the fold for every client
+# until the next set (ADR 56 Q12 B); a chosen one goes into the draft with
+# Undo. The profile's Suggestions choice (ADR 56 Q12 A) turns the chat's set
+# off and on again. Settings → AI then shows a decision-model outage (Q14)
+# until it clears. The fixture routes stand in for a published set and for
+# the route's state. Selectors stay ASCII.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/answer-suggestions
+- scrollUntilVisible:
+    element: "Suggestion fixture.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Suggestion fixture.*"
+    timeout: 30000
+- tapOn: "Suggestion fixture.*"
+- extendedWaitUntil:
+    visible: "Accept: Yes, I'll be there\\."
+    timeout: 20000
+- assertVisible: "Decline: Sorry, I can't make it this time\\."
+- assertVisible: "Later: Let me check and get back to you\\."
+- tapOn: "Hide suggestions"
+- extendedWaitUntil:
+    visible: "Show 3 suggestions"
+    timeout: 10000
+- assertNotVisible: "Accept: Yes, I'll be there\\."
+# The server keeps the fold: the chat opens again with its set folded.
+- tapOn: "Back to conversations"
+- scrollUntilVisible:
+    element: "Suggestion fixture.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Suggestion fixture.*"
+    timeout: 30000
+- tapOn: "Suggestion fixture.*"
+- extendedWaitUntil:
+    visible: "Show 3 suggestions"
+    timeout: 15000
+- assertNotVisible: "Accept: Yes, I'll be there\\."
+- tapOn: "Show 3 suggestions"
+- tapOn: "Decline: Sorry, I can't make it this time\\."
+- extendedWaitUntil:
+    visible:
+      text: "Undo suggestion"
+      enabled: true
+    timeout: 15000
+- tapOn: "Undo suggestion"
+# The chat's Suggestions choice: On, with Idioms since its launch (ADR 56
+# Q20 A). Off shows nothing; On again shows the set while it is valid.
+- tapOn: "Suggestion fixture, .*open profile"
+- scrollUntilVisible:
+    element:
+      id: "suggestions-on"
+- assertVisible:
+    id: "suggestions-on"
+    checked: true
+- assertVisible:
+    id: "suggestions-idioms"
+- tapOn:
+    id: "suggestions-off"
+- extendedWaitUntil:
+    visible: "No reply suggestions in this chat\\."
+    timeout: 15000
+- tapOn: "Back"
+- extendedWaitUntil:
+    notVisible: "Hide suggestions"
+    timeout: 15000
+- tapOn: "Suggestion fixture, .*open profile"
+- scrollUntilVisible:
+    element:
+      id: "suggestions-on"
+- tapOn:
+    id: "suggestions-on"
+- extendedWaitUntil:
+    visible:
+      id: "suggestions-on"
+      checked: true
+    timeout: 15000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: "Hide suggestions"
+    timeout: 15000
+- tapOn: "Back to conversations"
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/decision-outage
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- tapOn: "AI.*"
+- extendedWaitUntil:
+    visible: "Decision model unavailable since.*"
+    timeout: 15000
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/decision-restored
+- tapOn: "Back"
+- tapOn: "AI.*"
+- extendedWaitUntil:
+    notVisible: "Decision model unavailable since.*"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Back"

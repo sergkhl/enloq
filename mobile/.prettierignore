@@ -1,0 +1,4 @@
+src/api-schema.d.ts
+ios/
+android/
+.expo/

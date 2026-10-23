@@ -1,0 +1,113 @@
+#!/bin/sh
+# MC5 journeys (ADR 38 Q11): the Maestro flows in mobile/maestro on the booted
+# iOS simulator (Enloq) or the connected Android phone (Enloq Dev), against
+# the authored fixture server only. Android journeys also run from the VPS
+# with the phone on its tunnel (ADR 38 Q54, scripts/phone-adb). Install the development build first. This
+# starts the fixture server and Metro when they aren't running and stops what
+# it started, resets the app's pairing and supplies a fresh pairing link.
+#
+#   mobile/scripts/journeys ios
+#   mobile/scripts/journeys android
+set -eu
+cd "$(dirname "$0")/.."
+root=$(cd .. && pwd)
+platform=${1:-}
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1
+export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
+unset CI # Metro watches files only without it.
+. scripts/android-env
+maestro="${MAESTRO:-$HOME/.maestro/bin/maestro}"
+logs="$root/.local/journeys"
+(umask 077 && mkdir -p "$logs")
+dev_url='exp+enloq://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081'
+
+case "$platform" in
+ios)
+  device=$(xcrun simctl list devices booted |
+    sed -n 's/.*(\([0-9A-F-]\{36\}\)) (Booted).*/\1/p' | head -n 1)
+  app=com.globesoul.enloq
+  ;;
+android)
+  device=$("$adb" devices | awk 'NR > 1 && $2 == "device" { print $1; exit }')
+  app=com.globesoul.enloq.dev
+  ;;
+*)
+  echo "Usage: mobile/scripts/journeys ios|android" >&2
+  exit 2
+  ;;
+esac
+if [ -z "$device" ]; then
+  echo "Boot the simulator or connect the phone, then run this again." >&2
+  exit 1
+fi
+
+started=""
+cleanup() {
+  for pid in $started; do kill -TERM "$pid" 2>/dev/null || true; done
+}
+trap cleanup EXIT INT TERM
+
+wait_for() { # url, pattern, seconds
+  i=0
+  until curl -s --max-time 2 "$1" 2>/dev/null | grep -q "$2"; do
+    i=$((i + 1))
+    if [ "$i" -gt "$3" ]; then
+      echo "$1 did not answer; see $logs." >&2
+      exit 1
+    fi
+    sleep 1
+  done
+}
+
+if ! curl -s --max-time 2 http://127.0.0.1:8776/health | grep -q ready; then
+  (cd "$root" && exec uv run --locked python scripts/test_server.py) \
+    >"$logs/fixture.log" 2>&1 &
+  started="$started $!"
+  wait_for http://127.0.0.1:8776/health ready 60
+fi
+# The authored groups start afresh each run, AI Off and unbriefed (ADR 42 AG1).
+if ! (cd "$root" && exec uv run --locked python scripts/fixture_seed.py) \
+  >"$logs/seed.log" 2>&1; then
+  echo "The fixture's authored groups could not be set up; see $logs/seed.log." >&2
+  exit 1
+fi
+if ! curl -s --max-time 2 http://127.0.0.1:8081/status | grep -q running; then
+  # Expo's own binary, not npx, which exits on the cleanup's signal and leaves
+  # Metro running.
+  # Enloq Dev's Connect names the fixture, never the release server.
+  ENLOQ_RELEASE_SERVER=http://127.0.0.1:8776 \
+    ./node_modules/.bin/expo start >"$logs/metro.log" 2>&1 &
+  started="$started $!"
+  wait_for http://127.0.0.1:8081/status running 90
+fi
+
+# A fresh, unpaired app opened through the development client.
+if [ "$platform" = ios ]; then
+  # The flow opens the link itself, so it can confirm iOS's question.
+  xcrun simctl terminate "$device" "$app" 2>/dev/null || true
+  xcrun simctl keychain "$device" reset
+else
+  "$adb" -s "$device" reverse tcp:8081 tcp:8081 >/dev/null
+  "$adb" -s "$device" reverse tcp:8776 tcp:8776 >/dev/null
+  "$adb" -s "$device" shell pm clear "$app" >/dev/null
+  "$adb" -s "$device" shell am start -a android.intent.action.VIEW \
+    -d "$dev_url" "$app" >/dev/null
+fi
+
+(cd "$root" && exec uv run --locked python scripts/fixture_pair.py) \
+  >"$logs/pair.log" 2>&1 &
+started="$started $!"
+i=0
+until grep -q '^http' "$logs/pair.log" 2>/dev/null; do
+  i=$((i + 1))
+  if [ "$i" -gt 30 ]; then
+    echo "The fixture pairing link did not appear; see $logs/pair.log." >&2
+    exit 1
+  fi
+  sleep 1
+done
+link=$(grep -m 1 '^http' "$logs/pair.log")
+
+"$maestro" --device "$device" test maestro/journeys.yaml \
+  -e APP_ID="$app" -e LINK="$link" -e DEV_URL="$dev_url" \
+  --test-output-dir "$logs/output" --format junit --output "$logs/report.xml"

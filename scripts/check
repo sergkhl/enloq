@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+unit="${2:-all}"
+uv run --locked ruff check backend scripts
+uv run --locked ruff format --check backend scripts
+if [ "$unit" = "all" ]; then
+  uv run --locked pytest -q
+else
+  uv run --locked pytest -q "backend/tests/test_${unit}.py"
+fi
+if [ -f web/package.json ]; then
+  npm --prefix web run typecheck
+  # The rebuilt web's phone-size journeys (ADR 44 Q8), on their own fixture.
+  npm --prefix web run journeys
+fi
+# The Enloq app (ADR 38): its JavaScript checks need no native toolchain.
+if [ -f mobile/package.json ]; then
+  npm --prefix mobile run typecheck
+  npm --prefix mobile run format:check
+  npm --prefix mobile test -- --ci
+fi

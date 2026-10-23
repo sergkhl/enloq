@@ -1,0 +1,17 @@
+# Sourced by the Android scripts: the SDK and Java 17 on this Mac or on the
+# VPS, where Android builds also run (ADR 38 Q49-Q50) at low priority, since
+# the box is shared; Gradle keeps to four workers there (~/.gradle).
+case "$(uname -s)" in
+Darwin)
+  export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+  export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 17)}"
+  low=""
+  ;;
+*)
+  export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+  export JAVA_HOME="${JAVA_HOME:-$HOME/Android/jdk-17}"
+  low="nice -n 10"
+  ;;
+esac
+export PATH="$JAVA_HOME/bin:$PATH"
+adb="$ANDROID_HOME/platform-tools/adb"

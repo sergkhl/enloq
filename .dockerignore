@@ -1,0 +1,11 @@
+# ./scripts/deploy builds from `git archive`; this guards a plain `docker build .`.
+.git
+.local
+.venv
+secrets
+config/app.env
+config/acceptance*
+**/node_modules
+**/__pycache__
+web/dist
+audio/.venv

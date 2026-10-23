@@ -1,0 +1,79 @@
+# Joining (ADR 48 MB4, MB5), Android: the phone leaves the owner's pairing,
+# signs in with Telegram as a stranger (the synthetic login's account 29,
+# code 12345), reads the Member Agreement, asks to join and waits; the
+# fixture approves as the owner would, and the phone moves on to the list. A
+# member's Settings has no AI row and read-only budgets; Leave Enloq returns
+# to pairing, and the local test server pairs the owner again.
+appId: ${APP_ID}
+---
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect"
+- extendedWaitUntil:
+    visible: "Pair this phone"
+    timeout: 15000
+- tapOn: "Sign in with Telegram"
+- tapOn: "Phone number"
+- inputText: "+12025550129"
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Login code"
+    timeout: 15000
+- tapOn: "Login code"
+- inputText: "12345"
+- extendedWaitUntil:
+    visible: "Before you ask to join"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Agree and ask to join"
+- tapOn: "Agree and ask to join"
+- extendedWaitUntil:
+    visible: "Waiting for approval"
+    timeout: 15000
+- assertVisible: "Withdraw request"
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/approve
+# A new pairing asks for notifications once (ADR 47 Q4); the S9+ runs
+# Android 10, so the app's own sheet asks.
+- extendedWaitUntil:
+    visible: "Turn on notifications?"
+    timeout: 30000
+- tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Account: Demo 29. Switch account"
+    timeout: 30000
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Privacy.*"
+    timeout: 15000
+- assertNotVisible: "AI"
+- assertNotVisible: "People.*"
+- tapOn: "Budget.*"
+- extendedWaitUntil:
+    visible: "The server's owner sets your budgets."
+    timeout: 15000
+- assertNotVisible: "Change Daily Budget limit"
+- tapOn: "Back"
+- scrollUntilVisible:
+    element: "Leave Enloq"
+- tapOn: "Leave Enloq"
+- tapOn: "Leave|LEAVE"
+- extendedWaitUntil:
+    visible: "You left Enloq.*"
+    timeout: 30000
+- tapOn: "Use the local test server"
+- extendedWaitUntil:
+    visible: "Turn on notifications?"
+    timeout: 30000
+- tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Account: Demo account. Switch account"
+    timeout: 30000

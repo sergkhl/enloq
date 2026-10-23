@@ -1,0 +1,44 @@
+# Albums and the Media Carousel (ADR 51 Q10-Q12) on the fixture's authored
+# album: three photos sent together draw as one grid, a photo opens the
+# carousel at itself, a swipe moves on, a double tap zooms and Close returns.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/album
+      ACCOUNT: "1"
+- scrollUntilVisible:
+    element: "Photo album.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Photo album.*"
+    timeout: 30000
+- tapOn: "Photo album.*"
+- tapOn: "AI view"
+- extendedWaitUntil:
+    visible: "Album, 3 items"
+    timeout: 15000
+- assertVisible: "Saturday at the lake"
+- takeScreenshot: carousel-1-album
+- tapOn:
+    text: "Photo, opens full screen"
+    index: 1
+- extendedWaitUntil:
+    visible: "[0-9] / 4"
+    timeout: 15000
+- takeScreenshot: carousel-2-open
+- swipe:
+    direction: LEFT
+    duration: 300
+- takeScreenshot: carousel-3-swiped
+- doubleTapOn: "Photo"
+- takeScreenshot: carousel-4-zoomed
+- tapOn: "Close"
+- extendedWaitUntil:
+    notVisible: "[0-9] / 4"
+    timeout: 10000
+- tapOn: "AI view"
+- tapOn: "Back to conversations"

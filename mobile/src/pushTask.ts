@@ -1,0 +1,137 @@
+import * as Notifications from "expo-notifications";
+import * as TaskManager from "expo-task-manager";
+import { request } from "./api";
+import { loadCredential } from "./credential";
+import { phonePush } from "./phonePush";
+
+export const PUSH_TASK = "enloq-push";
+
+const SOUND = "messages";
+const QUIET = "messages-quiet";
+const EVENT = /^[a-f0-9]{32}$/;
+
+export type Push = { id: string; silent: boolean };
+
+type Details = {
+  // A Join Request's push (ADR 48 Q19) opens People.
+  kind?: string;
+  account_id: number | null;
+  peer: string | null;
+  sender: string;
+  text: string;
+  silent: boolean;
+};
+
+// The opaque event (ADR 20) that FCM carried as one JSON string; nothing
+// expired or malformed is shown.
+export function readPush(data: unknown): Push | null {
+  const fields = (data as { data?: Record<string, unknown> } | null)?.data;
+  if (typeof fields?.payload !== "string") return null;
+  try {
+    const value = JSON.parse(fields.payload) as Record<string, unknown>;
+    if (typeof value.id !== "string" || !EVENT.test(value.id)) return null;
+    if (typeof value.expires !== "number") return null;
+    if (value.expires * 1000 <= Date.now()) return null;
+    return { id: value.id, silent: value.silent === true };
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureChannels() {
+  await Notifications.setNotificationChannelAsync(SOUND, {
+    name: "Messages",
+    description: "New messages ready to read",
+    importance: Notifications.AndroidImportance.HIGH,
+  });
+  await Notifications.setNotificationChannelAsync(QUIET, {
+    name: "Messages without sound",
+    description: "New messages, when sound is off for this phone",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: null,
+    enableVibrate: false,
+  });
+}
+
+async function details(id: string): Promise<Details | null> {
+  const credential = await loadCredential();
+  if (!credential) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4500);
+  try {
+    return await request<Details>(credential.origin, "notifications/validate", {
+      token: credential.token,
+      body: { id },
+      signal: controller.signal,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The phone asks its server for sender and preview with its own credential;
+// when the server can't answer in time, a generic notice still opens the app.
+// A chat's newer notice replaces its older one.
+export async function presentPush(push: Push) {
+  const found = await details(push.id);
+  const chat = found && found.account_id !== null && found.peer ? found : null;
+  const join = found?.kind === "join";
+  // A decision-model outage opens Settings → AI (ADR 49 Q14).
+  const decider = found?.kind === "decider";
+  await ensureChannels();
+  await Notifications.scheduleNotificationAsync({
+    identifier: chat
+      ? `chat:${chat.account_id}:${chat.peer}`
+      : join
+        ? "people"
+        : decider
+          ? "decider"
+          : push.id,
+    content: {
+      title: found?.sender?.trim() || "Enloq",
+      body: found?.text?.trim() || "New messages are ready",
+      data: chat
+        ? { account: chat.account_id, peer: chat.peer }
+        : join
+          ? { target: "people" }
+          : decider
+            ? { target: "ai" }
+            : {},
+      sound: push.silent || found?.silent ? false : "default",
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+    },
+    trigger: { channelId: push.silent || found?.silent ? QUIET : SOUND },
+  });
+}
+
+// Turning notifications off, being forgotten or pairing again deletes the
+// phone's FCM token (Q42).
+export async function dropRegistration() {
+  if (!phonePush) return;
+  await Notifications.unregisterForNotificationsAsync().catch(() => undefined);
+}
+
+// Defined at load, before the router, so a push that wakes a closed app
+// finds the task (see index.ts).
+TaskManager.defineTask(PUSH_TASK, async ({ data, error }) => {
+  if (error || !phonePush) return;
+  const push = readPush(data);
+  if (push) await presentPush(push).catch(() => undefined);
+});
+
+// The data push itself has no title or text and stays hidden; the notice
+// built from it shows while the app is open too.
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    const { title, body } = notification.request.content;
+    const shown = Boolean(title || body);
+    return {
+      shouldShowBanner: shown,
+      shouldShowList: shown,
+      shouldPlaySound: shown,
+      shouldSetBadge: false,
+    };
+  },
+});

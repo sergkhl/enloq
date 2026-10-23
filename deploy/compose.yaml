@@ -1,0 +1,41 @@
+# The VPS service (ADR 40). ./scripts/deploy installs this file in the service
+# folder and sets IMAGE in its .env; run compose only from that folder. The
+# shared edge reaches the container by name on the network that EDGE_NETWORK
+# names in the same .env (lrnki on the shared VPS), so no port is published.
+name: enloq
+services:
+  app:
+    image: ${IMAGE:?run ./scripts/deploy}
+    container_name: enloq
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    mem_limit: 4g
+    volumes:
+      - type: bind
+        source: ./data
+        target: /app/.local
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./config
+        target: /app/config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./secrets
+        target: /app/secrets
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "python", "-m", "enloq.health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+      start_interval: 3s
+    networks: [edge]
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:?set EDGE_NETWORK in the service folder's .env}

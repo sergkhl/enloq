@@ -1,0 +1,31 @@
+# Credentials and full-account Telegram authorizations stay outside Git.
+.env
+.env.*
+*.env
+!*.env.example
+!.env.example
+secrets/
+push-vapid.pem
+*.session*
+*.sqlite*
+*.db
+*.db-*
+config/acceptance-manifest.json
+
+# Private runtime state, test evidence, and local machine bindings.
+.local/
+data/
+artifacts/
+tmp/
+logs/
+*.log
+
+# Development outputs.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+.DS_Store

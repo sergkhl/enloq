@@ -1,0 +1,78 @@
+/* Group recovery in the Enloq app's design (ADR 46 CU6). */
+
+/* Retained group work, folded at the foot of the Groups list. */
+.retained-groups {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.retained-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.retained-toggle small {
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--muted);
+}
+.retained-row .row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.retained-row small {
+  color: var(--muted);
+}
+
+/* The review of a paused group send. */
+.sheet-bottom.resume-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100dvh - 60px);
+  padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.resume-review h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.resume-destination {
+  margin: 0;
+  color: var(--muted);
+}
+.resume-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+}
+.resume-content p {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.resume-content img {
+  max-width: 160px;
+  border-radius: 8px;
+}
+.resume-time {
+  color: var(--muted);
+}
+.resume-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

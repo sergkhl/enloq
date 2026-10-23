@@ -1,0 +1,67 @@
+# Pairing again (ADR 43 IB3, IB4): Disconnect from Settings, pair
+# through Enloq Dev's Use the local test server, Disconnect again and Connect
+# with the code the fixture posted to its synthetic Owner Account's Saved
+# Messages. The journeys script points Enloq Dev's release server at the
+# fixture through Metro, and the flow checks the button names it before
+# tapping, so no journey asks the real server for a code.
+appId: ${APP_ID}
+---
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect"
+- extendedWaitUntil:
+    visible: "Disconnected from 127.0.0.1:8776."
+    timeout: 15000
+- tapOn: "Use the local test server"
+# ADR 47 Q4: a new pairing asks for notifications once, over the list. The
+# journeys' S9+ runs Android 10, which has no permission dialog, so the app's
+# own sheet asks, and it is answered before the list is looked for; Settings →
+# Notifications turns them on later in the push flow.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: "Turn on notifications?"
+          timeout: 30000
+      - tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Account: Demo account. Switch account"
+    timeout: 30000
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect from 127.0.0.1:8776"
+- tapOn: "Disconnect"
+- extendedWaitUntil:
+    visible: "Pair this phone"
+    timeout: 15000
+- assertVisible: "Connect to 127.0.0.1:8776"
+- tapOn: "Connect to 127.0.0.1:8776"
+- extendedWaitUntil:
+    visible: "Pairing code"
+    timeout: 15000
+- runScript: ../scripts/pairing-code.js
+- tapOn: "Pairing code"
+- inputText: ${output.code}
+# ADR 47 Q4: a new pairing asks for notifications once, over the list. The
+# journeys' S9+ runs Android 10, which has no permission dialog, so the app's
+# own sheet asks, and it is answered before the list is looked for; Settings →
+# Notifications turns them on later in the push flow.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: "Turn on notifications?"
+          timeout: 30000
+      - tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Account: Demo account. Switch account"
+    timeout: 30000

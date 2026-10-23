@@ -1,0 +1,47 @@
+# Pairing by pasted link (MC1): the fixture helper approves the claim.
+appId: ${APP_ID}
+---
+# On iOS the flow opens the development client's link itself and confirms
+# iOS's question; the script has already opened Enloq Dev on Android, where a
+# bare link would also match the release app.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: ${DEV_URL}
+      - extendedWaitUntil:
+          visible: "Open|Pair this phone"
+          timeout: 90000
+      - runFlow:
+          when:
+            visible: "Open"
+          commands:
+            - tapOn: "Open"
+# On Android, React Native's debug tools may open Appear on top on a first
+# launch; leave it off.
+- runFlow:
+    when:
+      visible: "Appear on top"
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: "Pair this phone"
+    timeout: 90000
+- tapOn: "Pairing link"
+- inputText: ${LINK}
+- tapOn: "Connect"
+# ADR 47 Q4: a new pairing asks for notifications once, over the list. The
+# journeys' S9+ runs Android 10, which has no permission dialog, so the app's
+# own sheet asks, and it is answered before the list is looked for; Settings →
+# Notifications turns them on later in the push flow.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: "Turn on notifications?"
+          timeout: 30000
+      - tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Account: Demo account. Switch account"
+    timeout: 30000

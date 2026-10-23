@@ -1,0 +1,54 @@
+# Message Selection and deletion (ADR 46 CU4) on the fixture's authored
+# "Deletion fixture" chat: Select from an original's sheet in Originals, a
+# second original by a tap, the review sheet, Delete for both participants
+# and the card that follows. Nothing reaches Telegram: the fixture's fake
+# transport deletes. Selectors stay ASCII; the reading view ends on AI.
+# A chat in the list may sit above where an earlier flow left it, so each
+# search looks up first, then down.
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element: "Deletion fixture.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Deletion fixture.*"
+    timeout: 30000
+- tapOn: "Deletion fixture.*"
+- extendedWaitUntil:
+    visible: "AI view"
+    timeout: 15000
+- tapOn: "AI view"
+- extendedWaitUntil:
+    visible: "Please send the authored layout."
+    timeout: 15000
+- longPressOn: "Please send the authored layout."
+- tapOn: "Select"
+- extendedWaitUntil:
+    visible: "1 selected"
+    timeout: 10000
+- tapOn: "Select: I will check the authored proposal."
+- extendedWaitUntil:
+    visible: "2 selected"
+    timeout: 10000
+- tapOn: "Delete selected messages"
+# A review that overlaps the conversation's 30-second read is refused and
+# asked again, by design (CU4); the flow asks once more, as a person would.
+- runFlow:
+    when:
+      visible: "Originals changed while reviewing.*"
+    commands:
+      - tapOn: "Delete selected messages"
+- extendedWaitUntil:
+    visible: "Delete messages"
+    timeout: 15000
+- assertVisible: "2 messages"
+- tapOn: "Delete for both participants"
+- extendedWaitUntil:
+    visible: "Deleted . 2 messages"
+    timeout: 20000
+- assertNotVisible: "2 selected"
+- tapOn: "AI view"
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

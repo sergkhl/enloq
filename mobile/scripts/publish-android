@@ -1,0 +1,107 @@
+#!/bin/sh
+# A Saved Build (ADR 43 Q4, Q5; ADR 50 Q5): the release-type Enloq for
+# arm64-v8a, built on the VPS from a clean committed HEAD at low priority, then
+# handed to the running service, which keeps one Saved Build message in the
+# Owner Account's own Saved Messages: it replaces that message's file and
+# caption in place, and pins a newly posted one once. The caption names the
+# version, commit, build time and the commits since the last one. The agent
+# runs it after deploying a change to mobile/, shared/ or the API schema; the
+# owner can run it at any time. Nothing is ever deleted from Saved Messages.
+#
+#   mobile/scripts/publish-android            build and post
+#   mobile/scripts/publish-android --no-post  build and show the caption only
+set -eu
+cd "$(dirname "$0")/.."
+root=$(cd .. && pwd)
+post=yes
+case "${1:-}" in
+"") ;;
+--no-post) post=no ;;
+*)
+  echo "usage: mobile/scripts/publish-android [--no-post]" >&2
+  exit 2
+  ;;
+esac
+if [ -n "$(git -C "$root" status --porcelain)" ]; then
+  echo "Commit or stash first: Saved Builds come from committed revisions only." >&2
+  exit 1
+fi
+umask 077
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1 CI=1
+. scripts/android-env
+full=$(git -C "$root" rev-parse HEAD)
+commit=$(git -C "$root" rev-parse --short=7 HEAD)
+built=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+version=$(node -p 'require("./app.json").expo.version')
+name="enloq-$version-$commit.apk"
+service="${ENLOQ_SERVICE_DIR:-$HOME/pi-workspace/enloq-service}"
+# The last commit the service confirmed posting, kept in this checkout.
+record="$root/.local/saved-build"
+last=$(cat "$record" 2>/dev/null || true)
+
+# The caption: at most ten commit subjects since the last Saved Build, with a
+# count of the rest, within Telegram's 1,024 characters.
+caption=$(ROOT="$root" LAST="$last" VERSION="$version" COMMIT="$commit" \
+  BUILT="$built" python3 -I - <<'EOF'
+import os
+import subprocess
+
+root, last = os.environ["ROOT"], os.environ["LAST"]
+built = os.environ["BUILT"].replace("T", " ")[:16]
+
+
+def git(*args):
+    return subprocess.run(
+        ["git", "-C", root, *args], capture_output=True, text=True
+    )
+
+
+lines = [f"Enloq {os.environ['VERSION']} · {os.environ['COMMIT']} · built {built} UTC"]
+if last and git("merge-base", "--is-ancestor", last, "HEAD").returncode == 0:
+    subjects = git("log", "--format=%s", f"{last}..HEAD").stdout.splitlines()
+    if subjects:
+        lines += ["", f"Since {last[:7]}:"]
+        lines += [
+            "• " + (s if len(s) <= 80 else s[:79] + "…") for s in subjects[:10]
+        ]
+        if len(subjects) > 10:
+            lines.append(f"…and {len(subjects) - 10} more")
+    else:
+        lines += ["", "No commits since the last Saved Build."]
+else:
+    lines += ["", "The first Saved Build from this checkout."]
+print("\n".join(lines)[:1024])
+EOF
+)
+
+echo "Building $name…"
+export ENLOQ_BUILD_COMMIT="$commit" ENLOQ_BUILD_TIME="$built"
+# Native code for the S25's processor only (ADR 43 Q6).
+export ORG_GRADLE_PROJECT_reactNativeArchitectures=arm64-v8a
+npx expo prebuild --platform android --no-install >/dev/null
+(cd android && $low ./gradlew --quiet app:assembleRelease)
+apk=android/app/build/outputs/apk/release/app-release.apk
+if [ ! -f "$apk" ]; then
+  echo "The build made no APK." >&2
+  exit 1
+fi
+if [ "$post" = no ]; then
+  echo "Built $apk ($(du -h "$apk" | cut -f1)) and posted nothing. Its caption:"
+  printf '%s\n' "$caption"
+  exit 0
+fi
+
+# The service posts from its own data folder and deletes its copy once
+# Telegram confirms; a failed post keeps it there, leaves the previous build
+# in place and records nothing.
+mkdir -p "$service/data/builds"
+cp "$apk" "$service/data/builds/$name"
+if printf '%s' "$caption" | docker exec -i "${ENLOQ_CONTAINER:-enloq}" \
+  python -m enloq.saved --file "$name"; then
+  mkdir -p "$root/.local"
+  printf '%s\n' "$full" >"$record"
+  echo "$name is in the Owner Account's Saved Messages."
+else
+  echo "The service did not post $name, so nothing was recorded." >&2
+  exit 1
+fi

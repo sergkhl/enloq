@@ -1,0 +1,508 @@
+/* Settings and the account screens in the app's design (ADR 44 MW4). A
+   screen covers the column, over the list or conversation it opened from. */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+.rewriting-app {
+  position: relative;
+}
+.screen-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 12px 16px 4px;
+}
+.screen-header .header-icon {
+  padding: 4px;
+  color: var(--accent);
+}
+.screen-header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 16px 32px;
+}
+.screen-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.screen-section h2,
+.screen-subtitle {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.screen-card {
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.screen-card.outlined {
+  border: 2px solid var(--accent);
+}
+.screen-card > * + * {
+  border-top: 1px solid var(--line);
+}
+.screen-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+}
+.screen-block .switch-line {
+  padding: 0;
+  min-height: 34px;
+  font-size: 16px;
+}
+.screen-explanation {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+/* One choice of a few, segmented as the GIFs and Stickers tabs are (ADR 56
+   Q12 A). */
+.choice-segments {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.choice-segments button {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+.choice-segments button + button {
+  border-left: 1px solid var(--line);
+}
+.choice-segments button[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--paper);
+}
+.screen-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+.screen-note.error {
+  color: #a3302a;
+}
+.screen-note.warning {
+  color: #8a5a00;
+}
+.screen-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  text-align: left;
+  border-radius: 0;
+}
+.screen-row-label {
+  flex: 1;
+  font-size: 16px;
+}
+.screen-row-detail {
+  font-size: 15px;
+  color: var(--muted);
+}
+.screen-row > svg {
+  color: var(--muted);
+}
+/* The Settings menu's icon tiles (ADR 47 Q6): the accent on its own band. */
+.menu-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--paper));
+}
+.screen-badge {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f6dfb0;
+  color: #6b4500;
+}
+.small-button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+}
+.small-button.primary-small {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+.button-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.screen input[type="text"],
+.screen input:not([type]),
+.screen textarea {
+  width: 100%;
+}
+@media (prefers-color-scheme: dark) {
+  .screen-note.error {
+    color: #f08a80;
+  }
+  .screen-note.warning {
+    color: #e0b25a;
+  }
+  .screen-badge {
+    background: #4a3812;
+    color: #f3cd78;
+  }
+}
+/* A budget's card (ADR 14, ADR 34). */
+.budget-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+}
+.budget-card.outlined {
+  margin: 0 -8px;
+  padding: 10px 6px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+}
+.budget-meter {
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--line);
+}
+.budget-meter span {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.budget-meter span.high {
+  background: #8a5a00;
+}
+.budget-spent {
+  margin: 0;
+  font-size: 15px;
+}
+.budget-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.budget-editor > span:first-child {
+  font-size: 17px;
+  font-weight: 600;
+}
+.budget-editor input {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+}
+.budget-history {
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.budget-change {
+  font-size: 13px;
+  color: var(--muted);
+}
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.stepper {
+  width: 36px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--accent);
+}
+.stepper-value {
+  min-width: 20px;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+}
+.disconnect {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.disconnect p {
+  margin: 0;
+}
+.disconnect-row {
+  justify-content: flex-start;
+  min-height: 44px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #a3302a;
+}
+.small-button.danger {
+  border-color: #a3302a;
+  background: #a3302a;
+  color: #fff;
+}
+.browser-notifications {
+  display: contents;
+}
+@media (prefers-color-scheme: dark) {
+  .disconnect-row {
+    color: #f08a80;
+  }
+  .budget-meter span.high {
+    background: #e0b25a;
+  }
+}
+.browser-notifications > * + * {
+  border-top: 1px solid var(--line);
+}
+/* Processing guidance (ADR 45). */
+.paused-role {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f6dfb0;
+  color: #6b4500;
+}
+.paused-role p,
+.ask p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+}
+.guidance-preview {
+  margin: -4px 0 0;
+  padding-bottom: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--muted);
+}
+.screen-card > div:has(> .guidance-preview) + div {
+  border-top: 1px solid var(--line);
+}
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.guidance-text {
+  min-height: 260px;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 21px;
+  resize: vertical;
+}
+.guidance-count {
+  align-self: flex-end;
+  font-size: 12px;
+  color: var(--muted);
+}
+.guidance-default {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--muted);
+}
+@media (prefers-color-scheme: dark) {
+  .paused-role {
+    background: #4a3812;
+    color: #f3cd78;
+  }
+}
+.trusted-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.trusted-entry small {
+  color: var(--muted);
+}
+.trusted-entry p {
+  margin: 0;
+}
+/* A full-width button, as the app's Button. */
+.wide-button {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Pair a phone (ADR 47 Q1): the QR code keeps a light quiet zone in either
+   color scheme, and the code to compare is large, as on the phone. */
+.pair-phone {
+  display: grid;
+  gap: 12px;
+}
+.pair-phone > p {
+  margin: 0;
+}
+.pair-qr {
+  justify-self: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.pair-qr > img {
+  display: block;
+  width: 240px;
+  height: 240px;
+}
+.pair-phone .pairing-code {
+  display: block;
+  font-size: 44px;
+  letter-spacing: 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* People (ADR 48): a Join Request or member with its actions. */
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.person + .person {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.person-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.person .budget-editor > span:first-child {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* The Member Agreement (ADR 48 Q3) on the connection screen. */
+.member-agreement {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.member-agreement h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.member-agreement p {
+  margin: 0;
+}
+
+/* New Message (ADR 51 Q16): a search field, then sections of people. */
+.people-search {
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+.people-section {
+  margin: 14px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.people-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+.people-row-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.people-row-body small {
+  color: var(--muted);
+}
+.people-note {
+  color: var(--muted);
+  text-align: center;
+}

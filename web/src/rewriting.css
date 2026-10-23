@@ -1,0 +1,434 @@
+:root {
+  color-scheme: light dark;
+  --paper: #fbfcfb;
+  --panel: #f0f3f1;
+  --ink: #22372f;
+  --muted: #5f7167;
+  --line: #dce5df;
+  --accent: #237052;
+  /* Destructive actions and errors. */
+  --danger: #a3302a;
+  /* The page around the column. */
+  --page: #e8eeea;
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+button,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+/* One phone-width column on every screen (ADR 44 Q3), centered on the page
+   background. Its phone rules are container queries on this column, so a
+   desktop shows what a large phone shows. */
+.rewriting-app {
+  container: app / inline-size;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  /* Phone browsers: clear the notch and home indicator; the on-screen
+     keyboard resizes the page (index.html's interactive-widget). */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line);
+}
+small {
+  color: var(--muted);
+}
+.viewed-end {
+  display: block;
+  width: 100%;
+  height: 1px;
+}
+.conversation-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* One header row (ADR 28): back, avatar, name, emotion, AI off and the
+   Conversation actions ⋮. */
+/* On/off switches (ADR 28): the account picker's AI processing and the
+   Conversation actions menu's Show AI text flip in place. */
+/* A passive status beside the chat's name while processing is Off. */
+.ai-off-tag {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.message-stream {
+  /* Pinned date bands offset this so they stick to the visible top edge. */
+  --stream-pad-top: 32px;
+  overflow: auto;
+  flex: 1;
+  padding: 32px;
+  overflow-anchor: none;
+  scroll-behavior: auto;
+}
+.message-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.stream-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.message-bubble {
+  max-width: min(620px, 90%);
+  border: 1px solid var(--line);
+  border-radius: 4px 16px 16px;
+  background: var(--panel);
+  padding: 16px 20px;
+  overflow-wrap: anywhere;
+}
+.message-bubble p {
+  white-space: pre-wrap;
+  margin: 9px 0 0;
+  line-height: 1.65;
+}
+.message-bubble small {
+  font-size: 11px;
+}
+.message-bubble.outgoing {
+  margin-left: auto;
+  background: #e5f0e8;
+  border-radius: 16px 4px 16px 16px;
+}
+.history-button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  align-self: center;
+  padding: 12px;
+  font-size: 12px;
+}
+@container app (max-width: 700px) {
+  .message-stream {
+    --stream-pad-top: 12px;
+    padding: 12px;
+  }
+  .message-bubble {
+    padding: 12px;
+    max-width: 100%;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #19221e;
+    --panel: #202d26;
+    --ink: #e0e9e3;
+    --muted: #9eafa5;
+    --line: #34473b;
+    --accent: #8cd3ad;
+    --danger: #f08a80;
+    --page: #111815;
+  }
+  .message-bubble.outgoing {
+    background: #254334;
+  }
+}
+.message-bubble details {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 13px;
+}
+.message-bubble summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+.composer-wrap {
+  margin: 0 24px 24px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--paper);
+}
+.composer-wrap textarea {
+  resize: vertical;
+  width: 100%;
+  min-height: 80px;
+  max-height: 220px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 2px;
+  line-height: 1.5;
+  outline-offset: 3px;
+}
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.composer-actions select {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  font-size: 12px;
+  min-width: 0;
+  max-width: 160px;
+  margin-right: auto;
+}
+.rewrite-controls {
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e7f3ed;
+}
+.rewrite-controls button {
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: #26744f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.rewrite-controls .undo-button {
+  border-left: 1px solid #cde6d7;
+  padding: 0 10px;
+}
+.send-button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--paper);
+  flex-shrink: 0;
+}
+.reply-quote {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.reply-quote > span {
+  flex: 1;
+  min-width: 0;
+}
+.reply-quote .reply-quote-box {
+  margin: 0 0 8px;
+}
+.reply-quote button {
+  background: transparent;
+  border: 0;
+}
+.composer-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+@container app (max-width: 700px) {
+  .composer-wrap {
+    margin: 0 8px 10px;
+    padding: 8px;
+  }
+  .composer-actions {
+    gap: 5px;
+  }
+  .composer-actions select {
+    width: 35px;
+  }
+  .rewrite-controls button {
+    min-height: 44px;
+    padding: 0 8px;
+  }
+  .rewrite-controls .undo-button {
+    padding: 0 8px;
+  }
+  .send-button {
+    width: 44px;
+    height: 44px;
+  }
+  .composer-wrap textarea {
+    font-size: 14px;
+  }
+  .rewrite-button span {
+    font-size: 11px;
+  }
+}
+@container app (max-width: 400px) {
+  .rewrite-button svg {
+    display: none;
+  }
+  .rewrite-controls button {
+    gap: 0;
+    padding: 0 7px;
+  }
+  .composer-actions select {
+    width: 27px;
+  }
+  .composer-wrap {
+    margin-left: 5px;
+    margin-right: 5px;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .rewrite-controls {
+    background: #284d3c;
+  }
+  .rewrite-controls button {
+    color: #b9e2cd;
+  }
+  .rewrite-controls .undo-button {
+    border-color: #426d58;
+  }
+}
+/* A list destination shows no conversation; an open one stays mounted. */
+.route-accounts {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.route-accounts .secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@container app (max-width: 700px) {
+  .conversation-pane {
+    height: 100dvh;
+  }
+  .composer-actions select {
+    width: auto;
+    max-width: 110px;
+  }
+  .composer-wrap {
+    margin: 0 10px 10px;
+  }
+  .composer-actions {
+    gap: 6px;
+  }
+}
+@container app (max-width: 350px) {
+  .composer-actions select {
+    max-width: 83px;
+  }
+  .rewrite-button svg {
+    display: block;
+  }
+}
+.image-tray {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 2px 0 7px;
+}
+.draft-image {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 4px;
+}
+.draft-image img {
+  width: 42px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.draft-image button {
+  width: 26px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+}
+.attach-button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--line);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+.profile-avatar.small-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+.profile-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@container app (max-width: 700px) {
+  .attach-button {
+    width: 38px;
+    height: 44px;
+  }
+  .rewrite-controls {
+    margin-left: auto;
+  }
+}
+/* Load originals and Explicit Processing share the top of the loaded history,
+   where the earlier messages are (ADR 28). */
+.history-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  gap: 2px;
+}
+.guidance-default {
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: var(--muted);
+}

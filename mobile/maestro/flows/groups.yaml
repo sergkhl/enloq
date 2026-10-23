@@ -1,0 +1,87 @@
+# Groups (ADR 42 AG7): the fixture's authored group, set up afresh by the
+# journeys script with Group AI processing Off and no briefing. Turning the
+# switch on and tapping Update briefs it with the offline fake engine; then a
+# citation reveals the day in place, a Reply is sent from its originals, and
+# Return to briefing shows today's "new messages" spoiler, which the send
+# opened. iOS reads a bubble as one label, so text is matched inside it.
+# First the header's photo and name open the Group Profile (ADR 47 Q7), read
+# from the fixture's authored answer, and Bob's avatar opens his profile.
+appId: ${APP_ID}
+---
+- tapOn: "Groups"
+- tapOn: "Basic discussion.*"
+- extendedWaitUntil:
+    visible: ".*The planning session is on Friday\\..*"
+    timeout: 15000
+- tapOn: "Basic discussion, open profile"
+- extendedWaitUntil:
+    visible: "4 members"
+    timeout: 15000
+- assertVisible: "Authored description of Basic discussion."
+- assertVisible: "Copy chat link"
+- tapOn: "Back"
+# A member's avatar opens their profile (ADR 51 Q14).
+- tapOn: "Profile: Bob"
+- extendedWaitUntil:
+    visible: "@bob_authored"
+    timeout: 15000
+- assertVisible: "Authored member bio."
+- tapOn: "Back"
+- takeScreenshot: groups-1-unbriefed
+- tapOn: "Conversation actions"
+- tapOn: "Group AI processing"
+- extendedWaitUntil:
+    visible:
+      text: "Group AI processing"
+      checked: true
+    timeout: 15000
+- tapOn: "Close"
+- tapOn: "Update briefing.*"
+- extendedWaitUntil:
+    visible: "Briefing up to date"
+    timeout: 30000
+- assertVisible: "Participant update"
+- takeScreenshot: groups-2-briefed
+- tapOn: "Source 2"
+- extendedWaitUntil:
+    visible: "Return to briefing"
+    timeout: 15000
+- takeScreenshot: groups-3-citation
+- longPressOn: ".*I will bring the printed agenda\\..*"
+- tapOn: "Reply"
+- assertVisible: "Reply to Bob.*"
+- evalScript: ${output.groupNote = 'Group note ' + new Date().getTime()}
+- tapOn: "Message.*"
+- inputText: ${output.groupNote}
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: ".*${output.groupNote}.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Return to briefing"
+    direction: UP
+    timeout: 15000
+- tapOn: "Return to briefing"
+- extendedWaitUntil:
+    visible: "Participant update"
+    timeout: 15000
+# The card is taller than the screen; the spoiler follows it.
+- scrollUntilVisible:
+    element: "1 new message"
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: groups-4-spoiler
+# Closed, the fold stays on screen under the card; opened again, its message
+# shows below it.
+- tapOn: "1 new message"
+- extendedWaitUntil:
+    notVisible: ".*${output.groupNote}.*"
+    timeout: 10000
+- takeScreenshot: groups-5-folded
+- tapOn: "1 new message"
+- extendedWaitUntil:
+    visible: ".*${output.groupNote}.*"
+    timeout: 10000
+- tapOn: "Back to conversations"
+- tapOn: "Private"
+- assertVisible: "Account: Demo account. Switch account"

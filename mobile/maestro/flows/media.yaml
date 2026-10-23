@@ -1,0 +1,125 @@
+# Media (ADR 46 CU1) on the fixture's authored media chats: a voice note
+# plays and changes speed, a video message takes over, the sheet copies a
+# transcript and Share opens the system's sheet, a video prepares and plays,
+# and a GIF and stickers show. The reading view ends on AI, as it began.
+# A chat in the list may sit above where an earlier flow left it, so each
+# search looks up first, then down.
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element: "Voice player.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Voice player.*"
+    timeout: 30000
+- tapOn: "Voice player.*"
+- extendedWaitUntil:
+    visible: "AI view"
+    timeout: 15000
+- tapOn: "AI view"
+# The seed's first voice note lasts three minutes: Maestro over the tunnel
+# takes about a minute here. A playing note's clock keeps the screen
+# changing, so taps during playback wait at most half a second for it to
+# settle, rather than Maestro's usual 20 seconds.
+- scrollUntilVisible:
+    element: "Play voice message, 3:00"
+    direction: UP
+- tapOn:
+    text: "Play voice message, 3:00"
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible: "Pause voice message, 3:00"
+    timeout: 15000
+# ASCII patterns: without a UTF-8 locale Maestro reads "×" as "?".
+- tapOn:
+    text: "Playback speed 1[^.0-9].*"
+    waitToSettleTimeoutMs: 500
+- assertVisible: "Playback speed 1\\.5.*"
+- tapOn:
+    text: "Playback speed 1\\.5.*"
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    text: "Playback speed 2.*"
+    waitToSettleTimeoutMs: 500
+- assertVisible: "Playback speed 1[^.0-9].*"
+# A video message plays in place and takes the slot from the voice note,
+# which shows paused when scrolled back to.
+- scrollUntilVisible:
+    element: "Play video message"
+    direction: DOWN
+    waitToSettleTimeoutMs: 500
+- tapOn:
+    text: "Play video message"
+    waitToSettleTimeoutMs: 500
+- scrollUntilVisible:
+    element: "Play voice message, 3:00"
+    direction: UP
+- assertNotVisible: "Pause voice message, 3:00"
+# Holding a voice note opens its sheet: Copy transcript, then Share. Its
+# note shows for five seconds, so the tap doesn't wait for the screen to
+# settle.
+- longPressOn: "Play voice message, 3:00"
+- tapOn:
+    text: "Copy transcript"
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible: "Transcript copied|No transcript yet\\."
+    timeout: 10000
+- longPressOn: "Play voice message, 3:00"
+- tapOn: "Share"
+- extendedWaitUntil:
+    notVisible: "Back to conversations"
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible: "Back to conversations"
+    timeout: 10000
+- tapOn: "Back to conversations"
+# Play opens the Media Carousel, where the video prepares and plays with the
+# system's controls (ADR 51 Q11); Close returns to the chat.
+- scrollUntilVisible:
+    element: "Video player.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Video player.*"
+    timeout: 30000
+- tapOn: "Video player.*"
+- extendedWaitUntil:
+    visible: "Play video"
+    timeout: 15000
+- tapOn: "Play video"
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: "Loading video"
+    timeout: 20000
+- takeScreenshot: media-carousel-video
+- tapOn: "Close"
+- extendedWaitUntil:
+    notVisible: "1 / .*"
+    timeout: 10000
+- tapOn: "Back to conversations"
+# A GIF and stickers show where the list shows them.
+- scrollUntilVisible:
+    element: "Media kinds.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Media kinds.*"
+    timeout: 30000
+- tapOn: "Media kinds.*"
+- scrollUntilVisible:
+    element: "GIF"
+    direction: UP
+- scrollUntilVisible:
+    element: "Sticker.*"
+    direction: UP
+- tapOn: "AI view"
+- tapOn: "Back to conversations"
+- assertVisible: "Account: Demo account. Switch account"

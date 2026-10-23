@@ -1,0 +1,5358 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Enloq DTOs",
+    "version": "1"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "AccountMemoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "model",
+              "owner"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "outdated": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdated"
+          },
+          "created": {
+            "title": "Created",
+            "type": "number"
+          },
+          "guidance": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance"
+          },
+          "defaults": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defaults"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AccountMemorySource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "citations",
+          "source",
+          "outdated",
+          "created",
+          "guidance",
+          "sources"
+        ],
+        "title": "AccountMemoryEntry",
+        "type": "object"
+      },
+      "AccountMemorySource": {
+        "additionalProperties": false,
+        "description": "An Account Memory citation names the peer of the chat it came from.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "availability": {
+            "enum": [
+              "cached",
+              "not_cached",
+              "deleted"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "chat": {
+            "title": "Chat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "availability",
+          "chat"
+        ],
+        "title": "AccountMemorySource",
+        "type": "object"
+      },
+      "AccountMemoryView": {
+        "additionalProperties": false,
+        "description": "The account's Account Memory: what its holder cares about.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AccountMemoryEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entries",
+          "revision",
+          "enabled"
+        ],
+        "title": "AccountMemoryView",
+        "type": "object"
+      },
+      "AccountProcessing": {
+        "additionalProperties": false,
+        "properties": {
+          "ai_enabled": {
+            "title": "Ai Enabled",
+            "type": "boolean"
+          },
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ai_enabled",
+          "account_id"
+        ],
+        "title": "AccountProcessing",
+        "type": "object"
+      },
+      "AccountSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "authorized",
+              "logged_out",
+              "requires_login",
+              "logout_pending"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "ai_enabled": {
+            "title": "Ai Enabled",
+            "type": "boolean"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Id"
+          }
+        },
+        "required": [
+          "account_id",
+          "name",
+          "username",
+          "phone",
+          "state",
+          "connected",
+          "status",
+          "ai_enabled",
+          "photo_id"
+        ],
+        "title": "AccountSummary",
+        "type": "object"
+      },
+      "Accounts": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountSummary"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "budget": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetSummary"
+            },
+            "title": "Budget",
+            "type": "array"
+          },
+          "login_available": {
+            "title": "Login Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "timezone",
+          "accounts",
+          "budget",
+          "login_available"
+        ],
+        "title": "Accounts",
+        "type": "object"
+      },
+      "Agreement": {
+        "additionalProperties": false,
+        "description": "The Member Agreement an unknown account reads (ADR 48 Q3).",
+        "properties": {
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "title",
+          "paragraphs"
+        ],
+        "title": "Agreement",
+        "type": "object"
+      },
+      "AgreementAcceptance": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "AgreementAcceptance",
+        "type": "object"
+      },
+      "AssetRepresentation": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "missing",
+              "ready",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "thumbnail",
+              "gif",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "jpeg",
+                  "png",
+                  "webp",
+                  "gif",
+                  "mp4",
+                  "tgs",
+                  "webm"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Format"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/gif",
+                  "video/mp4",
+                  "video/webm",
+                  "application/x-tgsticker"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fps"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "renderer_supported": {
+            "default": false,
+            "title": "Renderer Supported",
+            "type": "boolean"
+          },
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          }
+        },
+        "required": [
+          "state",
+          "kind"
+        ],
+        "title": "AssetRepresentation",
+        "type": "object"
+      },
+      "BlockRetry": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "BlockRetry",
+        "type": "object"
+      },
+      "BrowserStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "waiting": {
+            "default": false,
+            "title": "Waiting",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "BrowserStatus",
+        "type": "object"
+      },
+      "BudgetState": {
+        "additionalProperties": false,
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "spent": {
+            "title": "Spent",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          },
+          "flat_unknown": {
+            "title": "Flat Unknown",
+            "type": "integer"
+          },
+          "reached": {
+            "title": "Reached",
+            "type": "boolean"
+          },
+          "resets_at": {
+            "title": "Resets At",
+            "type": "number"
+          },
+          "changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Changes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "limit",
+          "spent",
+          "calls",
+          "unknown",
+          "flat_unknown",
+          "reached",
+          "resets_at",
+          "changes"
+        ],
+        "title": "BudgetState",
+        "type": "object"
+      },
+      "BudgetSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "reserved": {
+            "title": "Reserved",
+            "type": "integer"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "engine",
+          "calls",
+          "reserved",
+          "actual",
+          "unknown"
+        ],
+        "title": "BudgetSummary",
+        "type": "object"
+      },
+      "CachedOriginalsRead": {
+        "additionalProperties": false,
+        "properties": {
+          "identities": {
+            "items": {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Identities",
+            "type": "array"
+          }
+        },
+        "required": [
+          "identities"
+        ],
+        "title": "CachedOriginalsRead",
+        "type": "object"
+      },
+      "Calming": {
+        "additionalProperties": false,
+        "description": "A private chat's calming (ADR 53): on unless the chat chose otherwise.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "Calming",
+        "type": "object"
+      },
+      "CalmingEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "CalmingEdit",
+        "type": "object"
+      },
+      "CatalogAssetPreparation": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "variant": {
+            "default": "thumbnail",
+            "enum": [
+              "thumbnail",
+              "media"
+            ],
+            "title": "Variant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "CatalogAssetPreparation",
+        "type": "object"
+      },
+      "CatalogAssetView": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "missing",
+              "ready",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "thumbnail",
+              "gif",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "jpeg",
+                  "png",
+                  "webp",
+                  "gif",
+                  "mp4",
+                  "tgs",
+                  "webm"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Format"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/gif",
+                  "video/mp4",
+                  "video/webm",
+                  "application/x-tgsticker"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fps"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "renderer_supported": {
+            "default": false,
+            "title": "Renderer Supported",
+            "type": "boolean"
+          },
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "token": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Token",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "variant": {
+            "enum": [
+              "thumbnail",
+              "media"
+            ],
+            "title": "Variant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "kind",
+          "token",
+          "revision",
+          "variant"
+        ],
+        "title": "CatalogAssetView",
+        "type": "object"
+      },
+      "CatalogItem": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Token",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CatalogMetadata"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          },
+          "unavailable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/CatalogPreview"
+          }
+        },
+        "required": [
+          "token",
+          "revision",
+          "metadata",
+          "selectable",
+          "preview"
+        ],
+        "title": "CatalogItem",
+        "type": "object"
+      },
+      "CatalogMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "gif",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "gif",
+              "mp4",
+              "static",
+              "animated",
+              "video",
+              "unsupported"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "keywords": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Keywords",
+            "type": "array"
+          },
+          "requires_premium": {
+            "default": false,
+            "title": "Requires Premium",
+            "type": "boolean"
+          },
+          "unavailable": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable"
+          }
+        },
+        "required": [
+          "kind",
+          "format"
+        ],
+        "title": "CatalogMetadata",
+        "type": "object"
+      },
+      "CatalogOpen": {
+        "additionalProperties": false,
+        "description": "Explicit JSON picker-open action; no persisted browser query state.",
+        "properties": {},
+        "title": "CatalogOpen",
+        "type": "object"
+      },
+      "CatalogPack": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "short_name": {
+            "title": "Short Name",
+            "type": "string"
+          },
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "title",
+          "short_name",
+          "count",
+          "cached",
+          "stale"
+        ],
+        "title": "CatalogPack",
+        "type": "object"
+      },
+      "CatalogPackView": {
+        "additionalProperties": false,
+        "properties": {
+          "pack": {
+            "$ref": "#/components/schemas/CatalogPack"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          }
+        },
+        "required": [
+          "pack",
+          "items",
+          "updated_at",
+          "truncated"
+        ],
+        "title": "CatalogPackView",
+        "type": "object"
+      },
+      "CatalogPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Token",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "thumbnail",
+              "media",
+              "unavailable"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "gif",
+              "mp4",
+              "static",
+              "animated",
+              "video",
+              "unsupported"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          }
+        },
+        "required": [
+          "token",
+          "revision",
+          "kind",
+          "format"
+        ],
+        "title": "CatalogPreview",
+        "type": "object"
+      },
+      "CatalogRefresh": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "CatalogRefresh",
+        "type": "object"
+      },
+      "CatalogView": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "premium": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Premium"
+          },
+          "gifs": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Gifs",
+            "type": "array"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "favorites": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Favorites",
+            "type": "array"
+          },
+          "packs": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogPack"
+            },
+            "title": "Packs",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          }
+        },
+        "required": [
+          "revision",
+          "updated_at",
+          "stale",
+          "premium",
+          "gifs",
+          "recent",
+          "favorites",
+          "packs",
+          "truncated"
+        ],
+        "title": "CatalogView",
+        "type": "object"
+      },
+      "Chat": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "exclusiveMinimum": 0,
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "peer": {
+            "title": "Peer",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 256,
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "private",
+              "group",
+              "bot",
+              "service",
+              "saved",
+              "broadcast",
+              "secret"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "muted": {
+            "default": false,
+            "title": "Muted",
+            "type": "boolean"
+          },
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "ai_eligible": {
+            "default": true,
+            "title": "Ai Eligible",
+            "type": "boolean"
+          },
+          "eligibility_source": {
+            "default": "default",
+            "enum": [
+              "default",
+              "explicit"
+            ],
+            "title": "Eligibility Source",
+            "type": "string"
+          },
+          "context_revision": {
+            "default": 0,
+            "title": "Context Revision",
+            "type": "integer"
+          },
+          "read_through": {
+            "default": 0,
+            "title": "Read Through",
+            "type": "integer"
+          },
+          "read_outbox": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Read Outbox",
+            "type": "integer"
+          },
+          "latest_message_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Latest Message Id"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "pattern": "^-?\\d+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Photo Id"
+          }
+        },
+        "required": [
+          "account_id",
+          "peer",
+          "title",
+          "kind"
+        ],
+        "title": "Chat",
+        "type": "object"
+      },
+      "ClientDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "cancel"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "code": {
+            "default": "",
+            "maxLength": 6,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ClientDecision",
+        "type": "object"
+      },
+      "CodeAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "proof": {
+            "default": "",
+            "title": "Proof",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "expires_at"
+        ],
+        "title": "CodeAttempt",
+        "type": "object"
+      },
+      "CodeEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "CodeEntry",
+        "type": "object"
+      },
+      "CodeStart": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "browser": {
+            "default": false,
+            "title": "Browser",
+            "type": "boolean"
+          }
+        },
+        "title": "CodeStart",
+        "type": "object"
+      },
+      "Confirmation": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "title": "Confirm",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "title": "Confirmation",
+        "type": "object"
+      },
+      "ConversationPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message Id"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Date"
+          },
+          "original": {
+            "default": "",
+            "title": "Original",
+            "type": "string"
+          },
+          "ai": {
+            "default": "",
+            "title": "Ai",
+            "type": "string"
+          },
+          "deleted": {
+            "default": false,
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "title": "ConversationPreview",
+        "type": "object"
+      },
+      "ConversationRow": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "exclusiveMinimum": 0,
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "peer": {
+            "title": "Peer",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 256,
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "private",
+              "group",
+              "bot",
+              "service",
+              "saved",
+              "broadcast",
+              "secret"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "muted": {
+            "default": false,
+            "title": "Muted",
+            "type": "boolean"
+          },
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "ai_eligible": {
+            "default": true,
+            "title": "Ai Eligible",
+            "type": "boolean"
+          },
+          "eligibility_source": {
+            "default": "default",
+            "enum": [
+              "default",
+              "explicit"
+            ],
+            "title": "Eligibility Source",
+            "type": "string"
+          },
+          "context_revision": {
+            "default": 0,
+            "title": "Context Revision",
+            "type": "integer"
+          },
+          "read_through": {
+            "default": 0,
+            "title": "Read Through",
+            "type": "integer"
+          },
+          "read_outbox": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Read Outbox",
+            "type": "integer"
+          },
+          "latest_message_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Latest Message Id"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "pattern": "^-?\\d+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Photo Id"
+          },
+          "activity": {
+            "title": "Activity",
+            "type": "number"
+          },
+          "processing": {
+            "default": 0,
+            "title": "Processing",
+            "type": "integer"
+          },
+          "unseen": {
+            "title": "Unseen",
+            "type": "boolean"
+          },
+          "opening_source": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Opening Source"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/ConversationPreview"
+          },
+          "key": {
+            "readOnly": true,
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "peer",
+          "title",
+          "kind",
+          "activity",
+          "unseen",
+          "key"
+        ],
+        "title": "ConversationRow",
+        "type": "object"
+      },
+      "CorrespondentProfile": {
+        "additionalProperties": false,
+        "description": "What a profile shows beyond the cached chat (ADR 46 Q11).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Username"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Phone"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bio"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CorrespondentProfile",
+        "type": "object"
+      },
+      "DecisionModelState": {
+        "additionalProperties": false,
+        "description": "Whether the decision model's route answers (ADR 49 Q14), and since when\nit has not.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Since"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "DecisionModelState",
+        "type": "object"
+      },
+      "DeletionSubmit": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/DeletionTarget"
+            },
+            "minItems": 1,
+            "title": "Targets",
+            "type": "array"
+          },
+          "retry_of": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry Of"
+          }
+        },
+        "required": [
+          "id",
+          "targets"
+        ],
+        "title": "DeletionSubmit",
+        "type": "object"
+      },
+      "DeletionTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "message_id": {
+            "exclusiveMaximum": 9223372036854775808,
+            "exclusiveMinimum": 0,
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_fingerprint": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Fingerprint"
+          }
+        },
+        "required": [
+          "message_id",
+          "revision"
+        ],
+        "title": "DeletionTarget",
+        "type": "object"
+      },
+      "DeviceClaim": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "DeviceClaim",
+        "type": "object"
+      },
+      "DeviceClaimStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "waiting",
+              "pending",
+              "approved",
+              "cancelled",
+              "complete",
+              "expired",
+              "already_trusted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "enum": [
+              "",
+              "browser",
+              "device"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "approver": {
+            "default": "server",
+            "enum": [
+              "server",
+              "browser"
+            ],
+            "title": "Approver",
+            "type": "string"
+          },
+          "proof": {
+            "title": "Proof",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "state",
+          "code",
+          "label",
+          "proof"
+        ],
+        "title": "DeviceClaimStatus",
+        "type": "object"
+      },
+      "DeviceCredential": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "DeviceCredential",
+        "type": "object"
+      },
+      "DeviceNotificationStatus": {
+        "additionalProperties": false,
+        "description": "A phone's own push state (ADR 38 Q5), beside the browser destination.",
+        "properties": {
+          "push": {
+            "title": "Push",
+            "type": "boolean"
+          },
+          "sound": {
+            "title": "Sound",
+            "type": "boolean"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          }
+        },
+        "required": [
+          "push",
+          "sound",
+          "available",
+          "failure"
+        ],
+        "title": "DeviceNotificationStatus",
+        "type": "object"
+      },
+      "DevicePreferences": {
+        "additionalProperties": false,
+        "properties": {
+          "push": {
+            "anyOf": [
+              {
+                "const": false,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Push"
+          },
+          "sound": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound"
+          }
+        },
+        "title": "DevicePreferences",
+        "type": "object"
+      },
+      "DeviceToken": {
+        "additionalProperties": false,
+        "description": "The phone's FCM registration token (ADR 38).",
+        "properties": {
+          "token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "DeviceToken",
+        "type": "object"
+      },
+      "EmotionView": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "positive",
+                  "excited",
+                  "sad",
+                  "worried",
+                  "frustrated",
+                  "angry",
+                  "confused",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code"
+          },
+          "reason": {
+            "default": "unavailable",
+            "enum": [
+              "available",
+              "uncertain",
+              "pending",
+              "expired",
+              "changed",
+              "invalid",
+              "unavailable"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Time"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "source": {
+            "default": "incoming",
+            "enum": [
+              "incoming",
+              "reaction"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "reaction": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reaction"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Id"
+          }
+        },
+        "title": "EmotionView",
+        "type": "object"
+      },
+      "GifSearch": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "maxLength": 128,
+            "title": "Query",
+            "type": "string"
+          },
+          "epoch": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Epoch",
+            "type": "string"
+          },
+          "request": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "title": "Request",
+            "type": "integer"
+          },
+          "offset": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Offset",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "epoch",
+          "request"
+        ],
+        "title": "GifSearch",
+        "type": "object"
+      },
+      "GifSearchScope": {
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Epoch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "epoch"
+        ],
+        "title": "GifSearchScope",
+        "type": "object"
+      },
+      "GifSearchView": {
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Epoch",
+            "type": "string"
+          },
+          "request": {
+            "minimum": 0,
+            "title": "Request",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "epoch",
+          "request",
+          "items",
+          "next_offset",
+          "truncated"
+        ],
+        "title": "GifSearchView",
+        "type": "object"
+      },
+      "GroupProcessing": {
+        "additionalProperties": false,
+        "properties": {
+          "processing_enabled": {
+            "title": "Processing Enabled",
+            "type": "boolean"
+          },
+          "account_processing_enabled": {
+            "title": "Account Processing Enabled",
+            "type": "boolean"
+          },
+          "effective": {
+            "title": "Effective",
+            "type": "boolean"
+          },
+          "access": {
+            "enum": [
+              "unknown",
+              "available",
+              "lost"
+            ],
+            "title": "Access",
+            "type": "string"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processing_enabled",
+          "account_processing_enabled",
+          "effective",
+          "access",
+          "supported",
+          "reason"
+        ],
+        "title": "GroupProcessing",
+        "type": "object"
+      },
+      "GroupProcessingEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "GroupProcessingEdit",
+        "type": "object"
+      },
+      "GroupProfile": {
+        "additionalProperties": false,
+        "description": "What a Group Profile shows beyond the cached chat (ADR 47 Q7).",
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Username"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Members"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "GroupProfile",
+        "type": "object"
+      },
+      "GuidanceState": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "defaults_revision": {
+            "title": "Defaults Revision",
+            "type": "integer"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Defaults",
+            "type": "object"
+          },
+          "paused": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paused",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "defaults_revision",
+          "fields",
+          "defaults",
+          "paused"
+        ],
+        "title": "GuidanceState",
+        "type": "object"
+      },
+      "Habits": {
+        "additionalProperties": false,
+        "description": "Counted from the cached month without a model.",
+        "properties": {
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "reply_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Seconds"
+          },
+          "active_from": {
+            "maximum": 23,
+            "minimum": 0,
+            "title": "Active From",
+            "type": "integer"
+          },
+          "active_to": {
+            "maximum": 23,
+            "minimum": 0,
+            "title": "Active To",
+            "type": "integer"
+          },
+          "voice_share": {
+            "title": "Voice Share",
+            "type": "number"
+          },
+          "starts_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts Share"
+          }
+        },
+        "required": [
+          "messages",
+          "reply_seconds",
+          "active_from",
+          "active_to",
+          "voice_share",
+          "starts_share"
+        ],
+        "title": "Habits",
+        "type": "object"
+      },
+      "HideBots": {
+        "additionalProperties": false,
+        "properties": {
+          "hide_bots": {
+            "title": "Hide Bots",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hide_bots"
+        ],
+        "title": "HideBots",
+        "type": "object"
+      },
+      "JoinRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "requested_at": {
+            "title": "Requested At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "username",
+          "phone",
+          "requested_at"
+        ],
+        "title": "JoinRequest",
+        "type": "object"
+      },
+      "LoginState": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "qr",
+              "phone"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "connecting",
+              "qr",
+              "code",
+              "password",
+              "agreement",
+              "complete",
+              "cancelled",
+              "expired",
+              "error"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          },
+          "delivery": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery"
+          },
+          "next_delivery": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Delivery"
+          },
+          "retry_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry At"
+          },
+          "can_resend": {
+            "title": "Can Resend",
+            "type": "boolean"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "qr_revision": {
+            "title": "Qr Revision",
+            "type": "integer"
+          },
+          "code_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code Length"
+          }
+        },
+        "required": [
+          "id",
+          "method",
+          "stage",
+          "message",
+          "expires_at",
+          "delivery",
+          "next_delivery",
+          "retry_at",
+          "can_resend",
+          "account_id",
+          "qr_revision"
+        ],
+        "title": "LoginState",
+        "type": "object"
+      },
+      "Me": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "member"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "waiting"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "agreement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Agreement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "state",
+          "name"
+        ],
+        "title": "Me",
+        "type": "object"
+      },
+      "MediaInfo": {
+        "additionalProperties": false,
+        "description": "Safe display/placeholder metadata: never phones, vCards or coordinates.",
+        "properties": {
+          "file_name": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Name"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "voice": {
+            "default": false,
+            "title": "Voice",
+            "type": "boolean"
+          },
+          "sticker": {
+            "anyOf": [
+              {
+                "enum": [
+                  "static",
+                  "animated",
+                  "video"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sticker"
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title"
+          },
+          "site": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Site"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Question"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Options",
+            "type": "array"
+          },
+          "live": {
+            "default": false,
+            "title": "Live",
+            "type": "boolean"
+          },
+          "waveform": {
+            "anyOf": [
+              {
+                "items": {
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "maxItems": 256,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Waveform"
+          },
+          "performer": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Performer"
+          }
+        },
+        "title": "MediaInfo",
+        "type": "object"
+      },
+      "MemberBudgetEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "enum": [
+              "daily",
+              "group_briefing"
+            ],
+            "title": "Family",
+            "type": "string"
+          },
+          "limit_usd": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+                "type": "string"
+              }
+            ],
+            "title": "Limit Usd"
+          }
+        },
+        "required": [
+          "family",
+          "limit_usd"
+        ],
+        "title": "MemberBudgetEdit",
+        "type": "object"
+      },
+      "MemberBudgets": {
+        "additionalProperties": false,
+        "properties": {
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          },
+          "group_budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          }
+        },
+        "required": [
+          "member",
+          "budget",
+          "group_budget"
+        ],
+        "title": "MemberBudgets",
+        "type": "object"
+      },
+      "MemberProfile": {
+        "additionalProperties": false,
+        "description": "A group member's profile (ADR 51 Q14), with their current photo.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Username"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Phone"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bio"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Photo Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MemberProfile",
+        "type": "object"
+      },
+      "MemoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "chat_key": {
+            "title": "Chat Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "model",
+              "owner"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "outdated": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutdatedMemory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created": {
+            "title": "Created",
+            "type": "number"
+          },
+          "guidance": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance"
+          },
+          "defaults": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Defaults"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/MemorySource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "chat_key",
+          "text",
+          "citations",
+          "source",
+          "outdated",
+          "created",
+          "guidance",
+          "sources"
+        ],
+        "title": "MemoryEntry",
+        "type": "object"
+      },
+      "MemorySource": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "availability": {
+            "enum": [
+              "cached",
+              "not_cached",
+              "deleted"
+            ],
+            "title": "Availability",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "availability"
+        ],
+        "title": "MemorySource",
+        "type": "object"
+      },
+      "MemoryView": {
+        "additionalProperties": false,
+        "description": "One chat's Person Memory: what the other person cares about.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "coverage": {
+            "title": "Coverage",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          },
+          "updating": {
+            "title": "Updating",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entries",
+          "revision",
+          "coverage",
+          "error",
+          "enabled",
+          "waiting",
+          "updating"
+        ],
+        "title": "MemoryView",
+        "type": "object"
+      },
+      "Message": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "exclusiveMinimum": 0,
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "peer": {
+            "title": "Peer",
+            "type": "string"
+          },
+          "message_id": {
+            "exclusiveMinimum": 0,
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "native_revision": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Native Revision"
+          },
+          "native_edited": {
+            "default": false,
+            "title": "Native Edited",
+            "type": "boolean"
+          },
+          "forwarded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Forwarded"
+          },
+          "forwarded_from": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Forwarded From"
+          },
+          "forward_date": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Forward Date"
+          },
+          "forward_signature": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Forward Signature"
+          },
+          "imported": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Imported"
+          },
+          "forward_read": {
+            "default": false,
+            "title": "Forward Read",
+            "type": "boolean"
+          },
+          "attachment_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attachment Id"
+          },
+          "date": {
+            "title": "Date",
+            "type": "number"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 65536,
+            "title": "Text",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/TextLink"
+            },
+            "maxItems": 1024,
+            "title": "Links",
+            "type": "array"
+          },
+          "outgoing": {
+            "default": false,
+            "title": "Outgoing",
+            "type": "boolean"
+          },
+          "service": {
+            "default": false,
+            "title": "Service",
+            "type": "boolean"
+          },
+          "mentioned": {
+            "default": false,
+            "title": "Mentioned",
+            "type": "boolean"
+          },
+          "reply_to_self": {
+            "default": false,
+            "title": "Reply To Self",
+            "type": "boolean"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply To"
+          },
+          "reply_quote": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply Quote"
+          },
+          "reply_elsewhere": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplyElsewhere"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "reply_story": {
+            "default": false,
+            "title": "Reply Story",
+            "type": "boolean"
+          },
+          "reply_read": {
+            "default": false,
+            "title": "Reply Read",
+            "type": "boolean"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Topic Id"
+          },
+          "media": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image",
+                  "audio",
+                  "video_note",
+                  "video",
+                  "gif",
+                  "sticker",
+                  "document",
+                  "poll",
+                  "location",
+                  "contact",
+                  "link",
+                  "other",
+                  "unsupported"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Media"
+          },
+          "media_info": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "deleted": {
+            "default": false,
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "author": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Author",
+            "type": "string"
+          },
+          "author_peer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Author Peer"
+          },
+          "sender_is_bot": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender Is Bot"
+          },
+          "author_signature": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Author Signature"
+          },
+          "reply_status": {
+            "default": "none",
+            "enum": [
+              "none",
+              "available",
+              "missing",
+              "unknown"
+            ],
+            "title": "Reply Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "peer",
+          "message_id",
+          "revision",
+          "date"
+        ],
+        "title": "Message",
+        "type": "object"
+      },
+      "NotificationAttentionStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "sound": {
+            "title": "Sound",
+            "type": "boolean"
+          },
+          "sound_preset": {
+            "default": "harp",
+            "enum": [
+              "harp",
+              "bell",
+              "chime",
+              "pop",
+              "digital",
+              "custom"
+            ],
+            "title": "Sound Preset",
+            "type": "string"
+          },
+          "sound_file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound File Name"
+          },
+          "sound_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound Revision"
+          }
+        },
+        "required": [
+          "events",
+          "sound"
+        ],
+        "title": "NotificationAttentionStatus",
+        "type": "object"
+      },
+      "NotificationPreferences": {
+        "additionalProperties": false,
+        "properties": {
+          "sound": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound"
+          },
+          "push": {
+            "anyOf": [
+              {
+                "const": false,
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Push"
+          },
+          "sound_preset": {
+            "anyOf": [
+              {
+                "enum": [
+                  "harp",
+                  "bell",
+                  "chime",
+                  "pop",
+                  "digital",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound Preset"
+          }
+        },
+        "title": "NotificationPreferences",
+        "type": "object"
+      },
+      "NotificationSoundUpload": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "data": {
+            "maxLength": 2796204,
+            "minLength": 1,
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "title": "NotificationSoundUpload",
+        "type": "object"
+      },
+      "NotificationStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "browser": {
+            "title": "Browser",
+            "type": "string"
+          },
+          "sound": {
+            "title": "Sound",
+            "type": "boolean"
+          },
+          "push": {
+            "title": "Push",
+            "type": "boolean"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          },
+          "sound_preset": {
+            "default": "harp",
+            "enum": [
+              "harp",
+              "bell",
+              "chime",
+              "pop",
+              "digital",
+              "custom"
+            ],
+            "title": "Sound Preset",
+            "type": "string"
+          },
+          "sound_file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound File Name"
+          },
+          "sound_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sound Revision"
+          }
+        },
+        "required": [
+          "browser",
+          "sound",
+          "push",
+          "destination",
+          "failure",
+          "public_key"
+        ],
+        "title": "NotificationStatus",
+        "type": "object"
+      },
+      "NotificationTarget": {
+        "additionalProperties": false,
+        "description": "What a clicked notification opens for the browser it was delivered to.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "conversation",
+              "test",
+              "people",
+              "ai",
+              "unavailable"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Account Id"
+          },
+          "peer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Peer"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "NotificationTarget",
+        "type": "object"
+      },
+      "OutdatedMemory": {
+        "additionalProperties": false,
+        "properties": {
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "citations"
+        ],
+        "title": "OutdatedMemory",
+        "type": "object"
+      },
+      "PairingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "waiting",
+              "pending",
+              "approved",
+              "cancelled",
+              "complete",
+              "expired",
+              "already_trusted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "enum": [
+              "",
+              "browser",
+              "device"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "approver": {
+            "default": "server",
+            "enum": [
+              "server",
+              "browser"
+            ],
+            "title": "Approver",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "state",
+          "code",
+          "label"
+        ],
+        "title": "PairingStatus",
+        "type": "object"
+      },
+      "People": {
+        "additionalProperties": false,
+        "properties": {
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/JoinRequest"
+            },
+            "title": "Requests",
+            "type": "array"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "requests",
+          "members"
+        ],
+        "title": "People",
+        "type": "object"
+      },
+      "Person": {
+        "additionalProperties": false,
+        "properties": {
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          },
+          "group_budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "accounts": {
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "last_active": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Active"
+          }
+        },
+        "required": [
+          "member",
+          "budget",
+          "group_budget",
+          "name",
+          "username",
+          "phone",
+          "approved_at",
+          "accounts",
+          "last_active"
+        ],
+        "title": "Person",
+        "type": "object"
+      },
+      "PreparedVideo": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "ready",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Version"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "video/mp4",
+                  "video/webm"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          }
+        },
+        "required": [
+          "state",
+          "revision",
+          "mime"
+        ],
+        "title": "PreparedVideo",
+        "type": "object"
+      },
+      "Reaction": {
+        "additionalProperties": false,
+        "description": "Exactly one native reaction kind: an ordinary emoji, a custom emoji\n(its document ID; never rendered here) or a paid reaction.",
+        "properties": {
+          "emoji": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "custom": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^-?\\d+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Custom"
+          },
+          "paid": {
+            "default": false,
+            "title": "Paid",
+            "type": "boolean"
+          }
+        },
+        "title": "Reaction",
+        "type": "object"
+      },
+      "ReactionChipView": {
+        "additionalProperties": false,
+        "properties": {
+          "reaction": {
+            "$ref": "#/components/schemas/Reaction"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mine"
+          },
+          "peer": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Peer"
+          }
+        },
+        "required": [
+          "reaction",
+          "count"
+        ],
+        "title": "ReactionChipView",
+        "type": "object"
+      },
+      "ReactionView": {
+        "additionalProperties": false,
+        "description": "One message's displayed chips; reading it starts no native work.",
+        "properties": {
+          "chips": {
+            "items": {
+              "$ref": "#/components/schemas/ReactionChipView"
+            },
+            "title": "Chips",
+            "type": "array"
+          },
+          "own_known": {
+            "title": "Own Known",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chips",
+          "own_known"
+        ],
+        "title": "ReactionView",
+        "type": "object"
+      },
+      "ReadingView": {
+        "additionalProperties": false,
+        "properties": {
+          "reading_view": {
+            "enum": [
+              "ai",
+              "originals"
+            ],
+            "title": "Reading View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reading_view"
+        ],
+        "title": "ReadingView",
+        "type": "object"
+      },
+      "ReceivedAssetPreparation": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Version"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "ReceivedAssetPreparation",
+        "type": "object"
+      },
+      "ReceivedAssetView": {
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "missing",
+              "ready",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "thumbnail",
+              "gif",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "jpeg",
+                  "png",
+                  "webp",
+                  "gif",
+                  "mp4",
+                  "tgs",
+                  "webm"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Format"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/gif",
+                  "video/mp4",
+                  "video/webm",
+                  "application/x-tgsticker"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fps"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "renderer_supported": {
+            "default": false,
+            "title": "Renderer Supported",
+            "type": "boolean"
+          },
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Version"
+          }
+        },
+        "required": [
+          "state",
+          "kind",
+          "revision"
+        ],
+        "title": "ReceivedAssetView",
+        "type": "object"
+      },
+      "Remembering": {
+        "additionalProperties": false,
+        "description": "A private chat's Remember this chat (ADR 55 Q7): on unless the chat\nchose otherwise.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "Remembering",
+        "type": "object"
+      },
+      "Removed": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirmed"
+        ],
+        "title": "Removed",
+        "type": "object"
+      },
+      "ReplyElsewhere": {
+        "additionalProperties": false,
+        "description": "What a reply header supplies about a message in another chat (ADR 41).",
+        "properties": {
+          "peer": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Peer"
+          },
+          "sender_peer": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender Peer"
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Date"
+          }
+        },
+        "title": "ReplyElsewhere",
+        "type": "object"
+      },
+      "ScaleEdit": {
+        "additionalProperties": false,
+        "description": "The owner's own value for a trait, or None to clear it.",
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "ScaleEdit",
+        "type": "object"
+      },
+      "SelectMedia": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "token": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Token",
+            "type": "string"
+          },
+          "catalog_revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Catalog Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "token",
+          "catalog_revision"
+        ],
+        "title": "SelectMedia",
+        "type": "object"
+      },
+      "SelectedMediaAction": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "id"
+        ],
+        "title": "SelectedMediaAction",
+        "type": "object"
+      },
+      "SelectedMediaView": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "gif",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "gif",
+              "mp4",
+              "webp",
+              "tgs",
+              "webm",
+              "unsupported"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "preparing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Height"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Duration"
+          },
+          "sticker": {
+            "anyOf": [
+              {
+                "enum": [
+                  "static",
+                  "animated",
+                  "video"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sticker"
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "requires_premium": {
+            "default": false,
+            "title": "Requires Premium",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "retryable": {
+            "default": false,
+            "title": "Retryable",
+            "type": "boolean"
+          },
+          "renderer_supported": {
+            "default": false,
+            "title": "Renderer Supported",
+            "type": "boolean"
+          },
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Content Url"
+          },
+          "animation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Animation Url"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "format",
+          "status"
+        ],
+        "title": "SelectedMediaView",
+        "type": "object"
+      },
+      "Settings": {
+        "additionalProperties": false,
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          },
+          "group_budget": {
+            "$ref": "#/components/schemas/BudgetState"
+          },
+          "concurrency": {
+            "title": "Concurrency",
+            "type": "integer"
+          },
+          "processing_threshold": {
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Processing Threshold",
+            "type": "integer"
+          },
+          "memory": {
+            "title": "Memory",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "title": "Suggestions",
+            "type": "boolean"
+          },
+          "guidance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "decision_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionModelState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "budget",
+          "group_budget",
+          "concurrency",
+          "processing_threshold",
+          "memory",
+          "suggestions"
+        ],
+        "title": "Settings",
+        "type": "object"
+      },
+      "SignInPairingState": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "proof": {
+            "default": "",
+            "title": "Proof",
+            "type": "string"
+          },
+          "login": {
+            "$ref": "#/components/schemas/LoginState"
+          },
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          },
+          "authenticated": {
+            "default": false,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "agreement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Agreement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "waiting": {
+            "default": false,
+            "title": "Waiting",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "login"
+        ],
+        "title": "SignInPairingState",
+        "type": "object"
+      },
+      "SignInStart": {
+        "additionalProperties": false,
+        "properties": {
+          "phone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Phone",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "browser": {
+            "default": false,
+            "title": "Browser",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "title": "SignInStart",
+        "type": "object"
+      },
+      "SuggestionChoice": {
+        "additionalProperties": false,
+        "description": "A private chat's Suggestions choice (ADR 56 Q12 A), On unless the\nchat chose otherwise, and whether Idioms can be chosen yet.",
+        "properties": {
+          "choice": {
+            "enum": [
+              "off",
+              "on",
+              "idioms"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "idioms": {
+            "title": "Idioms",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "choice",
+          "idioms"
+        ],
+        "title": "SuggestionChoice",
+        "type": "object"
+      },
+      "SuggestionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "enum": [
+              "acknowledge",
+              "support",
+              "clarify",
+              "celebrate",
+              "accept",
+              "decline",
+              "later"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 280,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "text"
+        ],
+        "title": "SuggestionOption",
+        "type": "object"
+      },
+      "SuggestionsView": {
+        "additionalProperties": false,
+        "description": "What a browser may show for one chat; reading it starts no work.",
+        "properties": {
+          "state": {
+            "default": "none",
+            "enum": [
+              "none",
+              "preparing",
+              "waiting",
+              "ready",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "unavailable",
+                  "replaced",
+                  "answered",
+                  "expired",
+                  "changed",
+                  "not_qualifying",
+                  "empty",
+                  "cancelled",
+                  "suspended",
+                  "queued",
+                  "running",
+                  "budget",
+                  "paused",
+                  "retrying",
+                  "format",
+                  "provider",
+                  "refused",
+                  "interrupted",
+                  "too_large"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "folded": {
+            "default": false,
+            "title": "Folded",
+            "type": "boolean"
+          },
+          "source_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Time"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          }
+        },
+        "title": "SuggestionsView",
+        "type": "object"
+      },
+      "TextLink": {
+        "additionalProperties": false,
+        "description": "Native UTF-16 offsets, as used by Telegram and browser strings.",
+        "properties": {
+          "offset": {
+            "maximum": 131072,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "length": {
+            "exclusiveMinimum": 0,
+            "maximum": 131072,
+            "title": "Length",
+            "type": "integer"
+          },
+          "url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offset",
+          "length",
+          "url"
+        ],
+        "title": "TextLink",
+        "type": "object"
+      },
+      "Tone": {
+        "additionalProperties": false,
+        "properties": {
+          "tone": {
+            "enum": [
+              "neutral",
+              "professional",
+              "friendly"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tone"
+        ],
+        "title": "Tone",
+        "type": "object"
+      },
+      "TraitNote": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "source": {
+            "enum": [
+              "model",
+              "owner"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "number"
+          },
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "confidence",
+          "source",
+          "created",
+          "citations"
+        ],
+        "title": "TraitNote",
+        "type": "object"
+      },
+      "TraitOption": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "TraitOption",
+        "type": "object"
+      },
+      "TraitScale": {
+        "additionalProperties": false,
+        "description": "One trait of the starter list: its value, the decision model's or the\nowner's, and whether the latest judgment still found its evidence.",
+        "properties": {
+          "trait": {
+            "title": "Trait",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability"
+          },
+          "judged": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judged"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "model",
+                  "owner"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/TraitOption"
+            },
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trait",
+          "title",
+          "value",
+          "label",
+          "probability",
+          "judged",
+          "source",
+          "current",
+          "options"
+        ],
+        "title": "TraitScale",
+        "type": "object"
+      },
+      "TraitsView": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "scales": {
+            "items": {
+              "$ref": "#/components/schemas/TraitScale"
+            },
+            "title": "Scales",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/TraitNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "habits": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Habits"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "required": [
+          "revision",
+          "enabled",
+          "scales",
+          "notes",
+          "habits",
+          "error"
+        ],
+        "title": "TraitsView",
+        "type": "object"
+      },
+      "TrustedBrowser": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "approved_at": {
+            "title": "Approved At",
+            "type": "number"
+          },
+          "last_access": {
+            "title": "Last Access",
+            "type": "number"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "kind": {
+            "default": "browser",
+            "enum": [
+              "browser",
+              "device"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "approved_at",
+          "last_access",
+          "current"
+        ],
+        "title": "TrustedBrowser",
+        "type": "object"
+      },
+      "VideoPreparation": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Version"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "VideoPreparation",
+        "type": "object"
+      },
+      "ViewedContent": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "original",
+              "rewrite",
+              "reaction"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "identity": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Identity",
+            "type": "string"
+          },
+          "token": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "identity",
+          "token"
+        ],
+        "title": "ViewedContent",
+        "type": "object"
+      },
+      "ViewedSources": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/ViewedContent"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Content",
+            "type": "array"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ViewedSources",
+        "type": "object"
+      }
+    }
+  }
+}

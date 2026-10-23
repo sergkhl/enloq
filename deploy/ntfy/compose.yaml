@@ -1,0 +1,52 @@
+# Android push for the Enloq app (ADR 38 Q22, Q34): a ntfy server at
+# ntfy.globesoul.com that answers only signed-in users. The service publishes
+# to UnifiedPush topics (`up*`) with its token and the owner's phone reads
+# them; nobody else can do either. Installed in ~/pi-workspace/ntfy on the VPS
+# (docs/operations.md#android-push-relay). The shared edge reaches it by name
+# on the lrnki network, so no port is published. Users, access rules and
+# tokens live in ./lib/user.db, made with ntfy's own commands; none are here.
+name: ntfy
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.29.0
+    container_name: ntfy
+    command: serve
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      NTFY_BASE_URL: https://ntfy.globesoul.com
+      NTFY_LISTEN_HTTP: ":8080"
+      NTFY_BEHIND_PROXY: "true"
+      NTFY_AUTH_FILE: /var/lib/ntfy/user.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+      # Pushes wait half a day for a phone that is offline; each one names
+      # its own, shorter expiry.
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+      NTFY_CACHE_DURATION: 12h
+      NTFY_ENABLE_SIGNUP: "false"
+      NTFY_ENABLE_LOGIN: "false"
+      NTFY_WEB_ROOT: disable
+    volumes:
+      - type: bind
+        source: ./lib
+        target: /var/lib/ntfy
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./cache
+        target: /var/cache/ntfy
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --tries=1 http://localhost:8080/v1/health -O - | grep -Eq '"healthy"\s*:\s*true'
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks: [lrnki]
+networks:
+  lrnki:
+    external: true
+    name: lrnki

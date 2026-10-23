@@ -1,0 +1,52 @@
+# MC5 journeys (ADR 38 Q11) against the authored fixture server only. Run
+# them with mobile/scripts/journeys, which resets the app's pairing and
+# supplies APP_ID, DEV_URL and LINK, a fresh fixture pairing link.
+#
+# Each sheet opens once per run: on the iOS 26.5 simulator a sheet opened a
+# second time in the same app session leaves the accessibility tree Maestro
+# reads, so the account switch comes last.
+appId: ${APP_ID}
+---
+- runFlow: flows/pair.yaml
+- runFlow: flows/read.yaml
+- runFlow: flows/compose.yaml
+- runFlow: flows/groups.yaml
+- runFlow: flows/saved.yaml
+- runFlow: flows/settings.yaml
+- runFlow: flows/media.yaml
+- runFlow: flows/carousel.yaml
+- runFlow: flows/new-message.yaml
+- runFlow: flows/details.yaml
+- runFlow: flows/ai-controls.yaml
+- runFlow: flows/deletion.yaml
+- runFlow: flows/media-sending.yaml
+- runFlow: flows/group-recovery.yaml
+# Useful response suggestions (ADR 49), checked on Android first; the iPhone
+# run waits for the Mac's next build.
+- runFlow:
+    when:
+      platform: Android
+    file: flows/suggestions.yaml
+- runFlow:
+    when:
+      platform: Android
+    file: flows/push.yaml
+# Android only: these open the account sheet several times (see above).
+- runFlow:
+    when:
+      platform: Android
+    file: flows/reconnect.yaml
+- runFlow:
+    when:
+      platform: Android
+    file: flows/manage.yaml
+# Members (ADR 48): People as the owner, then a stranger joining and leaving.
+- runFlow:
+    when:
+      platform: Android
+    file: flows/people.yaml
+- runFlow:
+    when:
+      platform: Android
+    file: flows/join.yaml
+- runFlow: flows/accounts.yaml

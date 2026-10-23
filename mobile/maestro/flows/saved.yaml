@@ -1,0 +1,27 @@
+# The Saved tab (ADR 50): the header's Private | Groups | Saved icons open the
+# account's own Saved Messages, with the fixture's authored notes, where a
+# note is written and sent without Rewrite. Each run sends its own wording,
+# since the fixture keeps earlier sends.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/saved-messages
+      ACCOUNT: "1"
+- tapOn: "Saved"
+- extendedWaitUntil:
+    visible: ".*Saved fixture: bring the charger.*"
+    timeout: 15000
+- assertNotVisible: "Rewrite"
+- assertNotVisible: "Undo rewrite"
+- evalScript: ${output.saved = 'Saved fixture note ' + new Date().getTime()}
+- tapOn: "Message.*"
+- inputText: ${output.saved}
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: ".*${output.saved}.*"
+    timeout: 20000
+- takeScreenshot: saved-1-tab
+- tapOn: "Private"
+- assertVisible: "Account: Demo account. Switch account"

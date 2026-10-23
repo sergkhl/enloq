@@ -1,0 +1,27 @@
+#!/bin/sh
+# The owner's everyday Enloq build on the Android phone (ADR 38 Q26, Q31): a
+# release build with the JavaScript embedded, so it runs without this Mac.
+# Connect the phone with USB debugging on, or from the VPS over its tunnel
+# (scripts/phone-adb). Expo signs release builds with React Native's shared
+# debug key, so a build from either machine installs over the previous release
+# build and keeps its pairing; the Enloq Dev development build is a separate
+# app.
+set -eu
+cd "$(dirname "$0")/.."
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1 CI=1
+. scripts/android-env
+model=$("$adb" devices -l |
+  sed -n 's/.* device .*model:\([^ ]*\).*/\1/p' | head -n 1)
+if [ -z "$model" ]; then
+  echo "Connect the Android phone with USB debugging on, then run this again." >&2
+  exit 1
+fi
+# Build native code only for this phone's processor, not all four.
+abi=$("$adb" shell getprop ro.product.cpu.abi | tr -d '\r')
+export ORG_GRADLE_PROJECT_reactNativeArchitectures="$abi"
+npx expo prebuild --platform android --no-install >/dev/null
+$low npx expo run:android --device "$model" --variant release --no-bundler
+# Expo opens builds through the development client's link, which a release
+# build has no handler for, so the app is started as its launcher would.
+"$adb" shell monkey -p com.globesoul.enloq \
+  -c android.intent.category.LAUNCHER 1 >/dev/null

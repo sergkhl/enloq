@@ -1,0 +1,37 @@
+# People (ADR 48 MB5), the owner's: the fixture seeds a Join Request, which
+# the owner approves; the member's budgets are changed, then the member is
+# removed after Android's confirmation.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /fixture/requests
+      NAME: Authored Anna
+      ACCOUNT: "81"
+# Settings is the account sheet's last row (ADR 51 Q19, Q21).
+- tapOn: "Account: .*"
+- tapOn: "Settings"
+- tapOn: "People, 1 waiting.*"
+- extendedWaitUntil:
+    visible: "Authored Anna"
+    timeout: 15000
+- tapOn: "Approve Authored Anna"
+- extendedWaitUntil:
+    visible: "Daily Budget: \\$0\\.0000 of \\$0\\.50 today"
+    timeout: 15000
+- tapOn: "Edit Authored Anna's budgets"
+- tapOn: "Authored Anna Daily Budget per day in dollars"
+- eraseText: 8
+- inputText: "1.25"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Daily Budget: \\$0\\.0000 of \\$1\\.25 today"
+    timeout: 15000
+- tapOn: "Remove Authored Anna"
+- tapOn: "Remove|REMOVE"
+- extendedWaitUntil:
+    visible: "Nobody else uses Enloq on this server yet.*"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Back"

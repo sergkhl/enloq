@@ -1,0 +1,283 @@
+/* The list screen in the Enloq app's design (ADR 44 MW1), inside the one
+   phone-width column. */
+/* Phone browsers would paint their own tap highlight over every control. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+.list-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 4px;
+}
+.account-switcher {
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 10px;
+  padding: 4px 0;
+  text-align: left;
+}
+.account-switcher svg {
+  flex: none;
+  color: var(--muted);
+}
+.switcher-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+.switcher-name {
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.header-icon {
+  padding: 6px;
+  color: var(--accent);
+}
+.list-error {
+  margin: 4px 16px;
+  color: #a3302a;
+}
+/* Private | Groups | Saved as icons in the header row (ADR 50 Q1, Q10). */
+.list-switch {
+  display: flex;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.list-switch button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 0;
+  color: var(--accent);
+}
+.list-switch button[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--paper);
+}
+.chat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.list-row {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  border-radius: 0;
+}
+.list-row:hover,
+.list-row:active {
+  background: var(--panel);
+}
+.row-avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+.row-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.row-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.row-line strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.row-line svg {
+  flex: none;
+  color: var(--muted);
+}
+.row-line time {
+  flex: none;
+  font-size: 13px;
+  color: var(--muted);
+}
+.row-deleted {
+  flex: none;
+  color: var(--muted);
+}
+.row-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.row-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.list-note,
+.list-empty {
+  margin: 0;
+  padding: 24px;
+  color: var(--muted);
+}
+.list-empty {
+  display: grid;
+  gap: 14px;
+}
+
+/* Sheets open over the screen but inside the column (ADR 44 Q3). */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  background: rgb(0 0 0 / 30%);
+}
+.sheet {
+  align-self: flex-start;
+  width: min(448px, calc(100% - 32px));
+  max-height: calc(100dvh - 120px);
+  margin-top: 80px;
+  padding: 12px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  outline: none;
+}
+.sheet h2 {
+  margin: 0;
+  padding: 4px;
+  font-size: 15px;
+}
+.sheet-row {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 4px;
+  text-align: left;
+}
+.sheet-row.action {
+  padding: 12px 4px;
+}
+.sheet-row.action svg,
+.sheet-row > svg {
+  color: var(--accent);
+}
+.sheet-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+.sheet-row-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.sheet-row-body strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.sheet-row-body small {
+  color: var(--muted);
+}
+
+/* A link that names no conversation, or one that can't open, says why. */
+.problem-screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.problem-screen h1 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  .list-error {
+    color: #f08a80;
+  }
+}
+
+/* Asking for notifications once per pairing (ADR 47 Q5). */
+.notification-ask {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+.notification-ask > svg {
+  color: var(--accent);
+}
+.notification-ask h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.notification-ask p {
+  margin: 0;
+  color: var(--muted);
+}
+.notification-ask-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Saved Messages fills its tab under the header (ADR 50 Q2). */
+.list-screen > .conversation-pane {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.saved-note {
+  margin: 0;
+  padding: 2px 16px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The account sheet's divider before Settings (ADR 51 Q21). */
+.sheet-divider {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
