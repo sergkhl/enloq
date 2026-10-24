@@ -74,12 +74,6 @@ class Engine:
                 {"options": [{"purpose": "advice", "text": "Do this."}]},
                 actual_nanos=1000,
             )
-        if self.failure == "one_sided":
-            # ADR 49 Q4: an answer with no contrasting stance.
-            return EngineResponse(
-                {"options": [{"purpose": "accept", "text": "Yes, I'll be there."}]},
-                actual_nanos=1000,
-            )
         if self.failure == "incomplete":
             return EngineResponse(
                 self.options, usage={"finish_reason": "length"}, actual_nanos=1000
@@ -535,40 +529,53 @@ async def test_the_decision_model_labels_every_option(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "authored,labels,ready",
+    "authored,labels",
     [
-        # MiMo's own labels are one-sided, the decision model's are not.
-        ("one_sided", ["accept", "decline"], True),
-        # MiMo's labels contrast, but the replies say one thing.
-        ("contrasting", ["accept", "accept"], False),
-        # Q20: two deferrals commit to nothing.
-        ("contrasting", ["later", "later"], True),
+        (["accept", "accept"], ["accept", "decline"]),
+        (["accept", "decline"], ["accept", "accept"]),
+        (["accept", "decline"], ["decline", "decline"]),
+        (["accept", "decline"], ["later", "later"]),
+        (["clarify"], ["accept"]),
+        (["clarify"], ["decline"]),
     ],
 )
-async def test_only_the_decision_models_labels_are_judged_one_sided(
-    tmp_path, authored, labels, ready
+@pytest.mark.parametrize("kind", ["automatic", "manual"])
+@pytest.mark.parametrize("style", ["friendly", "professional", "idioms"])
+async def test_decision_labels_publish_any_stance_mix_without_resampling(
+    tmp_path, authored, labels, kind, style
 ):
     app, _ = rig(tmp_path)
-    purposes = (
-        ["accept", "accept"] if authored == "one_sided" else ["accept", "decline"]
-    )
+    app.calmer = app.engine  # The adopted idiom writer's deterministic stand-in.
+    app.suggestions.set_settings(KEY, True, style)
     app.engine.options = {
         "options": [
-            {"purpose": purposes[0], "text": "Yes, of course."},
-            {"purpose": purposes[1], "text": "Sure, see you then."},
+            {"purpose": purpose, "text": text}
+            for purpose, text in zip(
+                authored, ["Yes, of course.", "Sure, see you then."]
+            )
         ]
     }
     app.decider.labels = labels
     app.sync.ingest(message(app))
+    if kind == "manual":
+        app.suggestions.generate(KEY, 0)  # Blank draft: no supplied intent.
+    before = app.store.draft(KEY)
     await drain(app)
     view = app.suggestions.view(KEY)
-    if ready:
-        assert view.state == "ready"
-        assert [o.purpose for o in view.options] == labels
-    else:
-        assert (view.state, view.reason) == ("failed", "format")
-    # The written set is never resampled.
+    assert (view.state, view.kind, view.style) == ("ready", kind, style)
+    assert [o.purpose for o in view.options] == labels
+    assert [o.text for o in view.options] == [
+        o["text"] for o in app.engine.options["options"]
+    ]
+    assert app.store.draft(KEY) == before
+    assert app.suggestions.view(KEY) == view
+    await drain(app)
     assert app.engine.count() == 1
+    assert len([r for r, _ in app.decider.calls if r == "suggestion_labels"]) == 1
+    inserted = app.suggestions.insert(KEY, before["revision"], view.attempt, 0)
+    assert inserted["draft"]["text"] == view.options[0].text
+    assert inserted["draft"]["undo"] == before["text"]
+    assert not app.store.rows("SELECT id FROM operations")
 
 
 async def test_a_refused_label_request_fails_the_set_without_resampling(tmp_path):

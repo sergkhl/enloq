@@ -21,7 +21,7 @@ OPTIONS = [
     {"purpose": "acknowledge", "text": "That sounds like a really hard day."},
     {"purpose": "clarify", "text": "Do you want to tell me what happened?"},
 ]
-# ADR 49 Q4, Q8: contrasting answer stances, never one alone.
+# ADR 49 Q4, Q8: a fixture showing all three optional answer stances.
 ANSWERS = [
     {"purpose": "accept", "text": "Yes, I'll be there."},
     {"purpose": "decline", "text": "Sorry, I can't make it this time."},

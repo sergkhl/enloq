@@ -14,9 +14,9 @@ A writer passes with no miss on the fixed rules and the expression rule met
 in at least 9 sets of 10 (Q17 A):
 
 - The fixed rules: each option in the latest block's language, a well-formed
-  set the decision model labels with contrasting answer stances, and no
+  set labelled by the decision model, with any mix of answer stances, and no
   invented facts, admitted fault, pressure or commitments outside an answer
-  stance. Language is text matching; a malformed or one-sided set is the app's
+  stance. Language is text matching; a malformed set is the app's
   own format failure; the rest a judge model decides (JUDGE_MODEL, the
   proxy's subscription model, as in the calming and memory gates).
 - The expression rule: the judge finds in every option a real idiom,

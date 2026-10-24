@@ -137,7 +137,8 @@ set expressions and phrasal verbs in this chat's language."
 non-neutral emotion needs usefulness of 0.7 or more; emotional blocks and
 reactions are unchanged. An answer that closes the owner's own question can
 score just over 0.5, while blocks that need a reply score far higher. Not
-adopted: showing nothing for a one-sided set, and the 0.5 bar.
+adopted: the 0.5 bar. Otherwise valid one-sided sets are shown under ADR 49
+Q20 rather than hidden or failed.
 
 **Idioms launched with Muse (Q20).** No writer passed Q17's bar, Muse came
 closest, and the owner chose to let Idioms be chosen with Muse writing idiom
@@ -160,9 +161,5 @@ the judge and rerunning, more refining, and keeping Idioms hidden.
 - **Idiom sets' misses.** Muse launched without passing Q17's bar: its idioms
   sometimes imply claims the chat doesn't make. The owner judges them in
   ordinary use.
-- **Yes-only plain sets.** MiMo sometimes writes a request's options all
-  saying yes, which the app fails as one-sided and shows as "Suggestions
-  unavailable: format check failed". Showing nothing for a one-sided set
-  instead remains the owner's choice.
 - Switching memory on in the chats they want, and trying Idioms, are the
   owner's.

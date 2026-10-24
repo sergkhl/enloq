@@ -195,7 +195,7 @@ async def test_the_gates_winner_writes_idiom_sets_and_plain_sets_stay_on_mimo(
 
 
 def test_the_idioms_frame_and_field_reach_only_idiom_sets():
-    assert DEFAULTS_REVISION == 16
+    assert DEFAULTS_REVISION == 17
     plain = instructions("response_suggestions", {})
     idioms = instructions("response_suggestions", {"idioms": True})
     assert IDIOMS_FRAME not in plain and "[Owner guidance: idioms]" not in plain

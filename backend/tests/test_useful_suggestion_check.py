@@ -118,6 +118,8 @@ async def run(tmp_path, *, mode="receipted", threshold=None):
         ]
         if mode == "one_sided":
             options = options[:1]
+        if mode == "invalid_options":
+            options[0]["text"] = ""
         return httpx.Response(
             200,
             json={
@@ -230,7 +232,7 @@ async def test_a_low_threshold_rewrites_every_case_with_a_stand_in(tmp_path):
     assert len([d for d in decisions if "emotion" in d["questions"]]) == CASES
 
 
-@pytest.mark.parametrize("mode", ["format", "one_sided"])
+@pytest.mark.parametrize("mode", ["format", "invalid_options"])
 async def test_malformed_answers_or_option_sets_block_the_switch(tmp_path, mode):
     report, decisions, suggestions, *_ = await run(tmp_path, mode=mode)
     assert len([d for d in decisions if "emotion" in d["questions"]]) == CASES
@@ -241,6 +243,18 @@ async def test_malformed_answers_or_option_sets_block_the_switch(tmp_path, mode)
     else:
         failed = [r for r in report["results"] if r.get("suggestions") == "failed"]
         assert failed and {r["suggestion_failure"] for r in failed} == {"format"}
+
+
+async def test_one_sided_sets_pass_the_finite_check_without_resampling(tmp_path):
+    report, decisions, suggestions, before, after = await run(
+        tmp_path, mode="one_sided"
+    )
+    assert not report["blocking"] and "stopped" not in report
+    ready = [r for r in report["results"] if r.get("suggestions") == "ready"]
+    assert ready and len(ready) == len(suggestions)
+    assert len([d for d in decisions if "replies" in d["state"]]) == len(ready)
+    assert all([o["purpose"] for o in r["options"]] == ["accept"] for r in ready)
+    assert before == after and report["within_bounds"] and report["telegram_calls"] == 0
 
 
 async def test_an_unknown_outcome_counts_the_flat_estimate_and_stops_in_time(tmp_path):

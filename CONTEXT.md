@@ -756,8 +756,8 @@ a neutral exchange or an ending. Groups and Saved Messages have none.
   Person and Account Memory. No older-history scan or reply-chain traversal.
   Account Memory facts are stated only in their source chat.
 - **Meaning.** Options may acknowledge, support, clarify, celebrate or ask a
-  gentle question. Without supplied intent, answer stances remain contrasting
-  where required; a draft-guided addition follows the user's stated intent.
+  gentle question. Otherwise valid options may share an answer stance or
+  offer different ones; a draft-guided addition follows the user's stated intent.
   Neither path invents facts or unsupplied feelings and commitments. The
   decision model labels each option by what it says.
 - **Lifetime.** Automatic sets keep twelve hours from their source and their

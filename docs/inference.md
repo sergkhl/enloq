@@ -662,10 +662,11 @@ without resampling. Ordinary fragments stay intact, and changed draft wording
 is never applied as a replacement. Draft literals also protect copied exact
 values during typography normalization. One decision-model `suggestion_labels`
 call labels a nonempty set as acknowledge, support, clarify, celebrate,
-accept, decline or later. A yes or no needs a contrasting stance, while later
-may stand alone. A nonblank manual draft already supplies intent, so its
-additions may follow that stance alone; all factual constraints persist. With
-no supplied intent, options invent no facts, feelings, fault or commitments.
+accept, decline or later. Any answer stance may stand alone or repeat across
+distinct options, for automatic and manual generation in every Style. A
+nonblank manual draft supplies intent that its additions follow; all factual
+constraints persist. With no supplied intent, options invent no facts,
+feelings, fault or commitments.
 Idioms retain ADR 56's adopted advice and common-expression exceptions.
 
 An empty set is a completed outcome. Format and provider failures, unknown
@@ -675,6 +676,10 @@ provider backoff. Stale results keep their costs and never publish. Pending
 records keep only the bounded input, removing it on completion or expiry;
 content otherwise follows 30-day retention. Memory is read at dispatch under
 Remember this chat and is never part of the source identity.
+
+Old failed sets keep their failure: their discarded options cannot be recovered.
+A deliberate Generate suggestions press requests a new attempt under the
+current rule; deployment and reads never regenerate them.
 
 Selection posts attempt, option index and draft revision to
 `/suggestions/insert`. Manual additions use the captured cursor; automatic

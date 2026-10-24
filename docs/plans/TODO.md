@@ -14,7 +14,7 @@ None of these is adopted, implemented or authorized.
   Q10): a completeness and invention check of rewritten text (media and softened
   rewrites since ADR 54), a guard against suggestion options that add meaning
   the owner never gave ([ADR 25](../adr/0025-emotion-response-suggestions.md)'s
-  rules; ADR 49 Q4 allows contrasting stances), and a source-language check.
+  rules; ADR 49 Q4 allows optional answer stances), and a source-language check.
   Attention, urgency, task and topic classification stay excluded (ADR 13).
 - **A better rewrite of incoming text** ([ADR 54](../adr/0054-incoming-text-combined-not-rewritten.md)):
   text blocks are combined, not rewritten, until a better way is found.
@@ -46,10 +46,6 @@ None of these is adopted, implemented or authorized.
   chunk summary and drop the other paid ones; and split reply packets leave
   the ad classifier covering about a quarter of the 200 sources, spent again
   when newer meanings stale earlier packets.
-- **One-sided plain suggestion sets** ([ADR 56](../adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)
-  Q19): MiMo sometimes writes every option of a request as yes, which shows
-  as "Suggestions unavailable: format check failed". Q19 B, showing nothing
-  for a one-sided set, would hide that line if the owner wants it.
 
 ## Agent follow-ups
 

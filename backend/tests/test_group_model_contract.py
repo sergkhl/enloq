@@ -162,7 +162,7 @@ def test_saved_group_guidance_is_durable_bounded_and_reset_independently(tmp_pat
     saved = registry.set_guidance({"group_briefing": custom})
     retained = AccountRegistry(tmp_path).guidance()
     assert retained == saved
-    assert saved["defaults_revision"] == guidance.DEFAULTS_REVISION == 16
+    assert saved["defaults_revision"] == guidance.DEFAULTS_REVISION == 17
     assert {
         name: text for name, text in saved["fields"].items() if name != "group_briefing"
     } == {

@@ -943,9 +943,8 @@ class Suggestions:
     async def label(self, job, key, record, options, valid):
         """ADR 49 Q19: the decision model labels each option by what it says,
         since MiMo's own labels proved unreliable. Returns the labelled
-        options, or None once a failure has settled the attempt: MiMo's
-        processed output is never resampled, and a set still holding one
-        answer stance once labelled fails as a format failure."""
+        options, or None once a failure has settled the attempt. Processed
+        output is never resampled. A set may hold just one answer stance."""
         if not options or not valid():
             # Nothing to label, or no longer current: publication decides.
             return options
@@ -977,12 +976,6 @@ class Suggestions:
                         SuggestionOption(purpose=purpose, text=option.text)
                         for purpose, option in zip(purposes, options, strict=True)
                     ]
-                },
-                context={
-                    "draft_intent": bool(
-                        record.get("kind") == "manual"
-                        and record["packet"].get("draft", "").strip()
-                    )
                 },
             ).options
         except ValidationError:

@@ -151,12 +151,8 @@ def validate_output(role, response, packet):
         "trait_notes": TraitNotes,
     }[role]
     try:
-        # ADR 49 Q19: the decision model labels suggestions afterwards, and
-        # only its labels are judged one-sided or not.
-        result = model.model_validate(
-            content,
-            context={"unlabelled": True} if role == "response_suggestions" else None,
-        )
+        # ADR 49 Q19: the decision model replaces suggestion labels afterwards.
+        result = model.model_validate(content)
         if hasattr(result, "text"):
             result.text.encode("utf-8")
         if role == "response_suggestions":

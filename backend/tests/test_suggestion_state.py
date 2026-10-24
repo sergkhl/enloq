@@ -465,8 +465,7 @@ def option(purpose, text=None):
         ("later", "clarify"),
     ],
 )
-def test_answer_stances_come_side_by_side(purposes):
-    # ADR 49 Q4, Q8: a yes or a no comes beside another stance.
+def test_mixed_answer_stances_remain_valid(purposes):
     body = {"options": [option(p) for p in purposes]}
     assert [o.purpose for o in ResponseSuggestions.model_validate(body).options] == [
         *purposes
@@ -493,9 +492,10 @@ def test_deferrals_alone_are_not_one_sided():
         [option("decline"), option("acknowledge"), option("support")],
     ],
 )
-def test_a_one_sided_answer_set_is_a_format_failure(options):
-    with pytest.raises(ValueError):
-        ResponseSuggestions.model_validate({"options": options})
+def test_a_one_sided_answer_set_is_valid(options):
+    assert ResponseSuggestions.model_validate({"options": options}).model_dump() == {
+        "options": options
+    }
 
 
 async def test_upgrade_from_version_23_is_additive(tmp_path):

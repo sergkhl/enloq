@@ -83,9 +83,9 @@ the revised draft and context.
 **Added meaning.** Options may offer grounded acknowledgement, sympathy,
 celebration and gentle questions the owner hasn't written. When the person
 asks for an answer, a decision or an action, options may answer with
-different stances side by side, so the owner's choice supplies the intent; a
-set holding Accept or Decline holds another stance beside it, and Later may
-stand alone (ADR 49 Q4, Q20). Options never invent facts (times, places,
+Accept, Decline or Later, in any mix: otherwise valid sets may all agree or
+all decline, without an opposing choice (ADR 49 Q4, Q20). The owner chooses
+whether to use any option. Options never invent facts (times, places,
 amounts, reasons, the owner's plans or whereabouts), assert the owner's
 feelings, admit fault, pressure the person or commit the owner outside those
 answer stances. Idiom sets alone may give gentle advice through a proverb and

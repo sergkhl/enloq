@@ -38,8 +38,9 @@ LIMIT = 4000
 # traits' fixed questions. Revision 15 is ADR 56: the Idioms field and its
 # fixed frame, used only for idiom sets. Revision 16 adds hostile-only
 # softening and independent arrival screening, manual draft continuations and
-# the shared Friendly, Professional and Idioms suggestion styles.
-DEFAULTS_REVISION = 16
+# the shared Friendly, Professional and Idioms suggestion styles. Revision 17
+# allows otherwise valid suggestion sets with only one answer stance (ADR 49).
+DEFAULTS_REVISION = 17
 
 DEFAULTS = {
     "faithfulness": (
@@ -242,7 +243,7 @@ TRAIT_NOTES_CORE = (
 )
 
 # ADR 25 narrowly allows this role, and only this role, to propose new
-# interpersonal wording; ADR 49 Q4 adds answers as contrasting stances only.
+# interpersonal wording; ADR 49 Q4 adds optional answer stances.
 # ADR 55 Q15-Q16 adds memory: refer to what the recipient cares about, and
 # state an owner note only where it was said. Rewrite contracts keep their
 # no-suggested-answer core.
@@ -261,9 +262,10 @@ SUGGESTIONS_CORE = (
     "each option is an insertion fitting the captured cursor and explicitly supplied intent; otherwise each is a message the owner could send as written, "
     "with one purpose: acknowledge, support, celebrate, clarify (one gentle question that answers nothing), or an "
     "answer stance: accept (yes), decline (no) or later (not deciding yet, such as checking and getting back). Only "
-    "when the latest communication asks the owner for a decision or an action may options answer it, as contrasting "
-    "stances side by side: a set that says yes or no also offers another stance, so the owner's choice supplies "
-    "the intent, while deferring alone is allowed. A nonblank manual draft already supplies the owner's intent: "
+    "when the latest communication asks the owner for a decision or an action may options answer it. Offer "
+    "stances that fit the conversation; all options may accept, all may decline, all may defer, or they may "
+    "differ. No contrasting stance is required. The owner chooses whether to use any option. "
+    "A nonblank manual draft already supplies the owner's intent: "
     "in that case follow its stance rather than offering opposing answers, and use any feelings, commitments "
     "or facts it explicitly supplies. Label each option by what it says: yes is accept, no is "
     "decline and not yet is later, even when the option also asks something; clarify never answers. For example, "

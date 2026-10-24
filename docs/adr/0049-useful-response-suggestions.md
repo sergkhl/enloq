@@ -14,8 +14,7 @@ threshold never reached either. The decision route of
 OpenRouter endpoint, which stopped emotion, Reaction Assessment, suggestions
 and group ad filtering. This ADR moves every decision role to Decider V1.2,
 asks the decision model whether suggestions would be useful, decides short
-blocks from their originals, and lets suggestions answer with contrasting
-stances.
+blocks from their originals, and lets suggestions offer answer stances.
 
 ## Decision
 
@@ -59,10 +58,12 @@ after its 30 quiet seconds, whether or not it is rewritten.
   circles is classified after its rewrite, which supplies image meanings.
 - A block of Non-AI Media only makes no call.
 
-**Contrasting answers (Q4).** When the person asks for an answer, a decision
-or an action, options may answer with different stances side by side, so the
-owner's choice supplies the intent: for example "Yes, I'll be there" /
-"Sorry, I can't make it this time" / "Let me check and get back to you".
+**Optional answers (Q4).** When the person asks for an answer, a decision
+or an action, options may accept, decline or defer. Otherwise valid sets may
+all agree, all decline, all defer or offer different stances; no opposing
+choice is required. This applies to automatic and manual generation in every
+Style. The owner chooses whether to insert any option, edits it if wanted
+and sends deliberately.
 
 - **Still forbidden:** facts that aren't in the supplied conversation (times,
   places, amounts, reasons, the owner's plans or whereabouts), asserting the
@@ -89,9 +90,9 @@ decisions request on the service's key, from inside its container, before a
 check.
 
 **Answer labels (Q8).** Accept, Decline and Later join Acknowledge, Support,
-Clarify and Celebrate. A set holding `accept` or `decline` holds another
-stance beside it (Q20), except a draft-guided manual addition following the
-user's explicit stance (ADR 25).
+Clarify and Celebrate. Any answer stance may stand alone or repeat across
+distinct options (Q20). A draft-guided manual addition follows the user's
+explicit stance (ADR 25).
 
 **When to suggest (Q9).** The field is "When to suggest", under Guidance's
 Other work, explained as "When short reply suggestions are worth offering".
@@ -162,19 +163,21 @@ criteria.
 
 - **What it reads:** the conversation, or the reaction, and the replies'
   text; never MiMo's labels.
-- **Labels and one-sidedness:** its answers replace MiMo's labels, and only
-  these labels decide whether a set is one-sided.
+- **Labels:** its answers replace the writer's labels. A set with just one
+  answer stance passes if otherwise valid; it is neither failed nor hidden.
 - **Failures:** a failed label request fails the set without resampling the
   writer.
 
 Not adopted: keeping MiMo's labels, with or without a later check, and
 dropping the labels.
 
-**Deferrals may stand alone (Q20).** A deferral commits to nothing, so Q8's
-rule applies to a yes or a no only: a set holding `accept` or `decline` holds
-another stance beside it, and `later` may stand alone. A draft-guided manual
-addition follows the user's explicit stance instead of inventing an opposing
-one (ADR 25).
+**Every answer stance may stand alone (Q20).** A set may contain only
+`accept`, only `decline` or only `later`, including alongside non-answer
+options. Different options must still have distinct wording, and every
+format and grounding rule remains. A draft-guided manual addition follows
+the user's explicit stance (ADR 25). A failed past attempt is not regenerated
+by changing this rule; a new manual request or qualifying changed source
+uses it.
 
 **Carried over from ADR 25.**
 

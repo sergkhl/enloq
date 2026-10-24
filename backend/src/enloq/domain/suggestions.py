@@ -2,13 +2,13 @@
 
 Suggestions are bounded message wording the owner may insert and edit; they
 are never sent, never a profile and never a substitute for the owner's answer.
-ADR 49 lets them answer a question, a decision or a request, as contrasting
-stances only, so the owner's choice supplies the intent.
+ADR 49 lets them answer a question, a decision or a request. The owner chooses
+what to insert; a set may offer one answer stance or several.
 """
 
 from typing import Literal
 
-from pydantic import Field, ValidationInfo, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from .emotion import LIFETIME
 from .models import Model
@@ -21,9 +21,7 @@ QUALIFYING = frozenset(
 Purpose = Literal[
     "acknowledge", "support", "clarify", "celebrate", "accept", "decline", "later"
 ]
-# ADR 49 Q4, Q8: answer stances. A set holding a yes or a no holds another
-# stance beside it, so the owner's choice supplies the intent; since Q20 a
-# deferral may stand alone.
+# ADR 49 Q4, Q8: answer stances, any of which may stand alone.
 ANSWERS = frozenset({"accept", "decline", "later"})
 OPTIONS = 3
 OPTION_CHARACTERS = 280
@@ -72,22 +70,6 @@ class ResponseSuggestions(Model):
         texts = [option.text.strip() for option in self.options]
         if len(set(texts)) != len(texts):
             raise ValueError("Repeated suggestion")
-        return self
-
-    @model_validator(mode="after")
-    def contrasting(self, info: ValidationInfo):
-        """Never one-sided (ADR 49 Q4): answers come as different stances.
-        Since Q19 the decision model's labels decide this, so the writer's own
-        labels are read with ``context={"unlabelled": True}`` and not judged."""
-        if (info.context or {}).get("unlabelled") or (info.context or {}).get(
-            "draft_intent"
-        ):
-            return self
-        stances = {option.purpose for option in self.options} & ANSWERS
-        # Q20: deferring commits to nothing, so later may stand alone; a yes or
-        # a no needs another stance beside it.
-        if len(stances) == 1 and stances != {"later"}:
-            raise ValueError("One answer stance only")
         return self
 
 

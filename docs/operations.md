@@ -201,7 +201,8 @@ decision on its latest block (no rewrite or mood decision is requested), go
 through the app's own suggestion dispatch in a chat set to Idioms, once with
 MiMo writing and once with Muse Spark 1.3; the decision model labels each set
 as the app has it do. Code checks each option's language, and the app's own
-validation catches a malformed or one-sided set. The judge reads every set:
+validation catches a malformed set; one-sided sets are valid under ADR 49 Q20.
+The judge reads every set:
 the expression each option uses, whether it is real and in its established
 meaning, and whether the option invents facts, admits fault, pressures or
 commits the owner beyond a plain yes. A writer passes with no miss on those
