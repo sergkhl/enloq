@@ -43,7 +43,18 @@ still fallbacks and reduced motion, and keep private media behind the gate.
   executable regressions. Delivery remains tracked by this active plan.
 
 - No mobile/shared/API-schema files changed, so this fix does not require a
-  native build. Runtime delivery and public-bundle verification are next.
+  native build. No live Telegram sends or provider calls were used for testing.
+- Main 84b76c356fcc53d99420a6a81533aedef83b415c was committed and pushed;
+  origin/main was freshly fetched and matched the clean main checkout before
+  ./scripts/deploy. The service started enloq:84b76c356fcc and became healthy.
+- Public verification at 2026-10-24 03:09 UTC returned ready from /health and
+  matched the public HTML, JavaScript, CSS and 718-byte capability canary to
+  their SHA-256 hashes inside the deployed image. The image revision label
+  matches the committed fix. This is deployment proof; the authored browser
+  journeys provide behavior proof, with native-device acceptance unchanged.
+- The disposable journey server stopped after its checks. Review and all
+  required checks are complete. This validation is committed before the plan
+  is removed; the helper, regressions and media runbook retain the behavior.
 
 ## Findings
 
