@@ -51,7 +51,17 @@ owns the presentation decisions.
   existing TODO issue remains open.
 - Mobile TypeScript and formatting passed; all 297 Jest tests in 38 suites
   passed. This is source evidence, not native-device acceptance.
-- Pending: publish the README/images to GitHub and verify their remote content.
+- GitHub main 383657e published the README, name origin and all three PNGs;
+  62545e4 aligned the gallery columns. Public GitHub rendering at 1440 px and
+  390 px confirmed that the complete origin, three loaded 1290 × 2580 images
+  and full-size links are present without horizontal page overflow. The three
+  desktop images have equal displayed widths; both layouts align their tops.
+  Raw GitHub image bytes
+  match the website source and its verified public files exactly.
+- Temporary local portfolio preview and disposable VPS screenshot fixture were
+  stopped. No production Enloq service or provider settings were changed.
+- Delivery is complete. Validation is committed before this plan is removed in
+  the following cleanup commit; ADR 57 preserves the accepted presentation.
 
 ## Open findings
 
