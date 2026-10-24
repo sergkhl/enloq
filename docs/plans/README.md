@@ -16,8 +16,7 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-None. Every earlier plan is delivered; what remains open is in
-[TODO.md](TODO.md).
+- [Public description and screenshots](2026-10-24-public-description-screenshots.md): capture, publish and verify the agreed presentation.
 
 ## How a plan runs
 

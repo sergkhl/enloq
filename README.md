@@ -9,13 +9,18 @@ daily briefings with links back to their sources. The original messages remain
 available, and sending is always a separate, deliberate action.
 
 The product has a React web client and an Expo / React Native app, backed by a
-Python service. Enloq comes from *en* (縁, human connection) and *loqui*.
+Python service. Enloq comes from *en* (縁, human connection) and *loqui*
+(Latin, “to speak”).
 
-![Enloq showing an incoming rewrite and editable reply suggestions](docs/screenshots/enloq-private-chat.jpg)
+| Read with less friction | Edit before you send | Catch up on groups |
+| --- | --- | --- |
+| [<img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a Calmed message, with the original available through the AI view toggle">](docs/screenshots/enloq-reading.png) | [<img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions and an edited draft with separate Rewrite and Send controls">](docs/screenshots/enloq-reply.png) | [<img src="docs/screenshots/enloq-briefing.png" width="270" alt="Enloq daily group briefing with topic summaries, participants and source links">](docs/screenshots/enloq-briefing.png) |
+| Read a calm rendering of a frustrated message and return to the original. | Choose a suggestion, edit your draft and send when ready. | Follow the key points back to the messages behind them. |
 
-*The screenshot uses authored synthetic messages, a prepared rewrite and reply
-suggestions in the real web interface. It contains no private Telegram content
-and is not a measurement of model quality.*
+*Open any screenshot at full size. These are high-resolution captures of the
+real phone-width web interface, using authored synthetic conversations and
+prepared outputs. They demonstrate presentation, not model quality, live
+Telegram delivery or native-device acceptance.*
 
 ## What it does
 

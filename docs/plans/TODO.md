@@ -3,8 +3,8 @@
 This is the single list of what remains open: proposals awaiting an interview,
 decisions awaiting the owner, follow-ups an agent can take up and the owner's
 own gates. Each item names its owning ADR. Remove an item when it is done;
-decisions go into the ADR, not here. No plan is active
-([plan index](README.md)).
+decisions go into the ADR, not here. Active work is listed in the
+[plan index](README.md).
 
 ## Proposals awaiting an interview
 
