@@ -83,6 +83,7 @@ function startProbe(): Attempt {
   const canvas = document.createElement("canvas");
   let current = true;
   let objectUrl: string | null = null;
+  let frame: number | null = null;
   let resolve!: (value: WebmAlphaCapability) => void;
   const promise = new Promise<WebmAlphaCapability>((done) => {
     resolve = done;
@@ -92,6 +93,8 @@ function startProbe(): Attempt {
     current = false;
     controller.abort();
     clearTimeout(timeout);
+    if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
     video.onloadedmetadata = video.onloadeddata = video.onerror = null;
     video.pause();
     video.removeAttribute("src");
@@ -118,7 +121,8 @@ function startProbe(): Attempt {
     )
       finish("unavailable");
   };
-  video.onloadeddata = () => {
+  const sampleFrame = () => {
+    frame = null;
     if (!current || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA)
       return;
     try {
@@ -127,10 +131,15 @@ function startProbe(): Attempt {
       canvas.width = canvas.height = SIZE;
       const context = canvas.getContext("2d", { willReadFrequently: true });
       if (!context) return finish("unavailable");
-      // HAVE_CURRENT_DATA guarantees a decoded current frame. No play(), loop,
-      // DOM insertion, ordinary playback claim or private file is needed.
+      // Chromium can announce loadeddata before drawImage can read its frame.
+      // A blank canvas is not a verdict: sample again within the same deadline.
+      // This still needs no play(), DOM insertion or private media bytes.
       context.drawImage(video, 0, 0, SIZE, SIZE);
       const { data } = context.getImageData(0, 0, SIZE, SIZE);
+      if (data.every((value) => value === 0)) {
+        frame = requestAnimationFrame(sampleFrame);
+        return;
+      }
       const pixel = (x: number, y: number) =>
         data.subarray((y * SIZE + x) * 4, (y * SIZE + x) * 4 + 4);
       const center = pixel(16, 16);
@@ -158,6 +167,7 @@ function startProbe(): Attempt {
       finish("unavailable");
     }
   };
+  video.onloadeddata = sampleFrame;
   video.onerror = () => finish("unavailable");
   void probeBytes(controller.signal)
     .then((bytes) => {

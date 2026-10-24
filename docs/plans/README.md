@@ -16,8 +16,7 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-None. Every earlier plan is delivered; what remains open is in
-[TODO.md](TODO.md).
+- [Reliable video-sticker browser previews](2026-10-24-video-sticker-browser-probe.md): diagnose, fix and verify the VPS failure.
 
 ## How a plan runs
 

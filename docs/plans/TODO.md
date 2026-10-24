@@ -3,8 +3,8 @@
 This is the single list of what remains open: proposals awaiting an interview,
 decisions awaiting the owner, follow-ups an agent can take up and the owner's
 own gates. Each item names its owning ADR. Remove an item when it is done;
-decisions go into the ADR, not here. No plan is active
-([plan index](README.md)).
+decisions go into the ADR, not here. Active work is listed in the
+[plan index](README.md).
 
 ## Proposals awaiting an interview
 
@@ -94,9 +94,6 @@ Act only if they recur or grow.
   and fail as incomplete; smaller first batches are the remedy. If MiMo's
   literal readings of figurative Russian show up in real chats, trial Muse
   Spark 1.3 for the memory update (Q28).
-- **A media journey**: "GIFs and stickers load on screen" occasionally fails
-  when its video sticker misses the page's five-second VP9 alpha probe, and
-  passes alone.
 
 ## Waiting on the owner
 

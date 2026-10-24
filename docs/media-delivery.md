@@ -280,8 +280,12 @@ A video-sticker preview in a browser first checks an authored, self-origin
 VP9-alpha canary, not the owner's media or browser name. Its 718-byte, 32×32,
 one-frame source has no audio. A five-second attempt caps accepted streamed
 bytes at 16 KiB, verifies their SHA-256, then checks an opaque green marker and
-transparent corners in the actual decoded frame. The paused probe never claims
-ordinary playback. Simultaneous previews share one attempt; only conclusive
+transparent corners in the actual decoded frame. A loaded-data event can arrive
+before the canvas can read that frame: an entirely blank sample stays pending
+and is sampled on the next animation frame within the same five-second attempt.
+A blank sample never proves support or refusal. Success, cancellation and the
+deadline cancel pending sampling and release the decoder. The paused probe never
+claims ordinary playback. Simultaneous previews share one attempt; only conclusive
 support/refusal is cached for the document. Cancellation or temporary failure
 is not a permanent negative cache. Deliberate preview Retry may try again
 without native send or selection mutation. A private WebM source mounts only
