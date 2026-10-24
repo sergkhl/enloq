@@ -6,31 +6,6 @@ own gates. Each item names its owning ADR. Remove an item when it is done;
 decisions go into the ADR, not here. Active work is listed in the
 ([plan index](README.md)).
 
-## Adopted design awaiting implementation
-
-Implementation is authorized and active in the
-[notification and suggestion plan](2026-10-24-notifications-and-suggestions.md).
-Its owning ADRs below are adopted; delivery remains pending until the plan's
-checks, VPS deployment and Saved Build are complete.
-
-- **Prompt notifications and hostile-only softening**
-  ([ADR 20](../adr/0020-minimal-reading-and-ready-notifications.md),
-  [ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md),
-  [ADR 54](../adr/0054-incoming-text-combined-not-rewritten.md)): implement the
-  independent arrival screen, original fallback, silent burst updates and
-  renamed Soften hostile messages feature. Existing mood-triggered checks
-  establish no hostile-only behavior. Keep this separate from Unseen
-  readiness and preserve the existing full-block quiet period.
-- **Manual suggestions, automation controls, Style and diagnostics**
-  ([ADR 25](../adr/0025-emotion-response-suggestions.md),
-  [ADR 49](../adr/0049-useful-response-suggestions.md),
-  [ADR 56](../adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)):
-  remove outgoing Rewrite and tones, add draft-aware manual generation,
-  split per-chat Automatic suggestions from shared manual/automatic Style,
-  convert existing settings and add content-free generation/skip diagnostics.
-  Build the app and matching web design under their normal checks and
-  deployment/Saved Build requirements when implementation is instructed.
-
 ## Proposals awaiting an interview
 
 None of these is adopted, implemented or authorized.
