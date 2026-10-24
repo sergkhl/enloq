@@ -12,10 +12,33 @@ The product has a React web client and an Expo / React Native app, backed by a
 Python service. Enloq comes from *en* (縁, human connection) and *loqui*
 (Latin, “to speak”).
 
-| Read with less friction | Edit before you send | Catch up on groups |
-| --- | --- | --- |
-| [<img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a Calmed message, with the original available through the AI view toggle">](docs/screenshots/enloq-reading.png) | [<img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions and an edited draft with separate Rewrite and Send controls">](docs/screenshots/enloq-reply.png) | [<img src="docs/screenshots/enloq-briefing.png" width="270" alt="Enloq daily group briefing with topic summaries, participants and source links">](docs/screenshots/enloq-briefing.png) |
-| Read a calm rendering of a frustrated message and return to the original. | Choose a suggestion, edit your draft and send when ready. | Follow the key points back to the messages behind them. |
+<table>
+  <thead>
+    <tr>
+      <th width="33%">Read with less friction</th>
+      <th width="33%">Edit before you send</th>
+      <th width="33%">Catch up on groups</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td width="33%" valign="top">
+        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a Calmed message, with the original available through the AI view toggle"></a>
+      </td>
+      <td width="33%" valign="top">
+        <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions and an edited draft with separate Rewrite and Send controls"></a>
+      </td>
+      <td width="33%" valign="top">
+        <a href="docs/screenshots/enloq-briefing.png"><img src="docs/screenshots/enloq-briefing.png" width="270" alt="Enloq daily group briefing with topic summaries, participants and source links"></a>
+      </td>
+    </tr>
+    <tr>
+      <td width="33%" valign="top">Read a calm rendering of a frustrated message and return to the original.</td>
+      <td width="33%" valign="top">Choose a suggestion, edit your draft and send when ready.</td>
+      <td width="33%" valign="top">Follow the key points back to the messages behind them.</td>
+    </tr>
+  </tbody>
+</table>
 
 *Open any screenshot at full size. These are high-resolution captures of the
 real phone-width web interface, using authored synthetic conversations and
