@@ -57,10 +57,14 @@ Telegram authorizations, spending and unrelated work.
 
 ## Open findings
 
-Implementation and deterministic checks are complete. Provider semantic
-acceptance completed as Low quality; guarded browser checks, VPS deployment
-and the Android Saved Build remain. Native phone notification display and an iPhone build are separate
-claims; the browser arrival check observes service eligibility metadata.
+Implementation and the complete deterministic checks passed. Provider semantic
+acceptance completed as Low quality. The pushed revision is deployed healthy;
+the guarded manual and arrival browser checks passed their controls. Reviewing
+the manual output found a full-draft echo in Professional options; its
+deterministic extraction and regression checks now pass before the
+follow-up deployment and Android Saved Build. Native phone notification
+display and an iPhone build are separate claims; the browser arrival check
+observes service eligibility metadata.
 
 Provider acceptance bounds: the authored softening pass uses at most 32
 rewrite, 32 decision and 30 sarcasm-judge requests, 2,400 seconds and $0.20
@@ -71,6 +75,12 @@ Maya-to-owner messages, at most eight model requests, 15 minutes and $0.10
 counted. Preserve chat choices and drafts; Remember remains Off. Record every
 actual request in TODO. Low semantic quality is recorded without unchanged
 resampling; target, format, source, budget and delivery failures remain material.
+
+The insertion fix permits one new Professional generation with a different
+authored draft: at most five writer/label requests including no-work retries,
+ten minutes and $0.05 counted, no sends or memory changes. Restore the prior
+settings and empty composer. This verifies changed output handling, not a
+resample of the hostile-only semantic corpus.
 
 ## Validation Log
 
@@ -127,3 +137,31 @@ resampling; target, format, source, budget and delivery failures remain material
   MiMo/Xiaomi $0.14/$0.28; Muse/Meta $0.10/$0.20; Decider/Perplexity
   checkpoint -20261016 $0.02/$0.00. The service's own configured caller key
   served the check, with no model/provider fallback or configuration change.
+- Merged and pushed `a8b5a5d`, verified origin/main equality, removed the clean
+  task worktree and merged branch, then deployed from clean primary main.
+  The running image `enloq:a8b5a5d801c7` reported healthy.
+- Guarded Owner Account/Maya browser checks passed: three manual generations
+  exercised Friendly, Professional and Idioms with automation Off, unchanged
+  draft during generation, insertion, Undo and no send. Three authored native
+  arrivals exercised clean/hostile/clean screening; first clean eligibility
+  took 2.076 seconds from service arrival. A hostile source held, later clean
+  text updated silently in the same group, and completed softening could not
+  replace the newer preview. Settings were restored; Remember stayed Off.
+- The two browser runs used eleven receipted requests: three writers and
+  three label calls ($0.001778381), plus three arrival screens, one block
+  decision and one softening ($0.000748140). Total $0.002526521; no refused or
+  unknown outcomes. Allowance now 1,843. Private arrival metadata and scoped
+  receipts are retained outside Playwright's cleared output directory in
+  `.local/live-evidence/`. No physical-phone banner claim is made.
+- The first manual browser assertion missed a semantic output-contract
+  defect: Professional sometimes repeated the complete draft in its options.
+  A follow-up task isolates deterministic extraction of an exactly preserved
+  prefix/suffix at the captured UTF-16 cursor, leaving only its addition.
+  Punctuation insertion and copied draft literals are covered too; generated
+  alternatives do not rewrite authored text or resample on failure. The live
+  check now rejects whole-draft echoes and preserves evidence across runs.
+- Follow-up verification passed 259 backend cases across manual generation,
+  output extraction, typography, scheduling, controls, settings, acceptance
+  and source state. It includes exact mid-draft and UTF-16 extraction,
+  punctuation, unchanged draft/Undo and echo-only format failure without
+  another call. Ruff, format, web typecheck and whitespace checks passed.

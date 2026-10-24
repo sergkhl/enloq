@@ -76,17 +76,22 @@ def splice(text, option, cursor):
     """Insert at a browser caret (UTF-16 code units) or, when none is known or
     it no longer fits, at the end. Existing characters are kept; one space
     separates the option from adjacent words. Returns the text and new caret."""
-    units = text.encode("utf-16-le")
-    position = len(text)
-    if cursor is not None and cursor * 2 <= len(units):
-        try:
-            position = len(units[: cursor * 2].decode("utf-16-le"))
-        except UnicodeDecodeError:
-            position = len(text)
-    before, after = text[:position], text[position:]
-    if before and not before[-1].isspace():
+    before, after = domain.split_draft(text, cursor)
+    if (
+        before
+        and not before[-1].isspace()
+        and option
+        and not option[0].isspace()
+        and option[0] not in ".,;:!?)]}"
+    ):
         option = " " + option
-    if after and not after[0].isspace():
+    if (
+        after
+        and not after[0].isspace()
+        and after[0] not in ".,;:!?)]}"
+        and option
+        and not option[-1].isspace()
+    ):
         option += " "
     return before + option + after, len((before + option).encode("utf-16-le")) // 2
 

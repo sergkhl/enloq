@@ -159,6 +159,8 @@ def _literal_values(packet, generated):
             values.add(value)
 
     sources = [*packet.get("messages", []), *packet.get("context", [])]
+    if packet.get("manual") and isinstance(packet.get("draft"), str):
+        sources.append({"text": packet["draft"]})
     if isinstance(packet.get("direct_reply"), dict):
         sources.append(packet["direct_reply"])
     for source in sources:

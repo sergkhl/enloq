@@ -1,4 +1,4 @@
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import {
   expect,
   MAYA,
@@ -12,11 +12,17 @@ import {
 // writer and one label request per set: at most 15 model requests, 25 minutes
 // and $0.15 counted (unknowns included). No Telegram sends, no memory changes.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
+const onlyStyle = process.env.ENLOQ_LIVE_SUGGESTION_STYLE;
+const styles = ["friendly", "professional", "idioms"];
+if (onlyStyle && !styles.includes(onlyStyle)) {
+  throw new Error("Choose a known suggestion style for the bounded live check");
+}
+const maxNanos = onlyStyle ? 50_000_000 : 150_000_000;
 
 test("manual additions use each Style with automation off, preserving draft and Undo", async ({
   page,
 }) => {
-  test.setTimeout(1_500_000);
+  test.setTimeout(onlyStyle ? 600_000 : 1_500_000);
   await openMayaChat(page, "owner");
   const initial = await (await page.request.get(CHAT)).json();
   expect(
@@ -36,7 +42,9 @@ test("manual additions use each Style with automation off, preserving draft and 
     .budget;
   expect(budget.reached).toBe(false);
   const evidence: unknown[] = [];
-  const seed = "[Enloq authored manual check] Friday does not work for me. ";
+  const seed = onlyStyle
+    ? "[Enloq authored insertion check] Monday does not work for me. "
+    : "[Enloq authored manual check] Friday does not work for me. ";
   const field = page.getByRole("textbox", { name: "Message" });
   const saveSettings = (automatic: boolean, style: string) =>
     page.request.post(`${CHAT}/suggestions/settings`, {
@@ -44,10 +52,10 @@ test("manual additions use each Style with automation off, preserving draft and 
       headers: { Origin: ORIGIN },
     });
   try {
-    for (const style of ["friendly", "professional", "idioms"]) {
+    for (const style of onlyStyle ? [onlyStyle] : styles) {
       const now = (await (await page.request.get("/api/settings")).json())
         .budget;
-      expect(now.spent - budget.spent < 150_000_000 && !now.reached).toBe(true);
+      expect(now.spent - budget.spent < maxNanos && !now.reached).toBe(true);
       expect((await saveSettings(false, style)).status()).toBe(200);
       await field.fill(seed);
       const before = await (await page.request.get(CHAT)).json();
@@ -80,6 +88,9 @@ test("manual additions use each Style with automation off, preserving draft and 
       ).toBe("ready");
       expect(shown.style).toBe(style);
       expect(shown.options.length).toBeGreaterThan(0);
+      for (const option of shown.options) {
+        expect(option.text.includes(seed.trim())).toBe(false);
+      }
       await expect(field).toHaveValue(seed);
       await page.reload();
       await expect(field).toHaveValue(seed);
@@ -87,6 +98,7 @@ test("manual additions use each Style with automation off, preserving draft and 
       await area.locator(".suggestion-list button").first().tap();
       await expect.poll(() => field.inputValue()).not.toBe(seed);
       expect((await field.inputValue()).startsWith(seed.trimEnd())).toBe(true);
+      expect((await field.inputValue()).split(seed.trim()).length).toBe(2);
       await page.getByRole("button", { name: "Undo suggestion" }).tap();
       await expect(field).toHaveValue(seed);
       const after = await (await page.request.get(CHAT)).json();
@@ -94,6 +106,9 @@ test("manual additions use each Style with automation off, preserving draft and 
         before.operations.map((op: any) => op.id),
       );
       await field.fill("");
+      const spent = (await (await page.request.get("/api/settings")).json())
+        .budget.spent;
+      expect(spent - budget.spent).toBeLessThanOrEqual(maxNanos);
     }
     expect(
       (
@@ -116,7 +131,8 @@ test("manual additions use each Style with automation off, preserving draft and 
       });
     }
     await saveSettings(settings.automatic, settings.style);
-    const path = "../.local/live-results/manual-suggestions.json";
+    mkdirSync("../.local/live-evidence", { recursive: true, mode: 0o700 });
+    const path = `../.local/live-evidence/manual-suggestions-${Date.now()}.json`;
     writeFileSync(path, JSON.stringify(evidence, null, 2) + "\n", {
       mode: 0o600,
     });

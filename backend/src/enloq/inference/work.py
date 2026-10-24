@@ -27,6 +27,7 @@ from .openrouter import (
     has_target_text,
 )
 from .streaming import cost_nanos
+from .suggestion_insertions import normalize_insertions
 from .suggestion_typography import normalize_suggestions
 
 # ADR 15: counted spending is receipts plus a rough flat estimate per call whose
@@ -141,6 +142,7 @@ def validate_output(role, response, packet):
         except BriefingError as failure:
             raise InvalidOutput(failure.code) from None
     if role == "response_suggestions":
+        content = normalize_insertions(content, packet)
         content = normalize_suggestions(content, packet)
     model = {
         "incoming_rewrite": IncomingRewrite,

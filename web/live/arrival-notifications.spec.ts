@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import {
   expect,
   MAYA,
@@ -155,7 +155,8 @@ test("arrival screens release clean previews before quiet and later updates stay
   } finally {
     await change("/suggestions/settings", settings);
     await change("/calming", calming);
-    const path = "../.local/live-results/arrival-notifications.json";
+    mkdirSync("../.local/live-evidence", { recursive: true, mode: 0o700 });
+    const path = `../.local/live-evidence/arrival-notifications-${Date.now()}.json`;
     writeFileSync(path, JSON.stringify(evidence, null, 2) + "\n", {
       mode: 0o600,
     });

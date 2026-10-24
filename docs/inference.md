@@ -652,7 +652,13 @@ new message or used source, attribution or derivative change. Nothing
 regenerates on withdrawal. Settings changed during a call apply next time.
 
 **Output and selection.** The writer returns zero to three distinct nonblank
-options, each at most 280 characters. One decision-model `suggestion_labels`
+options, each at most 280 characters. For a nonblank manual draft, an exact
+copy of its prefix and suffix around the captured cursor is removed from a
+completed-draft output before option validation and typography normalization.
+Only its new insertion is offered; an echo with no addition fails format
+without resampling. Ordinary fragments stay intact, and changed draft wording
+is never applied as a replacement. Draft literals also protect copied exact
+values during typography normalization. One decision-model `suggestion_labels`
 call labels a nonempty set as acknowledge, support, clarify, celebrate,
 accept, decline or later. A yes or no needs a contrasting stance, while later
 may stand alone. A nonblank manual draft already supplies intent, so its

@@ -37,6 +37,18 @@ IDIOMS_WRITER: Literal["mimo", "muse"] = "muse"
 CALM_USEFULNESS = 0.7
 
 
+def split_draft(text, cursor):
+    """Split at a UTF-16 caret; an unknown or invalid caret means the end."""
+    units = text.encode("utf-16-le")
+    position = len(text)
+    if cursor is not None and 0 <= cursor * 2 <= len(units):
+        try:
+            position = len(units[: cursor * 2].decode("utf-16-le"))
+        except UnicodeDecodeError:
+            pass
+    return text[:position], text[position:]
+
+
 class SuggestionOption(Model):
     purpose: Purpose
     text: str = Field(min_length=1, max_length=OPTION_CHARACTERS)

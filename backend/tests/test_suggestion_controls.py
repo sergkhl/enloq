@@ -94,6 +94,26 @@ def test_splice_keeps_existing_text_at_the_utf16_caret(text, cursor, expected, c
     assert splice(text, "OPTION", cursor) == (expected, caret)
 
 
+@pytest.mark.parametrize(
+    "text,option,cursor,expected",
+    [
+        (
+            "Monday does not work",
+            ". Could Tuesday work?",
+            None,
+            "Monday does not work. Could Tuesday work?",
+        ),
+        ("Please.", "send it", 6, "Please send it."),
+        ("Hello", " there ", None, "Hello there "),
+        ("Hello", " there ", 0, " there Hello"),
+    ],
+)
+def test_splice_preserves_punctuation_and_supplied_spacing(
+    text, option, cursor, expected
+):
+    assert splice(text, option, cursor)[0] == expected
+
+
 async def test_settings_switch_and_guidance_are_shared_and_versioned(served):
     client, manager, conversation = served
     settings = client.get("/api/settings").json()
