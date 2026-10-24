@@ -16,8 +16,7 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-- [Allow one-sided suggestion sets](2026-10-24-suggestion-stances.md): update
-  validation and generation guidance, verify both paths, then deploy.
+No active plans.
 
 Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
 implementation or deployment.
