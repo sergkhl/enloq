@@ -58,8 +58,8 @@ Telegram authorizations, spending and unrelated work.
 ## Open findings
 
 Implementation and deterministic checks are complete. Provider semantic
-acceptance, guarded browser checks, VPS deployment and the Android Saved Build
-remain. Native phone notification display and an iPhone build are separate
+acceptance completed as Low quality; guarded browser checks, VPS deployment
+and the Android Saved Build remain. Native phone notification display and an iPhone build are separate
 claims; the browser arrival check observes service eligibility metadata.
 
 Provider acceptance bounds: the authored softening pass uses at most 32
@@ -110,3 +110,20 @@ resampling; target, format, source, budget and delivery failures remain material
   notification guards and manual generation. Ruff and format checks passed.
   Android duplicate-event delivery and silent updates passed their 12-case
   focused suite and the complete Jest run.
+- Candidate `737f6a0` was merged and pushed, then built from clean primary
+  main for the authored provider check. The service was stopped under its
+  existing lifecycle authorization for the check lock and resumed healthy on
+  its prior image afterwards. No live Telegram session or send was used.
+- Authored hostile-only provider pass: 30 cases, 30 pinned Decider requests,
+  12 Muse rewrites and 12 authorized sarcasm judges; 157.50 seconds and
+  $0.004644022 counted, within the declared bounds. All formats were usable;
+  no route or provider error was recorded. Twelve non-hostile controls stayed
+  unchanged. Detection missed six subtle sarcasm, blame or forwarded cases:
+  **Low quality**, not a zero-miss semantic pass. All 12 softened outputs
+  passed the automated checks; the owner's reading remains open. No unchanged
+  resampling ran. Private evidence is the service data folder's
+  `calming-check-5qord800/report.json` and `pairs.md`. Allowance now 1,832.
+- Verified current rates before that pass, per million input/output tokens:
+  MiMo/Xiaomi $0.14/$0.28; Muse/Meta $0.10/$0.20; Decider/Perplexity
+  checkpoint -20261016 $0.02/$0.00. The service's own configured caller key
+  served the check, with no model/provider fallback or configuration change.

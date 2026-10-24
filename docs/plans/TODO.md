@@ -36,7 +36,7 @@ checks, VPS deployment and Saved Build are complete.
 None of these is adopted, implemented or authorized.
 
 - **Further decision-model uses** ([ADR 30](../adr/0030-decider-emotion-classification.md)
-  Q10): a completeness and invention check of rewritten text (media and calmed
+  Q10): a completeness and invention check of rewritten text (media and softened
   rewrites since ADR 54), a guard against suggestion options that add meaning
   the owner never gave ([ADR 25](../adr/0025-emotion-response-suggestions.md)'s
   rules; ADR 49 Q4 allows contrasting stances), and a source-language check.
@@ -111,7 +111,7 @@ None of these is adopted, implemented or authorized.
 Act only if they recur or grow.
 
 - **Muse's shared pool** ([ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)):
-  OpenRouter's shared upstream for Muse Spark 1.3 sometimes refuses calmed
+  OpenRouter's shared upstream for Muse Spark 1.3 sometimes refuses softened
   rewrites with HTTP 429; they retry after 30, 60 and 120 seconds. If
   refusals become common, a key of our own with Meta is the remedy.
 - **Memory updates** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)):
@@ -158,8 +158,9 @@ Act only if they recur or grow.
   forward the APK to a friend; their sign-in and Join Request, the push on the
   owner's devices and approval in People.
 - **Soften hostile messages** ([ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)):
-  the owner's reading of authored pairs remains open. The existing tenth
-  mood-triggered gate's pairs do not establish the adopted hostile-only rule.
+  the owner's reading of hostile-only authored pairs remains open. Detection
+  missed six subtle sarcasm, blame and forwarded-hostility cases; the current
+  semantic limit is recorded in [inference](../inference.md#retained-acceptance-limits).
 - **Memory and Idioms** ([ADR 56](../adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md),
   [ADR 55](../adr/0055-person-and-account-memory-and-traits.md)): switch
   Remember this chat on where wanted; Retry the one failed first memory update
@@ -204,4 +205,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 1,778 are used. Add each check's requests here.
+total; 1,832 are used. Add each check's requests here.

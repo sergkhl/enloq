@@ -1130,6 +1130,14 @@ Authored offline coverage: `backend/tests/test_message_actions.py` and
 
 ## Retained acceptance limits
 
+- **Hostile-wording detection: Low quality.** The pinned decision model can
+  miss subtle hostile sarcasm, aggressive blame and hostility in a forwarded
+  exchange. In the authored hostile-only pass it missed six of 18 positive
+  cases; all 12 non-hostile controls stayed unchanged. The 12 softened outputs
+  passed the automated language, literal/threat and sarcasm checks. This is
+  not a zero-miss semantic pass or proof of complete faithfulness; the owner's
+  reading remains open. The gate uses no unchanged resampling.
+
 These Low quality and unverified outcomes of finite checks await the owner's
 quality review ([TODO](plans/TODO.md)). Each stands as found: nothing
 resamples it automatically, later passing checks don't re-score it, and a
