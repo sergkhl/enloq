@@ -1,3 +1,19 @@
+## Default pre-deployment order
+
+Before every routine deployment:
+
+1. Validate and commit changes in the task worktree.
+2. Merge its task branch into `main` from the primary checkout. Resolve
+   conflicts and rerun affected checks when necessary.
+3. Push `main` to `origin` and verify that both name the same revision.
+4. Remove the completed, clean, fully merged task worktree with
+   `git worktree remove`, then delete its merged local branch.
+5. Deploy the verified, pushed revision from the clean primary `main` checkout.
+
+Never deploy from a feature branch, detached HEAD or temporary worktree.
+Preserve unrelated dirty or unmerged worktrees, the primary checkout and
+runtime data. Never force-push `main` or force-delete a worktree.
+
 # Contributor instructions
 
 This applies throughout this repository. Read [CONTEXT.md](CONTEXT.md), the
@@ -46,14 +62,27 @@ Enloq is a Telegram client that reduces the cognitive load of correspondence;
 the model acts as a communication translator. The ADRs own the details; these
 are the standing principles:
 
-- Incoming text is combined into blocks and shown as sent; only calming
-  rewrites a frustrated or angry block, keeping every fact, request, deadline
-  and threat ([ADR 53](docs/adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md),
+- Incoming text is combined into blocks and shown as sent; only explicit
+  hostile wording triggers **Soften hostile messages**, keeping every fact,
+  request, deadline and threat
+  ([ADR 53](docs/adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md),
   [ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). Voice
   notes, video circles and images are rewritten into clear text.
-- Outgoing Rewrite offers Neutral, Professional and Friendly casual, starts
-  on click, streams into the editable draft and never sends. Send and Rewrite
-  are separate, always-visible buttons.
+- Outgoing Rewrite and its tones are removed. Private chats have separate,
+  always-visible Send and Generate suggestions buttons. Generation leaves
+  the draft intact; selection inserts at the cursor with Undo and never
+  sends. Manual additions follow a nonempty draft's intent.
+- Each private chat separates **Automatic suggestions** On/Off from **Style**
+  Friendly, Professional or Idioms, Friendly by default, for both generation
+  paths. Automation Off leaves manual generation available. The owner's
+  server-wide switch controls automation only.
+- Incoming notifications follow [ADR 20](docs/adr/0020-minimal-reading-and-ready-notifications.md):
+  one alert per burst, later updates silent. With softening On, text gets an
+  immediate hostile-wording screen with a five-second arrival deadline;
+  clean originals notify immediately, hostile previews wait for softening.
+  If screening or a required rewrite cannot proceed or fails, send the
+  original preview immediately. Softening Off skips screening. Textless
+  media uses its type label. Unseen readiness stays separate.
 - Response Suggestions, Person and Account Memory, group briefings and members
   follow [ADR 25](docs/adr/0025-emotion-response-suggestions.md),
   [ADR 49](docs/adr/0049-useful-response-suggestions.md),
@@ -61,9 +90,9 @@ are the standing principles:
   [ADR 55](docs/adr/0055-person-and-account-memory-and-traits.md),
   [ADR 34](docs/adr/0034-group-chats-and-daily-briefings.md) and
   [ADR 48](docs/adr/0048-members-on-the-shared-service.md).
-- Background work covers chats active in the last seven days, waits for 30
-  quiet seconds and uses at most the 20 preceding same-chat messages plus the
-  one directly replied-to message. It never scans older history or follows
+- Combined-block background work covers chats active in the last seven days,
+  waits for 30 quiet seconds and uses at most the 20 preceding same-chat
+  messages plus the one directly replied-to message. It never scans older history or follows
   reply chains. Content is cached for 30 days; unchanged results are reused.
 - Do not add attention or task tracking, topic classification, a sparkles
   icon or inline usage hints. Keep accessible names and real status and error
@@ -202,19 +231,21 @@ container, before a check.
 The adopted routes, which need no further authorization within their roles:
 
 - **MiMo** (`xiaomi_mimo/mimo-v2.6-flash`, Xiaomi's own API, with its
-  `thinking` switch) for image and speech rewriting, outgoing rewriting,
-  Response Suggestions, Reaction Assessment, Person and Account Memory and
-  trait notes ([ADR 29](docs/adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
+  `thinking` switch) for image and speech rewriting, Friendly and Professional
+  Response Suggestions (manual and automatic), Reaction Assessment, Person
+  and Account Memory and trait notes
+  ([ADR 29](docs/adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
   Its accepted terms: no prompt training, 30-day retention,
   Singapore/Netherlands processing, one private app-level pseudonym as the user
   identity. Do not claim zero data retention.
 - **Muse Spark 1.3** (`openrouter/meta/muse-spark-1.3-contributor` through
-  `meta`, under its accepted Contributor terms) writes calmed text and idiom
+  `meta`, under its accepted Contributor terms) writes softened hostile text and idiom
   suggestions (ADR 53, ADR 56).
 - **Decider V1.2** (`perplexity/pplx-decider-v1.2`, pinned to checkpoint
   `-20261016`, through Perplexity only on OpenRouter's Decisions endpoint via
-  the proxy) for Recipient Emotion, Reaction Assessment, group ad and bot
-  filtering, suggestion usefulness and labels, and the traits' scales
+  the proxy) for hostile-wording screening, Recipient Emotion, Reaction
+  Assessment, group ad and bot filtering, suggestion usefulness and labels,
+  and the traits' scales
   ([ADR 30](docs/adr/0030-decider-emotion-classification.md),
   [ADR 49](docs/adr/0049-useful-response-suggestions.md)). Perplexity publishes
   no retention or training terms for it. Never use it for text generation, and
@@ -232,7 +263,8 @@ The adopted routes, which need no further authorization within their roles:
 **Budgets.** Each member has a Daily Budget and a Group Briefing Budget,
 counting only their accounts and set only by the owner (ADR 48). The owner's
 Daily Budget is set from $0 to $10 (default $1) and covers background work,
-memory, outgoing rewrites, explicit retries, failures and restarts; the Group
+memory, manual and automatic suggestions, hostile-wording screening, explicit
+retries, failures and restarts; the Group
 Briefing Budget (default $2) covers briefing image, chunk, final and Retry
 requests ([ADR 15](docs/adr/0015-owner-controlled-processing-memory-and-prompts.md),
 ADR 34). The ceilings are independent, with no borrowing, shared concurrency

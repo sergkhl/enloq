@@ -24,9 +24,9 @@ web does only what the app does
 38 Q6's split into first-release, later and web-only pieces.
 
 **Writing in groups (Q1).** The app reads and writes in groups: Send, Reply
-with its [Reply Quote](0041-reply-quotes.md), photos, GIFs and stickers, and
-Rewrite in Neutral, Professional or Friendly casual, with Pending Sends as in
-private chats. The composer works only while the group's access is verified,
+with its [Reply Quote](0041-reply-quotes.md), photos, GIFs and stickers,
+with Pending Sends as in private chats. Groups have no outgoing Rewrite,
+tone controls or manual suggestions (ADR 25). The composer works only while the group's access is verified,
 as on the web. Retained group work and the review and resume of a send paused
 by lost group access are CU6's
 ([ADR 46](0046-the-apps-catch-up-units.md)), in both clients.

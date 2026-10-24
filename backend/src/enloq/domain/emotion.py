@@ -48,6 +48,11 @@ class Classification(Model):
     # ADR 53: the probability that the latest block is sarcastic, told to its
     # calmed rewrite; None when the answer was not given.
     sarcasm: float | None = Field(default=None, ge=0, le=1)
+    hostility: float | None = Field(default=None, ge=0, le=1)
+
+    @property
+    def hostile(self):
+        return self.hostility is not None and self.hostility >= 0.5
 
     @property
     def code(self):

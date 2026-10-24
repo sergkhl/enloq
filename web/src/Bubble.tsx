@@ -795,7 +795,7 @@ export function AiBubble({
           </span>
         )}
         {calmed && text !== null && (
-          <span className="calmed-mark"> · Calmed</span>
+          <span className="calmed-mark"> · Softened</span>
         )}
       </small>
       <ForwardedLines lines={forwardedGroups(live, timezone)} />

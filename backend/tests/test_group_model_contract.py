@@ -95,7 +95,7 @@ def engine(tmp_path, handler):
 def test_group_roles_use_exact_mimo_route_without_private_format_pauses():
     assert GROUP_ROLES <= ROLES & BACKGROUND
     assert {ROUTES[role] for role in GROUP_ROLES} == {f"{LOGICAL_MODEL}@{PROVIDER}"}
-    assert FORMAT_PAUSED == {"incoming_rewrite", "outgoing_rewrite", "chat_memory"}
+    assert FORMAT_PAUSED == {"incoming_rewrite", "chat_memory"}
     assert GROUP_ROLES.isdisjoint(FORMAT_PAUSED)
 
 
@@ -162,7 +162,7 @@ def test_saved_group_guidance_is_durable_bounded_and_reset_independently(tmp_pat
     saved = registry.set_guidance({"group_briefing": custom})
     retained = AccountRegistry(tmp_path).guidance()
     assert retained == saved
-    assert saved["defaults_revision"] == guidance.DEFAULTS_REVISION == 15
+    assert saved["defaults_revision"] == guidance.DEFAULTS_REVISION == 16
     assert {
         name: text for name, text in saved["fields"].items() if name != "group_briefing"
     } == {

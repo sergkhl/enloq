@@ -2,9 +2,9 @@
 
 This context describes Enloq, a Telegram client in which an LLM acts as a
 communication translator for people's own correspondence. It combines what
-arrives, makes voice notes and images readable, calms hostile messages and
-rewrites what the user writes in a chosen tone, while every original stays one
-tap away. One shared service, the Service Host, serves the owner and the
+arrives, makes voice notes and images readable, softens hostile messages and
+offers automatic and manual suggestions for continuing a conversation, while
+every original stays one tap away. One shared service, the Service Host, serves the owner and the
 friends they approve as Members, through the Enloq app and a web app built to
 the same design.
 
@@ -27,14 +27,15 @@ centered column about 480 px wide and does only what the app does
 ([ADR 44](docs/adr/0044-mobile-only-web-in-the-apps-design.md)). Its scope:
 private chats, Group Chats with Daily Briefings and each account's Saved
 Messages; switching between several Telegram accounts; Incoming Blocks
-processed in the background, with media rewrites, Calming, transcripts, Image
-Understanding, Recipient Emotion and Response Suggestions; and outgoing text
-and media, with Outgoing Rewrite in a Tone Preset.
+processed in the background, with media rewrites, hostile-message softening,
+transcripts, Image Understanding, Recipient Emotion and Response Suggestions;
+and outgoing text and media, with manual suggestion generation in private
+chats.
 
 **Communication Translator**:
 The LLM's role: reducing cognitive load by making fragmented or difficult
-incoming communication readable, and expressing the user's own message in a
-chosen tone. It preserves substance and source language and never supplies
+incoming communication readable and offering bounded wording to answer or
+continue the conversation. It preserves substance and source language and never supplies
 missing intent as fact. The user chooses and sends every answer. Response
 Suggestions offer bounded wording; nothing tracks tasks, attention or topics.
 
@@ -65,7 +66,7 @@ until the service accepts them.
 
 **Member**:
 A person using the Service Host with their own Telegram accounts, trusted
-clients, Hide Bots, Reading View, tone, budgets, provider pseudonym,
+clients, Hide Bots, Reading View, budgets, provider pseudonym,
 notifications and per-chat choices
 ([ADR 48](docs/adr/0048-members-on-the-shared-service.md)). A trusted client
 opens only its member's Account Workspaces. The owner is the first member and
@@ -224,7 +225,7 @@ with icons:
 - **Budget**: the member's Daily and Group Briefing Budgets with today's
   spending, read-only to a friend.
 - **AI** (the owner only): the Processing Character Threshold, the Concurrency
-  Limit, the Memory and Suggestions switches and Guidance, under a
+  Limit, the Memory and Automatic suggestions switches and Guidance, under a
   Decision-Model Outage notice while one lasts.
 - **Privacy**: Pair a phone and the member's trusted browsers and devices with
   Forget.
@@ -252,9 +253,9 @@ An account's own Telegram chat with itself, shown in the list's third tab,
 Saved, for every account, members' included (ADR 50). It is one timeline as in
 Telegram, newest at the bottom, with Load earlier and no tags. Nothing there
 goes to a model: it has no rewrites, transcripts, emotion, suggestions, memory,
-calming or Reading View toggle. Its messages are the account's own, so they
+softening or Reading View toggle. Its messages are the account's own, so they
 bring no push or Unseen Message, and its content follows the chats' 30-day
-rule. The tab has the chat composer without Rewrite and no reactions. Deleted
+rule. The tab has the chat composer without AI actions and no reactions. Deleted
 notes leave it at once. The Owner Account's holds its pairing codes, "was
 paired" notes and the pinned Saved Build.
 
@@ -267,8 +268,8 @@ alphabetically, and typing filters both and adds Telegram's people search
 under "Global search". People only, never bots, channels, groups or phone
 numbers. The chosen chat opens ready to write, even with no history. Until a
 message makes it a Recent Chat, it shows its Telegram history as originals,
-gets no AI on old messages and stays out of the Private list; Rewrite works on
-its draft.
+gets no background AI on old messages and stays out of the Private list.
+Manual suggestions may use its draft as intent without processing that history.
 
 **Chat Route**:
 The URL of one Account Workspace's exact chat: the stable Telegram account user
@@ -302,8 +303,8 @@ The screen a private chat's header photo and name open
 - the person's photo, name, @username, phone number when Telegram shares it
   and bio, read from Telegram on each opening and never stored;
 - the Recipient Emotion with its label, reason, source and time;
-- the chat's switches: Calm this chat, the Suggestions Choice and Remember This
-  Chat;
+- the chat's switches: Soften hostile messages, Automatic suggestions and
+  Remember This Chat, plus its Suggestion Style;
 - what the person cares about (Person Memory) and their Traits;
 - Copy chat link.
 
@@ -550,7 +551,7 @@ absence from the connected account are different evidence.
 **Account AI Processing**:
 The durable On/Off switch for one Telegram account's AI work, On by default,
 including for a Member's account once approved (ADR 14). Off stops new
-incoming, outgoing, memory, transcription and group work for that account while
+incoming, suggestion, memory, transcription and group work for that account while
 sync, media prefetch, sending, drafts and cached results continue; started
 work may finish, and its next stage waits for On. It is the master over Group
 AI Processing. The switch is in Manage accounts; the account sheet marks such
@@ -563,7 +564,7 @@ Consecutive incoming messages of a private chat, also called a message group
 service message or a calendar-day boundary in the server's timezone. Its
 processing begins after 30 quiet seconds. A text-only block shows in AI reading
 as its originals together in one bubble, headed with its message count and
-time, and is decided rather than rewritten unless it is calmed
+time, and is decided rather than rewritten unless it is softened
 ([ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). A block with
 an image, a voice note or a Video Circle gets an Incoming Rewrite of the whole
 group into one coherent text, keeping its attachments; an oversized block keeps
@@ -572,7 +573,7 @@ distinct from a Group Chat.
 
 **Incoming Rewrite**:
 The clearer, neutral rendering of an Incoming Block that has an image, a voice
-note or a Video Circle, and of a calmed block
+note or a Video Circle, and of a softened block
 ([ADR 29](docs/adr/0029-mimo-route-and-structured-incoming-rewriting.md),
 ADR 54). Under the Faithfulness Rules it preserves facts, requests, refusals,
 deadlines, conditions, uncertainty, material complaints, language and the
@@ -583,37 +584,37 @@ one sentence for a single point, short paragraphs for separate topics and "•"
 lines, numbered when order matters, for three or more parallel items, grouped
 by topic in the order the sender raised them, with no summary line, ranking or
 Markdown. It reads Person Memory as reference context and streams in as a
-Streaming Rewrite. Text-only blocks are not rewritten except by Calming; a
-hidden `text_rewriting` registry switch, off and not in Settings, restores
+Streaming Rewrite. Text-only blocks are rewritten only by hostile-message
+softening; a hidden `text_rewriting` registry switch, off and not in Settings, restores
 text rewriting under the Processing Character Threshold.
 
 **Streaming Rewrite**:
-An incomplete rewrite shown in place, in the incoming message or the outgoing
-draft, as its text arrives (ADR 19). It is provisional until the whole result
-completes and validates; failure restores the prior content or originals.
-While an outgoing rewrite streams, editing and sending wait, and Undo restores
-the pre-attempt draft at once. Stop rewrite, outgoing only, keeps the partial
-text as an editable draft marked Stopped · incomplete draft, or the original if
-no text arrived; Undo restores the complete pre-attempt draft until another
-edit, and late output never overwrites a stopped draft. Incoming rewrites have
-no Stop. Reopening a chat attaches to the same attempt.
+An incomplete incoming rewrite shown in its message as text arrives (ADR 19).
+It is provisional until the complete result validates; failure restores the
+applicable previous rendering or originals. Incoming rewriting has no Stop.
+Reopening attaches to the same service-owned attempt. Suggestion sets publish
+only when complete and never stream into the draft.
 
-**Calming**:
-The rewrite of an incoming private block that Emotion Classification marks
-frustrated or angry, in a chat whose Calm this chat switch is on
+**Hostile Wording**:
+Insults, aggressive blame, intimidation or hostile sarcasm directed at anyone,
+judged in context by an explicit decision-model test, independently of emotion
+(ADR 53). Frustration, anger, emphatic profanity, friendly teasing or reporting
+someone else's insult do not qualify by themselves.
+
+**Soften Hostile Messages**:
+The private chat's rewrite of hostile Incoming Blocks, governed by its
+**Soften hostile messages** switch in the Correspondent Profile, On by default
 ([ADR 53](docs/adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)).
-It keeps every fact, request, condition, amount, deadline and threat, stated
-plainly; names the sender's feeling once in a few neutral words; renders
-sarcasm by what it means; and drops insults, sarcasm, shouting and blame. The
-switch is in the Correspondent Profile and on by default, for the owner and
-every member. In a calming chat the mood decision comes first, and the rewrite,
-readiness and notification wait for it; a frustrated or angry block is calmed
-whatever its length. The switch applies to blocks processed while it is on:
-turning it on redoes nothing, and turning it off leaves calmed messages calmed.
-A calmed message carries a small Calmed label, its original one tap away, and
-the mood emoji shows as usual. Muse Spark 1.3 writes calmed text under the
-owner's Calming guidance. It is the only rewrite of incoming text; groups and
-Saved Messages are never calmed.
+It keeps every fact, request, condition, amount, deadline and threat stated
+plainly, removes hostile presentation and renders hostile sarcasm by meaning.
+A feeling is stated only when supported, never inferred from hostility alone.
+Frustration or anger without hostile wording causes no rewrite. The switch
+also governs the immediate notification screen; full blocks and rewrites
+retain 30 quiet seconds, and notifications have their own five-second screen
+and original fallback. Mood stays independent. The label is **Softened**, the
+guidance is **Soften hostile messages**, and the original remains one tap away.
+Switching On redoes no earlier result; switching Off leaves softened results
+intact. Muse Spark 1.3 writes them. Groups and Saved Messages have no softening.
 
 **Recipient Emotion**:
 The estimated emotion expressed in a private chat's latest incoming block, or
@@ -633,21 +634,20 @@ becomes current: late older work never replaces it, and removing a reaction
 revives no earlier estimate. Groups have none.
 
 **Emotion Classification**:
-The decision-model request that assigns Recipient Emotion (ADR 30,
-[ADR 49](docs/adr/0049-useful-response-suggestions.md), ADR 53). It is not
-text generation: the model returns a probability for each of the nine codes,
-and a selected probability below 0.35 becomes unknown. The incoming request
-also asks whether Response Suggestions are useful and whether the block is
-sarcastic; only a calmed rewrite is told the sarcasm answer. Every eligible
-private block is decided after its 30 quiet seconds: a text block from its
-originals; a block with media, in a calming chat, first, from its originals,
-transcripts and cached image meanings, and otherwise after its rewrite, with
-the fresh image meanings. When no decision can be made, the rewrite runs
-uncalmed and the decision follows it. It reads bounded Supporting Context,
-never raw images, memory or traits, under the owner's Emotion extraction and
-When to suggest guidance after a fixed core. A failure leaves emotion
-unavailable and pauses nothing, and a block past its 12-hour lifetime is never
-classified.
+The decision-model request assigning Recipient Emotion (ADR 30, ADR 49,
+ADR 53). It returns probabilities for nine codes, with a selected probability
+below 0.35 becoming unknown; it writes no text. Block work also asks whether
+automatic suggestions are useful and whether the block is sarcastic. An
+explicit hostile-wording answer, independent of mood, governs softening.
+Every eligible block retains its 30 quiet seconds; text is decided from
+originals, and media in a softening chat is decided before rewriting from
+originals, transcripts and cached image meanings. With softening Off, media
+emotion follows the rewrite and may use fresh image meanings. A failed
+decision authorizes no softening and leaves mood unavailable. Immediate
+notification screening is separate from this block timing. Decisions read
+bounded Supporting Context, never raw images, memory, traits or earlier
+versions, under fixed criteria and applicable owner guidance. Mood keeps its
+12-hour source lifetime.
 
 **Reaction Assessment**:
 The reassessment of Recipient Emotion and useful Response Suggestions from a
@@ -706,8 +706,8 @@ and settable from 0 to 10,000
 It governs automatic Daily Briefings, counted over the whole day, and private
 text rewriting only while the hidden `text_rewriting` switch is on. Blocks with
 new or changed analysable media are exempt, the mood decision judges short
-blocks from their originals, and a frustrated or angry block in a calming chat
-is calmed at any length. Short originals stay as they are, with no waiting
+blocks from their originals, and a hostile block in a softening chat is
+softened at any length. Short originals stay as they are, with no waiting
 status or counter. The latest value is rechecked before automatic preparation
 and each dispatch; already-dispatched work may finish.
 
@@ -720,7 +720,7 @@ work, shows Analyzing earlier messages · N of M with Stop, and ends with a
 count when a quarter of the Daily Budget remains, processing is turned Off or
 the chat stops being eligible. Retry, in a failed or interrupted block's
 sheet, starts one guarded attempt and never a first-time or completed-result
-regeneration; a Retry of a text block that isn't calmed decides it again and
+regeneration; a Retry of a text block that isn't softened decides it again and
 ends combined. Neither fetches nor scans Telegram history.
 
 **Processing Stage**:
@@ -728,62 +728,78 @@ The visible state of a block's work: Waiting for a quiet moment, Queued,
 Preparing, Transcribing, Reading images, Analyzing, Waiting for budget, Provider
 busy, Paused (Account AI Off, or after repeated format failures), done, Nothing
 to rewrite or failed. Stages report progress, with no percentage within one
-model call. Streamed composer work shows Processing with a spinner, and a
-stopped partial draft shows Stopped · incomplete draft.
+model call. Suggestion work shows its actual preparation, wait or failure
+status without changing the draft.
 
 ### Response suggestions
 
 **Response Suggestions**:
-Up to three short, editable wording options above the composer that help the
-owner answer the latest incoming block of a private chat
-([ADR 25](docs/adr/0025-emotion-response-suggestions.md), ADR 49,
-[ADR 56](docs/adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
-- **When.** That block's current Emotion Classification finds a usable
-  non-neutral emotion or says suggestions are useful, at 0.7 or more without
-  such an emotion. A Reaction Assessment needs both.
-- **What.** Options may acknowledge, support, clarify or celebrate, or ask one
-  gentle question. When the person asks for an answer, a decision or an
-  action, options may answer with contrasting stances: a set holding Accept or
-  Decline holds another stance, while Later may stand alone. The decision model
-  labels each option by what it says. Options never invent facts, assert the
-  owner's feelings, admit fault, pressure or commit the owner.
-- **Grounding.** The block's originals, transcripts, image meanings and bounded
-  Supporting Context, and Person and Account Memory where Remember This Chat is
-  on: an option may ask about, wish luck with or acknowledge what the person
-  cares about, judged against today's date, and states an Account Memory entry
-  only in the chat it came from.
-- **Lifetime.** Only the latest unanswered block qualifies. New incoming
-  content, a later outgoing message, the owner's own reaction on a message of
-  that block, changed evidence or 12 hours withdraw its options. A durably
-  accepted Pending Send suspends them: confirmation withdraws them, and a
-  definite non-send may restore them while they are valid.
-- **Use.** Insertion goes at the cursor with Undo and never sends or rewrites.
-  A folded set stays folded on every client until the next set arrives.
+Up to three short, editable message options above a private chat's composer
+([ADR 25](docs/adr/0025-emotion-response-suggestions.md), ADR 49, ADR 56).
+Automatic sets answer the latest qualifying unanswered block or reaction;
+manual sets can continue the conversation after the user's own last message,
+a neutral exchange or an ending. Groups and Saved Messages have none.
+- **Automatic trigger.** A usable non-neutral emotion or usefulness of at
+  least 0.7 without one; reactions need both emotion and usefulness.
+  Both Automatic suggestions switches must be On. Reads and restarts reuse
+  unchanged results and never generate.
+- **Manual trigger.** A deliberate press requests fresh alternatives;
+  duplicate taps while active share that attempt. Automation Off does not
+  block it. Account AI, budget, capacity and composer guards still apply.
+- **Draft intent.** With text, manual options are additions fitting the
+  captured cursor, using the whole draft as intent and context; without it,
+  they are complete messages. A draft alone is enough without recent chat
+  context. Generation changes no text, attachments or reply target.
+  Automatic generation does not read the unfinished draft.
+- **Grounding.** Available recent cached same-chat messages, up to the usual
+  20 plus one direct reply, transcripts and image meanings, and enabled
+  Person and Account Memory. No older-history scan or reply-chain traversal.
+  Account Memory facts are stated only in their source chat.
+- **Meaning.** Options may acknowledge, support, clarify, celebrate or ask a
+  gentle question. Without supplied intent, answer stances remain contrasting
+  where required; a draft-guided addition follows the user's stated intent.
+  Neither path invents facts or unsupplied feelings and commitments. The
+  decision model labels each option by what it says.
+- **Lifetime.** Automatic sets keep twelve hours from their source and their
+  unanswered-source rule. Manual sets keep twelve hours from the request;
+  draft edits, new conversation content, sends or changed evidence withdraw
+  them sooner. Pending Send guards apply while inputs stay valid. Manual
+  work owns the area until withdrawn or explicitly replaced, so later
+  automatic output cannot overwrite it.
+- **Use.** A choice inserts at the saved cursor, or at the end without one,
+  with Undo restoring the previous draft. It never replaces the draft or
+  sends. Folding is shared across clients until the next set arrives.
 
-They are automatic only, with no Generate, Retry or Regenerate, reused across
-refreshes and restarts, and follow the incoming language. MiMo writes plain
-sets, in the member's Daily Budget. The owner's server-wide Suggestions switch
-covers every chat, and the Suggestions Choice sets each one. Groups and Saved
-Messages have none.
+MiMo writes Friendly and Professional; Muse Spark 1.3 writes Idioms. All
+requests count in the account member's Daily Budget and shared capacity.
+Language follows the conversation; a draft-only request uses its language.
 
-**Suggestions Choice**:
-A private chat's choice in the Correspondent Profile: **Off**, **On** or
-**Idioms**, On by default, set by the owner and every member for their own
-chats (ADR 56). Off prepares and shows no Response Suggestions there; a set
-prepared before shows again on switching back while it is still valid. Idioms
-makes the chat's sets Idiom Suggestions. A choice applies from the next block
-that qualifies and regenerates nothing. The global Suggestions switch still
-covers every chat.
+**Automatic Suggestions**:
+The On/Off control for automatic preparation and display, separate from
+manual generation and style. Each private chat's Correspondent Profile
+offers it, On by default, belonging to that chat's member. The owner's
+server-wide switch in Settings → AI has the same name; automatic work needs
+both On. Off hides automatic sets and cancels queued automatic work, while
+started work may finish into cache, and never blocks or hides manual sets.
+Turning On reuses valid automatic sets without backfill (ADR 25, ADR 56).
+
+**Suggestion Style**:
+A private chat's **Style** choice in its Correspondent Profile: **Friendly**,
+**Professional** or **Idioms**, Friendly by default, for manual and automatic
+sets alike (ADR 56). Friendly is warm and natural without forced slang or
+emojis; Professional is clear and businesslike without needless formality.
+A change applies at the next generation; current and running sets retain
+their captured style, and changing the setting starts no call. Each member
+chooses per chat; there is no account-wide or member-wide style inheritance.
 
 **Idiom Suggestions**:
-Response Suggestions in a chat whose Suggestions Choice is Idioms (ADR 56).
-Every option carries at least one real idiom, proverb, saying or set
-expression, or in English a phrasal verb, in its right meaning and in the
-chat's language; when none fits, a set has fewer options or none. An option may
-give gentle advice through a proverb or saying, and voice the owner's pleasure
-or sympathy through a common idiom; every other suggestion limit stays. They
-look like any other options. Muse Spark 1.3 writes them, after the owner's
-Idioms guidance and a fixed frame.
+Response Suggestions with Style Idioms (ADR 56). Every option contains a
+real idiom, proverb, set expression or, in English, phrasal verb in its right
+meaning and the chat's language. A set may have fewer options or none when
+none fits. Idioms may give gentle advice through a proverb or voice pleasure
+or sympathy through a common expression, within the fixed evidence limits.
+They look like other options. Muse writes them under the owner's Idioms
+guidance and a fixed frame.
 
 **Typography Normalization**:
 The deterministic conversion, in newly generated Response Suggestions only, of
@@ -810,10 +826,10 @@ entries and about 3,000 bytes, each generated entry at most 150 characters
 cleared or the account's local data is removed. MiMo updates it after 30 quiet
 minutes in the chat, while no rewrite or transcription waits, one memory call
 at a time across the server, from every message already sent to a model; text
-that isn't calmed reaches it through the mood decision. A failed update keeps
+that isn't softened reaches it through the mood decision. A failed update keeps
 the previous memory, with Retry. It learns only while Remember This Chat is on.
-Response Suggestions and media and calmed rewrites read it; outgoing Rewrite,
-briefings, notifications and the mood decision do not. The Correspondent
+Response Suggestions and media and softened rewrites read it; briefings,
+notifications and the mood decision do not. The Correspondent
 Profile shows it as Cares about. Groups and Saved Messages have none.
 
 **Chat Memory**:
@@ -850,7 +866,7 @@ owner can set, clear or edit them, and the model never changes the owner's
 own.
 
 **Remember This Chat**:
-A private chat's switch in the Correspondent Profile, beside Calm this chat,
+A private chat's switch in the Correspondent Profile, beside Soften hostile messages,
 Off by default for every chat without its own choice, members' included
 (ADR 55, ADR 56). Off, the chat is out of memory both ways: it teaches neither
 Person nor Account Memory, nothing in it reads either, and it collects no
@@ -862,33 +878,16 @@ server-wide Memory switch in Settings covers both memories.
 ### Composing and sending
 
 **Composer Action**:
-Send or Rewrite, two separate, always-visible buttons: the user sends their own
-wording, or rewrites it first (ADR 13, ADR 22, ADR 44). A tone control beside
-Rewrite opens a sheet choosing the remembered Tone Preset; choosing starts no
-rewrite, and there is no Send/Rewrite mode. Rewrite, its status and Undo sit
-together, with Stop during an outgoing rewrite. Enter adds a new line; there
-are no keyboard shortcuts. The paperclip opens Photos, GIFs and Stickers (on
-the phone Photo library, Take photo, GIFs and Stickers): image thumbnails sit
-above an optional shared caption, image-only sends are allowed and rewriting
-keeps the attachments. Saved Messages has the composer without Rewrite. The
-interface explains itself without inline usage hints or instructional
-tooltips.
-
-**Outgoing Rewrite**:
-The user's authored draft rewritten in the selected Tone Preset when they press
-Rewrite, in private chats and groups. It starts at once, runs on MiMo without
-reasoning, and streams into the draft as a Streaming Rewrite, with Stop and
-Undo. It preserves meaning and the draft's own shape and invents no answer
-before the user writes. It reads no memory.
-
-**Tone Preset**:
-One of **Neutral** (plain, calm, direct), **Professional** (clear, respectful,
-businesslike without unnecessary formality) or **Friendly casual** (warm,
-natural, conversational without forced slang or emojis). Each preserves
-meaning and uncertainty without adding agreement, apologies, promises or
-facts. The definitions are shipped defaults the owner may edit, with no custom
-presets. Each Member's last choice is remembered across compositions. There is
-no Adaptive preset; a remembered Adaptive tone became Neutral (ADR 53).
+Separate, always-visible Send and Generate suggestions buttons in private
+chats (ADR 13, ADR 25, ADR 44). Send transmits the exact authored draft;
+Generate suggestions offers complete, selectable options above it, without
+changing or sending it. Outgoing Rewrite, its tones, streaming, Stop and
+rewrite Undo are removed; Undo remains for suggestion insertion. Enter adds
+a new line, with no keyboard shortcuts. The paperclip opens Photos, GIFs and
+Stickers (on the phone Photo library, Take photo, GIFs and Stickers). Image
+thumbnails sit above an optional caption, and image-only sends are allowed.
+Groups and Saved Messages keep their send composers without AI actions.
+No inline usage hints or instructional tooltips are added.
 
 **Media Picker**:
 The account's sheet for choosing a GIF or a sticker, opened from the
@@ -906,7 +905,7 @@ The exact unsent GIF or sticker staged above the composer in one chat's draft,
 durable across navigation, reloads and restarts until sent or removed
 (ADR 32). A GIF takes the authored text as its optional caption. A sticker
 sends alone: it hides the text field, Draft kept preserves the text, its Undo
-and its reply target, and Rewrite, Undo and suggestions pause. There is one
+and its reply target, and Undo and suggestions pause. There is one
 GIF or sticker at a time, never mixed with photos. Its validated bytes are
 pinned privately, up to 50 MiB per GIF and 5 MiB per sticker, until it is sent
 or no longer needed. It goes out as the chosen Telegram document after a 4 KB
@@ -1031,10 +1030,10 @@ rule, muted and archived ones included
 ([ADR 34](docs/adr/0034-group-chats-and-daily-briefings.md)). Forum or topic
 groups and broadcast channels are not supported, and Enloq neither creates,
 joins nor administers groups. AI reading shows Daily Briefings instead of
-individual rewrites. The owner sends, replies, rewrites their own text and
+individual rewrites. The owner sends, replies and
 deletes only their own current originals where Telegram allows deletion for
 everyone; reactions are chips only and sends show no Read. Groups have Unseen
-Message dots but no emotion, suggestions, memory, calming, sound or push. A
+Message dots but no emotion, suggestions, memory, softening, sound or push. A
 basic group migrated to a supergroup is a separate chat, with group AI Off. It
 is distinct from an Incoming Block, which combines one correspondent's
 messages in a private chat.
@@ -1043,8 +1042,8 @@ messages in a private chat.
 The durable opt-in for one account's group, initially Off and subordinate to
 Account AI Processing (ADR 34). It is in the group's Conversation Menu. Off
 holds new briefing and media stages, including Retry, while started stages may
-finish. Choosing AI reading enables nothing, and deliberate Rewrite of the
-owner's text stays available under account AI without opting the group in.
+finish. Choosing AI reading enables nothing. The group's send composer has
+neither outgoing Rewrite nor suggestion generation.
 
 **Retained Group Work**:
 The initially collapsed Retained group work section of the Groups tab, outside
@@ -1176,14 +1175,26 @@ New incoming messages in one chat grouped by the same 30 quiet seconds, distinct
 from an Incoming Block's boundaries. Edits, old catch-up, manual retries and
 outgoing work start no burst.
 
-**Ready Notification**:
-One alert per Notification Burst once its content is ready: a validated
-rewrite, or the originals as the fallback; a block held for its mood decision
-waits for it (ADR 20). A fallback is never followed by a second alert. Reading
-the same chat in the foreground suppresses it; a foreground web tab showing
-something else plays the chime, one sound with Sound on or off; otherwise the
-member's Push Destinations get a push, subject to Telegram mute and platform
-policy. Groups never alert, and Unseen Reactions bring no push or sound.
+**Incoming Notification**:
+The first alert for a Notification Burst as soon as its preview is eligible
+(ADR 20). With Soften hostile messages On, text and captions receive an
+immediate decision-model hostile-wording screen, with at most five seconds
+from service arrival including queue time. Clean wording releases the
+original immediately; hostile wording waits for a validated softened result,
+whose combined-block processing keeps 30 quiet seconds. If screening or a
+required rewrite cannot proceed or fails, or screening exceeds five seconds,
+the original preview notifies immediately without further screening. That
+fallback may expose hostility and never overrides AI, budget or capacity
+controls. With softening Off, originals notify on arrival. Textless media
+uses a typed label immediately, without transcription or image analysis.
+
+Later arrivals update the group silently; a cleared clean arrival need not
+wait for an earlier hostile one. Completion never re-alerts, and late older
+output cannot replace a newer preview. A foreground client reading this chat
+suppresses the alert; another foreground web chat plays a chime, otherwise
+Push Destinations receive it, respecting Telegram mute and platform policy.
+Groups and Unseen Reactions bring no sound or push. Unseen Message readiness
+remains independent.
 
 **Push Destination**:
 Where a Member's pushes go: the one browser that most recently turned
@@ -1205,18 +1216,19 @@ The exact model and provider pair that serves a model role, reached through
 the owner's LiteLLM proxy with one caller key; the proxy's endpoint is
 configuration (`MUSE_ENDPOINT_REF`) (ADR 29, ADR 30, ADR 39). Its listing and
 rates are verified before dispatch. There is no model selector, fallback or
-automatic resampling, and unavailability is a no-work refusal for background
-work and an immediate failure for Outgoing Rewrite. The routes:
+automatic resampling, and unavailability is a no-work refusal under the role's ordinary handling;
+notification delivery uses its explicit original fallback. The routes:
 - **MiMo V2.6 Flash** (`xiaomi_mimo/mimo-v2.6-flash`, Xiaomi's own API):
-  incoming and outgoing rewrites, image meanings, plain Response Suggestions,
+  incoming media rewrites, image meanings, Friendly and Professional suggestions,
   memory updates, trait notes and Daily Briefings. Its terms are no prompt
   training and 30-day retention.
 - **Muse Spark 1.3** (`openrouter/meta/muse-spark-1.3-contributor`, through
-  Meta, with low reasoning hidden): calmed rewrites and Idiom Suggestions.
+  Meta, with low reasoning hidden): softened rewrites and Idiom Suggestions.
 - **Decider V1.2** (`perplexity/pplx-decider-v1.2` at checkpoint `-20261016`,
-  Perplexity only, on OpenRouter's Decisions endpoint): Emotion Classification,
-  Reaction Assessment, suggestion usefulness and labels, group ad and bot
-  filtering and trait scales. Its retention terms are unpublished, and a later
+  Perplexity only, on OpenRouter's Decisions endpoint): hostile-wording screening,
+  Emotion Classification, Reaction Assessment, suggestion usefulness and
+  labels, group ad and bot filtering and trait scales. Its retention terms
+  are unpublished, and a later
   checkpoint needs the owner.
 
 Every route receives one private pseudonym per Member. Speech recognition is
@@ -1234,15 +1246,15 @@ answered request ends it. A 401 or 403 does no work and counts nothing.
 The owner's server-wide, editable instructions for model work, applied from
 the next call (ADR 15). Settings → AI → Guidance groups its fields, each with
 Save, Reset and versions:
-- **Rewriting:** Faithfulness rules, Incoming rewriting, Calming and Outgoing
-  rewriting.
-- **Tones:** Neutral, Professional and Friendly casual.
+- **Rewriting:** Faithfulness rules, Incoming rewriting and Soften hostile
+  messages.
+- **Suggestion styles:** Friendly, Professional and Idioms.
 - **Other work:** Emotion extraction, Person memory, Account memory, Response
-  suggestions, Idioms, When to suggest and Group briefings.
+  suggestions, When to suggest and Group briefings.
 
 A fixed core the owner cannot edit frames content as untrusted data and
-enforces each output contract; Calming and Idioms apply only to calmed blocks
-and idiom sets, after a fixed frame. Each result records its guidance version
+enforces each output contract; softening and Idioms guidance apply only to
+hostile blocks and idiom sets, after a fixed frame. Each result records its guidance version
 and shipped-defaults revision, and a new revision makes group briefings
 updateable once. After repeated format failures a role pauses until the owner
 resumes it from Guidance's paused-role notice.
@@ -1270,12 +1282,12 @@ chunk summaries, final synthesis, ad and bot classification and failed-briefing
 Retry (ADR 34). The owner's is $2 by default and settable from $0 to $10; a
 friend's is $0.50 by default, set by the owner. It is independent of the Daily
 Budget, with no borrowing, double charging or combined ceiling, and each
-request's budget is fixed at dispatch. Ordinary Rewrite in a group stays on the
-Daily Budget, and VPS speech has no provider charge.
+request's budget is fixed at dispatch. Private suggestion and hostile-wording
+requests use the Daily Budget, and VPS speech has no provider charge.
 
 **Concurrency Limit**:
 The owner's server-wide number of model calls that may run at once across all
 accounts, 1 to 8 and 4 by default (ADR 15). Members take turns within each
 class of work, and transcription runs one at a time. Private work and
-deliberate Rewrite run ahead of Daily Briefings, which never take the last free
+manual suggestion work run ahead of Daily Briefings, which never take the last free
 slot at two or more, and briefings run ahead of idle memory work.

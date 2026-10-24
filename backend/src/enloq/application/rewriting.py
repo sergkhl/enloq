@@ -1,4 +1,4 @@
-"""Two revision-bound transformations; this service never sends a message."""
+"""Revision-bound incoming processing; this service never sends a message."""
 
 import asyncio
 import json
@@ -8,7 +8,6 @@ from ..domain.selected_media import sticker_selected
 from ..domain.source_revision import fingerprint
 from ..inference.base import ProviderRefused
 from ..inference.work import BudgetReserve, ModelWork
-from ..storage.members import account_setting
 from ..storage.store import RETENTION, WINDOW
 from . import context
 from .blocks import (
@@ -20,9 +19,7 @@ from .blocks import (
     reconcile_admission,
     text_rewriting,
 )
-from .calming import CODES as CALMING_CODES
 from .capacity import RANK, rank_sql
-from .outgoing import Outgoing
 
 
 class CharacterDeferred(Exception):
@@ -34,7 +31,6 @@ class Rewriting:
         self.app, self.store = app, app.store
         self.work = ModelWork(self.store)
         self.paused_roles = set
-        self.outgoing_work = Outgoing(self)
 
     def block(self, identity):
         rows = self.store.rows("SELECT * FROM blocks WHERE id=?", (identity,))
@@ -161,12 +157,16 @@ class Rewriting:
             await self.app.assessment.run(job)
         elif job["role"] == "emotion_classification":
             await self.app.emotion.classify(job)
+        elif job["role"] == "hostility_screen":
+            await self.app.notifications.screen(job)
         else:
             await self.incoming(job)
 
     def next_job(self, *, low_allowed=True, memory_allowed=True):
         """The highest-priority due job of this account, if any. A role paused
         by repeated format failures runs only deliberate per-block clicks."""
+        # Expired arrival screens must not occupy a worker or delay block work.
+        self.app.notifications.advance()
         reconcile_admission(self.store)
         # Held blocks get their decision request after the quiet (ADR 49 Q3).
         self.app.emotion.decide_held()
@@ -180,7 +180,7 @@ class Rewriting:
             else ""
         )
         rows = self.store.rows(
-            f"SELECT * FROM jobs WHERE role IN ('incoming_rewrite','chat_memory','trait_scales','trait_notes','response_suggestions','reaction_assessment','emotion_classification') AND state='queued' AND due<=?{low}{hold} ORDER BY {rank_sql()},due,rowid",
+            f"SELECT * FROM jobs WHERE role IN ('incoming_rewrite','chat_memory','trait_scales','trait_notes','response_suggestions','reaction_assessment','emotion_classification','hostility_screen') AND state='queued' AND due<=?{low}{hold} ORDER BY {rank_sql()},due,rowid",
             (self.store.clock(), *paused),
         )
 
@@ -216,7 +216,7 @@ class Rewriting:
         a valid attempt that has reached the provider may finish after a Save.
         A held block released for calming passes at any length (ADR 53 Q6).
         """
-        if self.explicit(job) or "calm" in json.loads(job["payload"] or "{}"):
+        if self.explicit(job) or json.loads(job["payload"] or "{}").get("calm") is True:
             return
         held = False
         with self.store.transaction() as db:
@@ -441,7 +441,7 @@ class Rewriting:
             calming = json.loads(job["payload"] or "{}")
             code = calming.get("calm")
             sarcastic = bool(calming.get("sarcastic"))
-            released = code is not None
+            released = type(code) is bool
             first = None
             if not released and self.app.calming.on(block["chat_key"]):
                 first = await self.app.emotion.decide_first(
@@ -454,7 +454,7 @@ class Rewriting:
                     return  # A Save or source change superseded this attempt.
                 code = first and first["result"].code
                 sarcastic = bool(first and first["result"].sarcastic)
-            calmed = code in CALMING_CODES
+            calmed = bool(code if released else first and first["result"].hostile)
             if calmed:
                 packet["calm"] = True
                 if sarcastic:
@@ -774,31 +774,10 @@ class Rewriting:
             self.app.emotion.cancel_older(db, chat_key)
         return len(scopes)
 
-    def preferences(self):
-        """The tone this account's member last chose (ADR 48 Q20)."""
-        if not self.store.shared_path:
-            return {"tone": "neutral", "revision": 0}
-        with self.store.transaction() as db:
-            value = account_setting(db, "tone", self.store.account_id)
-        return json.loads(value) if value else {"tone": "neutral", "revision": 0}
-
-    async def outgoing(self, key, revision):
-        draft = self.outgoing_work.start(key, revision)
-        return await self.outgoing_work.tasks[draft["attempt"]]
-
     def undo(self, key, revision, attempt=None):
         current = self.store.draft(key)
         if sticker_selected(current):
             raise Refused("Remove the sticker before changing the kept draft")
-        if current.get("state") == "rewriting":
-            return self.outgoing_work.stop(key, revision, current["attempt"], undo=True)
-        if (
-            attempt
-            and current.get("attempt") == attempt
-            and current.get("state") == "rewritten"
-            and current["revision"] == revision + 1
-        ):
-            revision = current["revision"]
 
         def restore(draft):
             if sticker_selected(draft):

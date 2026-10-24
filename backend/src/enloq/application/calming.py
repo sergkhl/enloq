@@ -1,10 +1,8 @@
-"""Calming hostile messages (ADR 53).
+"""Soften hostile messages (ADR 53).
 
-In a private chat with calming on, an incoming block the mood decision marks
-frustrated or angry is rewritten calmly: the decision comes from the block's
-originals before its one rewrite (Q7), at any length (Q6), with the
-owner-editable Calming guidance (Q8). Calming is on by default; a chat's own
-choice, made in its Correspondent Profile, is kept once made (Q4).
+Only an explicit hostile-wording decision triggers a softened block, at any
+length. Mood is independent. The storage key and Python module retain their
+existing internal names, preserving each chat's switch and cached outputs.
 """
 
 import asyncio
@@ -17,8 +15,6 @@ from . import context, decision_state
 from .blocks import enqueue
 from .suggestions import prepared
 
-# The mood codes a block is calmed for (Q3).
-CODES = frozenset({"frustrated", "angry"})
 _LOG = logging.getLogger("enloq.calming")
 
 
@@ -66,7 +62,7 @@ class Calming:
 
     def private(self, key):
         if self.store.chat(key).kind != "private":
-            raise Refused("Calming is for private chats only")
+            raise Refused("Softening is for private chats only")
 
     # ---- Held blocks (ADR 49 Q3) ---------------------------------------------
 
@@ -91,8 +87,8 @@ class Calming:
         return block
 
     def release(self, db, decision, code, *, sarcastic=False):
-        """After a held block's decision: one found frustrated or angry, in a
-        chat with calming on, is rewritten calmly whatever its length (Q6).
+        """After a held block's explicit hostile-wording decision, soften it
+        when the chat's switch is on, whatever its length (Q6).
         Its decision is made, so that rewrite neither makes another nor
         queues one after its publication. A failure here never undoes the
         decision's publication."""
@@ -109,7 +105,7 @@ class Calming:
 
     def _release(self, db, decision, code, sarcastic):
         payload = json.loads(decision["payload"] or "{}")
-        if not payload.get("held") or code not in CODES:
+        if not payload.get("held") or not code:
             return None
         if not self.on(decision["scope"], db):
             return None
@@ -178,7 +174,7 @@ class Calming:
             self.app.memory.record(key, packet["inputs"])
             self.app.memory.schedule(key)
             with self.store.transaction() as db:
-                self.release(db, job, result.code, sarcastic=result.sarcastic)
+                self.release(db, job, result.hostile, sarcastic=result.sarcastic)
         except asyncio.CancelledError:
             raise
         except ProviderRefused:

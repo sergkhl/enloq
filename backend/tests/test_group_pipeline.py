@@ -258,7 +258,7 @@ async def test_guidance_save_during_unstarted_wait_binds_one_snapshot(rig, wait)
         await r.pipeline.run(next_stage(r, "prepare"))
         job = next_stage(r, "image")
         if wait == "capacity":
-            async with r.manager.capacity.slot("outgoing"):
+            async with r.manager.capacity.slot("new"):
                 task = asyncio.create_task(r.pipeline.run(job))
                 for _ in range(20):
                     if any(

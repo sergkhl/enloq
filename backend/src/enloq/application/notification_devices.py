@@ -212,7 +212,7 @@ class NotificationDevices:
         payload = {
             "id": event["id"],
             "expires": event["expires"],
-            "silent": not bool(current[0]["sound"]),
+            "silent": bool(event.get("silent")) or not bool(current[0]["sound"]),
         }
         # Persist the claim before network I/O, as the browser channel does.
         with self.registry.transaction() as db:
@@ -264,7 +264,10 @@ class NotificationDevices:
         event = self.event(rows[0]) if rows else None
         if not event:
             raise Refused("Notification is no longer available")
-        return {**event, "silent": not bool(current["sound"])}
+        return {
+            **event,
+            "silent": bool(event.get("silent")) or not bool(current["sound"]),
+        }
 
     def target(self, identity, event_id):
         self.device(identity)

@@ -19,15 +19,14 @@ import { TraitsPanel } from "./TraitsPanel";
 import { chatLink } from "../../shared/chatRoute";
 import { emotionDetails, type EmotionView } from "../../shared/emotion";
 import {
-  SUGGESTION_CHOICES,
-  suggestionChoices,
-  type SuggestionChoice,
+  SUGGESTION_STYLES,
+  type SuggestionStyle,
 } from "../../shared/suggestions";
 
 type Profile = components["schemas"]["CorrespondentProfile"];
 type Calming = components["schemas"]["Calming"];
 type Remembering = components["schemas"]["Remembering"];
-type Suggesting = components["schemas"]["SuggestionChoice"];
+type Suggesting = components["schemas"]["SuggestionSettings"];
 type GroupProfile = components["schemas"]["GroupProfile"];
 type MemberProfileValue = components["schemas"]["MemberProfile"];
 
@@ -130,8 +129,8 @@ function CalmingSwitch({ account, peer }: { account: number; peer: string }) {
   return (
     <>
       <SwitchRow
-        label="Calm this chat"
-        explanation="Angry or frustrated messages are rewritten calmly, keeping every fact, request and deadline. Turning it off leaves calmed messages as they are."
+        label="Soften hostile messages"
+        explanation="Hostile wording is softened while keeping every fact, request, deadline and threat. Anger or frustration alone stays unchanged."
         checked={enabled ?? false}
         disabled={enabled === null || busy}
         onChange={(next) => void change(next)}
@@ -154,19 +153,20 @@ function SuggestionsChoice({
   const { value, error } = useRead<Suggesting>(
     account,
     peer,
-    "/suggestions/choice",
+    "/suggestions/settings",
   );
   const [saved, setSaved] = useState<Suggesting | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const current = saved ?? value;
-  async function change(next: SuggestionChoice) {
+  async function change(automatic: boolean, style: SuggestionStyle) {
     setBusy(true);
     setProblem("");
     try {
       setSaved(
-        await chatApi<Suggesting>(account, peer, "/suggestions/choice", {
-          choice: next,
+        await chatApi<Suggesting>(account, peer, "/suggestions/settings", {
+          automatic,
+          style,
         }),
       );
     } catch (failure) {
@@ -177,16 +177,22 @@ function SuggestionsChoice({
   }
   return (
     <>
+      <SwitchRow
+        label="Automatic suggestions"
+        checked={current?.automatic ?? true}
+        disabled={!current || busy}
+        explanation="Prepare suggestions automatically; manual generation stays available."
+        onChange={(on) => current && void change(on, current.style)}
+      />
       <ChoiceRow
-        label="Suggestions"
-        options={suggestionChoices(current?.idioms ?? false)}
-        value={current?.choice ?? null}
+        label="Style"
+        options={SUGGESTION_STYLES}
+        value={current?.style ?? null}
         explanation={
-          SUGGESTION_CHOICES.find((choice) => choice.value === current?.choice)
-            ?.explanation
+          SUGGESTION_STYLES.find((s) => s.value === current?.style)?.explanation
         }
         disabled={!current || busy}
-        onChange={(next) => void change(next)}
+        onChange={(style) => current && void change(current.automatic, style)}
       />
       {(problem || error) && <Note>{problem || error}</Note>}
     </>
@@ -281,7 +287,7 @@ function CorrespondentProfile({
           </small>
         </div>
       </Section>
-      <Section title="Calming">
+      <Section title="Soften hostile messages">
         <CalmingSwitch account={account} peer={peer} />
       </Section>
       <Section title="Suggestions">

@@ -167,8 +167,11 @@ def test_lists_events_and_preferences_follow_the_member(tmp_path):
             json={"reading_view": "originals"},
             headers=bearer(friend),
         ).json() == {"reading_view": "originals"}
-        client.post(
-            "/api/preferences", json={"tone": "friendly"}, headers=bearer(friend)
+        assert (
+            client.post(
+                "/api/preferences", json={"tone": "friendly"}, headers=bearer(friend)
+            ).status_code
+            == 404
         )
         client.post(
             "/api/preferences/hide-bots",
@@ -178,17 +181,11 @@ def test_lists_events_and_preferences_follow_the_member(tmp_path):
         assert client.get(
             "/api/preferences/reading-view", headers=bearer(owner)
         ).json() == {"reading_view": "ai"}
-        assert (
-            client.get("/api/preferences", headers=bearer(owner)).json()["tone"]
-            == "neutral"
-        )
+        assert client.get("/api/preferences", headers=bearer(owner)).status_code == 404
         assert client.get(
             "/api/preferences/hide-bots", headers=bearer(owner)
         ).json() == {"hide_bots": True}
-        assert (
-            client.get("/api/preferences", headers=bearer(friend)).json()["tone"]
-            == "friendly"
-        )
+        assert client.get("/api/preferences", headers=bearer(friend)).status_code == 404
 
 
 async def test_the_event_stream_names_only_the_members_accounts(tmp_path):
@@ -211,13 +208,13 @@ async def test_the_event_stream_names_only_the_members_accounts(tmp_path):
     assert first == 'event: refresh\ndata: {"accounts": [2]}\n\n'
 
 
-def test_a_members_tone_reaches_only_their_own_rewrites(tmp_path):
+def test_removed_rewrite_tones_supply_no_suggestion_style(tmp_path):
     app = create_app(Settings(data=tmp_path))
     registry = app.state.accounts.registry
     registry.set_tone("professional", "friend")
-    assert app.state.assistant.rewriting.preferences()["tone"] == "neutral"
+    assert app.state.assistant.suggestions.settings("1/user:101")["style"] == "friendly"
     registry.set_tone("friendly")
-    assert app.state.assistant.rewriting.preferences()["tone"] == "friendly"
+    assert app.state.assistant.suggestions.settings("1/user:101")["style"] == "friendly"
 
 
 def test_a_remembered_adaptive_becomes_neutral(tmp_path):

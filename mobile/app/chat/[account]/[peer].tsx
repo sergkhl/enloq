@@ -929,7 +929,7 @@ function Bubble(props: BubbleProps) {
             {first ? ` · ${messageTime(first.date, timezone, hourCycle)}` : ""}
             {/* ADR 53 Q5: the shown rewrite was calmed. */}
             {item.block.calmed && item.text !== null && !item.streaming
-              ? " · Calmed"
+              ? " · Softened"
               : ""}
           </Text>
           {edited.length ? (

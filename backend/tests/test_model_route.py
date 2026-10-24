@@ -217,7 +217,7 @@ async def test_every_account_engine_sends_the_same_pseudonym(tmp_path, monkeypat
     await manager.close()
 
 
-@pytest.mark.parametrize("role", ["incoming_rewrite", "outgoing_rewrite"])
+@pytest.mark.parametrize("role", ["incoming_rewrite", "incoming_rewrite"])
 async def test_each_attempt_uses_its_roles_deadline(tmp_path, role):
     app = fixture(tmp_path)
     asked = []
@@ -320,7 +320,7 @@ async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
         "Authored instructions.",
         {"draft": {"text": "Own words."}},
         {"type": "object"},
-        role="outgoing_rewrite",
+        role="incoming_rewrite",
     )
     assert response.actual_nanos == 80360
     assert response.usage["is_byok"] is False
@@ -329,12 +329,15 @@ async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
 
 @pytest.mark.parametrize(
     "raw",
-    ['{"text":"Two points:\\n• one\\n• two"}', '{"text":"Two points:\n• one\n• two"}'],
+    [
+        '{"image_context":[],"text":"Two points:\\n• one\\n• two"}',
+        '{"image_context":[],"text":"Two points:\n• one\n• two"}',
+    ],
 )
 def test_structured_line_breaks_validate_escaped_or_raw(raw):
     from enloq.inference.work import validate_output
 
-    result = validate_output("outgoing_rewrite", EngineResponse(raw), {})
+    result = validate_output("incoming_rewrite", EngineResponse(raw), {})
     assert result.text == "Two points:\n• one\n• two"
 
 
@@ -343,7 +346,7 @@ def test_other_raw_control_characters_stay_invalid_json(raw):
     from enloq.inference.work import InvalidOutput, validate_output
 
     with pytest.raises(InvalidOutput, match="invalid_json"):
-        validate_output("outgoing_rewrite", EngineResponse(raw), {})
+        validate_output("incoming_rewrite", EngineResponse(raw), {})
 
 
 def test_stream_preview_shows_raw_line_breaks_and_rejects_other_controls():

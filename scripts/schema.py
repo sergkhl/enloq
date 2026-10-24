@@ -11,7 +11,6 @@ from enloq.api.accounts import (
     LoginState,
     ReadingView,
     Settings,
-    Tone,
 )
 from enloq.api.auth import (
     Agreement,
@@ -61,7 +60,7 @@ from enloq.api.routes import (
     GroupProfile,
     MemberProfile,
     PreparedVideo,
-    SuggestionChoice,
+    SuggestionSettings,
     VideoPreparation,
 )
 from enloq.api.traits import ScaleEdit, TraitsView
@@ -150,8 +149,7 @@ _, schema = models_json_schema(
             ScaleEdit,
             EmotionView,
             SuggestionsView,
-            SuggestionChoice,
-            Tone,
+            SuggestionSettings,
             ViewedContent,
             ViewedSources,
             ReactionView,

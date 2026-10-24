@@ -232,7 +232,11 @@ test("minimum characters, model calls and both switches apply for every account"
   expect(await screen.findByLabelText("5 model calls at once")).toBeTruthy();
   // Memory, for both memories since ADR 55 Q7.
   await fireEvent(screen.getByLabelText("Memory"), "valueChange", false);
-  await fireEvent(screen.getByLabelText("Suggestions"), "valueChange", false);
+  await fireEvent(
+    screen.getByLabelText("Automatic suggestions"),
+    "valueChange",
+    false,
+  );
   await waitFor(() =>
     expect(posts).toEqual([
       { path: "settings/processing-threshold", body: { limit: 350 } },
@@ -276,7 +280,9 @@ test("another client's change rereads them and keeps an unsaved edit", async () 
     mockEventSources[0]!.emit("change", { data: '{"shared":["settings"]}' }),
   );
   await waitFor(() =>
-    expect(screen.getByLabelText("Suggestions").props.value).toBe(false),
+    expect(screen.getByLabelText("Automatic suggestions").props.value).toBe(
+      false,
+    ),
   );
   expect(
     screen.getByLabelText("Daily Budget per day in dollars").props.value,
@@ -300,7 +306,9 @@ test("an unreachable server leaves the last values shown and unchangeable", asyn
     screen.getByRole("button", { name: "Change Daily Budget limit" }).props
       .accessibilityState,
   ).toMatchObject({ disabled: true });
-  expect(screen.getByLabelText("Suggestions").props.disabled).toBe(true);
+  expect(screen.getByLabelText("Automatic suggestions").props.disabled).toBe(
+    true,
+  );
 });
 
 test("with nothing read yet, Settings waits for the server", async () => {

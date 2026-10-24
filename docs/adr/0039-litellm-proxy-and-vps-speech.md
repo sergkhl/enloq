@@ -45,8 +45,9 @@ account.
   support, and the per-token rates the proxy charges. ADR 29's adopted-rate
   ceiling and 24-hour rule apply.
 - **Requests.** They send no OpenRouter `provider` block. Reasoning uses
-  Xiaomi's own switch, `extra_body.thinking`: disabled for Outgoing Rewrite,
-  enabled for background roles. Reasoning text arrives beside the content and
+  Xiaomi's own switch, `extra_body.thinking`, enabled for the retained
+  incoming, memory, suggestion and group roles. Manual suggestions use the
+  same role as automatic suggestions; outgoing Rewrite is removed (ADR 25). Reasoning text arrives beside the content and
   is discarded unread; content keeps the 1 MiB capture limit, and the wire may
   carry up to 16 MiB.
 - **Answers.** The response must name the route as its `model`. The private

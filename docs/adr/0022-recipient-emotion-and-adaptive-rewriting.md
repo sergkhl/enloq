@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Recipient emotion and Adaptive rewriting
+# Recipient emotion
 
 ## Context
 
@@ -33,8 +33,8 @@ analysis, and memory, traits and earlier versions are never evidence.
 **How it is decided.** Emotion Classification on the decision model
 ([ADR 30](0030-decider-emotion-classification.md),
 [ADR 49](0049-useful-response-suggestions.md)), never in a rewrite. With
-calming on, the default, every block is decided from its originals before any
-rewrite (ADR 53). With calming off, a text block is decided from its
+softening On, the default, every block is decided from its originals before any
+rewrite (ADR 53). With softening Off, a text block is decided from its
 originals after its quiet period
 ([ADR 54](0054-incoming-text-combined-not-rewritten.md)), and a block with
 media after its rewrite validates, using its image meanings. A failure leaves
@@ -90,19 +90,16 @@ permitted sources, quote and forward attribution, the exclusion of facial and
 acoustic inference and the fixed code descriptions (ADR 30). A change applies
 to future calls without regenerating cached estimates.
 
-**What uses it.** The header, calming of frustrated or angry blocks (ADR 53)
-and Response Suggestions ([ADR 25](0025-emotion-response-suggestions.md),
-ADR 49, [ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
-Outgoing Rewrite does not: it offers Neutral, Professional and Friendly
-casual, reading only the owner's draft and attachments, and a remembered
-Adaptive tone became Neutral when Adaptive left.
+**What uses it.** The header and automatic Response Suggestions
+([ADR 25](0025-emotion-response-suggestions.md), ADR 49, ADR 56).
+Hostile-message softening uses its own explicit wording decision, never a
+frustrated or angry mood code (ADR 53). Manual suggestions may use a current
+emotion as context but require neither emotion nor usefulness.
 
-**The composer.** Rewrite with its tone choice, Stop and Undo stay grouped,
-with Send separate ([ADR 13](0013-clean-slate-rewriting-rebuild.md)). There
-are no keyboard shortcuts: Enter adds a new line on every client
-([ADR 44](0044-mobile-only-web-in-the-apps-design.md)). No usage hints sit
-beside the controls and there is no Help; each Settings control explains
-itself in one line ([ADR 45](0045-settings-in-the-enloq-app.md)).
+**The composer.** Send and Generate suggestions are separate in private
+chats (ADR 13, ADR 25); there is no Rewrite or tone control. Enter adds a new
+line, with no keyboard shortcuts (ADR 44). No usage hints or Help are added;
+Settings controls keep their concise explanations (ADR 45).
 
 ## Consequences
 

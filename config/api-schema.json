@@ -4797,31 +4797,6 @@
         "title": "SignInStart",
         "type": "object"
       },
-      "SuggestionChoice": {
-        "additionalProperties": false,
-        "description": "A private chat's Suggestions choice (ADR 56 Q12 A), On unless the\nchat chose otherwise, and whether Idioms can be chosen yet.",
-        "properties": {
-          "choice": {
-            "enum": [
-              "off",
-              "on",
-              "idioms"
-            ],
-            "title": "Choice",
-            "type": "string"
-          },
-          "idioms": {
-            "title": "Idioms",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "choice",
-          "idioms"
-        ],
-        "title": "SuggestionChoice",
-        "type": "object"
-      },
       "SuggestionOption": {
         "additionalProperties": false,
         "properties": {
@@ -4850,6 +4825,30 @@
           "text"
         ],
         "title": "SuggestionOption",
+        "type": "object"
+      },
+      "SuggestionSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic": {
+            "title": "Automatic",
+            "type": "boolean"
+          },
+          "style": {
+            "enum": [
+              "friendly",
+              "professional",
+              "idioms"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "automatic",
+          "style"
+        ],
+        "title": "SuggestionSettings",
         "type": "object"
       },
       "SuggestionsView": {
@@ -4913,6 +4912,25 @@
             ],
             "default": null,
             "title": "Attempt"
+          },
+          "kind": {
+            "default": "automatic",
+            "enum": [
+              "automatic",
+              "manual"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "style": {
+            "default": "friendly",
+            "enum": [
+              "friendly",
+              "professional",
+              "idioms"
+            ],
+            "title": "Style",
+            "type": "string"
           },
           "options": {
             "items": {
@@ -4983,25 +5001,6 @@
           "url"
         ],
         "title": "TextLink",
-        "type": "object"
-      },
-      "Tone": {
-        "additionalProperties": false,
-        "properties": {
-          "tone": {
-            "enum": [
-              "neutral",
-              "professional",
-              "friendly"
-            ],
-            "title": "Tone",
-            "type": "string"
-          }
-        },
-        "required": [
-          "tone"
-        ],
-        "title": "Tone",
         "type": "object"
       },
       "TraitNote": {

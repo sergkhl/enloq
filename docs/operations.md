@@ -174,33 +174,25 @@ estimate still fits. Malformed answers or option sets, and route failures, are
 listed as `blocking`; the emotion, usefulness and answer-stance verdicts are
 for review. The report is `.local/useful-suggestions-check-*/report.json`.
 
-**Calming** ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)
-Q12-Q14): `scripts/check-calming.py`. Rerun it whenever the Calming guidance
-is edited. Its 24 authored blocks, half Russian, cover short insults, long
-rants with amounts and deadlines, legal and safety threats, sarcasm, ALL CAPS,
-a voice-note transcript, a forwarded hostile notice, frustrated but polite
-messages and four neutral or warm messages. Each arrives once as new messages
-in a chat with calming on, through the application's stages: a text block is
-held, decided from its originals and, if frustrated or angry, calmed; a voice
-note is decided first, then rewritten once. Calmed text is written by Muse
-Spark 1.3.
+**Soften hostile messages** ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)
+Q12-Q14): `scripts/check-calming.py`. Rerun it after softening guidance changes.
+Its 30 authored Russian and English blocks cover insults, rants, amounts,
+deadlines, legal and safety threats, hostile sarcasm, speech, forwarded and
+third-party hostility, with non-hostile anger, frustration, teasing, reported
+insults and neutral or warm controls. Text is combined, decided from originals
+and softened only when the independent hostility answer qualifies; speech is
+prepared, decided and rewritten once. Muse writes softened text.
 
-It passes only with zero misses: in every hostile case the calming chat's text
-keeps each authored amount, date, number and threat that the originals give,
-keeps the language, and has no authored insult, taunt, blame or shouted word,
-no "(?)" on typed text, no split gender form such as «он(а)» or word in another
-script, and no currency the originals don't give; no neutral or warm case is
-calmed. Those checks are text matching. Whether a calmed text reads sarcasm
-literally is judged by the judge model; an answer it can't give leaves the case
-unverified. The owner then reads every pair, each case's originals beside its
-calmed text; `pairs.md` notes a calmed text still in the sender's voice. A
-failed calmed rewrite leaves the originals, which then miss, and doesn't stop
-the pass. A provider refusal, such as Muse's shared upstream pool's 429, did no
-work: as the app does, the pass retries it after its delay (at most two
-minutes), at most twice per case, and a case still refused stays unverified.
-It verifies the MiMo, Muse and decision routes and allows at most 30 rewrite,
-30 decision and 24 judge requests, 2,400 seconds and $0.20 counted. The report
-is `.local/calming-check-*/report.json`, beside `pairs.md`.
+Text checks require retained facts, numbers, conditions and threats, source
+language, removed hostile wording and no invented currency or gender. A judge
+checks only sarcasm being read literally. Missing format has unassessable
+semantics. Low semantic quality is recorded as **Low quality**, and the bounded
+pass continues; transport, format and quality remain separate claims. The
+owner reads the saved pairs. Failed rewriting leaves originals. No-work
+refusals follow the existing bounded retry, at most twice per case in this
+check; a still-refused case remains unverified. Bounds are 32 rewrite,
+32 decision and 30 judge requests, 2,400 seconds and $0.20 counted. Evidence
+remains `.local/calming-check-*/report.json` and `pairs.md`.
 
 **Idioms** ([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)
 Q16, Q17): `scripts/check-idioms.py`. Rerun it whenever the Idioms guidance is
@@ -349,13 +341,19 @@ docker compose restart caddy
 
 ### Deploy and roll back
 
-From the VPS checkout, with a clean committed tree:
+Routine deployment follows the contributor instructions in order:
 
-```sh
-./scripts/check
-./scripts/deploy
-./scripts/deploy --rollback
-```
+1. Validate with `./scripts/check` and commit the task worktree.
+2. From the primary checkout, merge its branch into `main`; resolve conflicts
+   and rerun affected checks.
+3. Push `main` to `origin` and verify both refs name the same revision.
+4. Remove the clean, fully merged task worktree with `git worktree remove`,
+   then delete its merged local branch. Preserve unrelated worktrees and data.
+5. From clean primary `main`, run `./scripts/deploy` for that pushed revision.
+   Use `./scripts/deploy --rollback` when recovery needs the prior image.
+
+Feature branches and temporary worktrees are for development and finite
+checks; routine service deployment uses the clean primary checkout.
 
 Before the first deploy, write `EDGE_NETWORK=<the edge's network>` into the
 service folder's `.env` (`EDGE_NETWORK=lrnki` on the shared VPS): compose
@@ -622,6 +620,14 @@ but a read of one fails the check. Write new checks in `web/live/` with
 `openMayaChat`. These checks may send real messages, so `./scripts/check`
 never runs them; run one file at a time.
 
+`live/manual-suggestions.spec.ts` makes three authored generations, one per
+Style, with automation Off and no sends. It checks unchanged draft, insertion,
+Undo and restored settings. `live/arrival-notifications.spec.ts` sends three
+authored Maya messages and reads only the service's scoped eligibility and
+screening metadata through Docker, using no second Telegram client. It checks
+early clean eligibility and silent later updates; OS-banner display is a
+separate phone check. Both save private evidence under `.local/live-results/`.
+
 ### Android push through FCM
 
 The service sends Android pushes as FCM HTTP v1 data messages
@@ -881,14 +887,11 @@ native backfill.
 Group AI processing is initially Off, durable per account and typed group, and
 switched in the group's ⋮ sheet beside **Hide bots**; it works only while the
 account's AI processing is On. The header's reading toggle stays a separate global preference.
-Deliberate composer Rewrite uses the account switch and confirmed group access
-independently of group opt-in. Groups offer the same three tones as private
-chats; a tone choice updates the shared preference. Native access changes
-restore an active rewrite's original draft and reject late publication.
+Groups have ordinary Send, attachment and reply controls and no outgoing
+Rewrite, tone controls or suggestion generation.
 
 A recent group with retained originals, a draft or unresolved sends stays
-visible after access loss, with its exact draft editable and Send and Rewrite
-disabled. This cached read projection admits no native sync or actions. Valid
+visible after access loss, with its exact draft editable and Send disabled. This cached read projection admits no native sync or actions. Valid
 cached avatars stay available under the 30-day, size and account limits; new
 avatar reads require unchanged native scope and access and exact photo
 evidence through metadata, file chunks and wire dispatch. Private emotion,
@@ -914,7 +917,7 @@ original account and typed peer. Saved drafts stay readable and copyable;
 cancelled accepted sends keep their content in the saved operation card.
 History, media, avatars and forwarding details use only current retained
 bytes within the 30-day source cache. Missing content never starts discovery,
-backfill or a native download. New Send, Rewrite, AI opt-in, selection and
+backfill or a native download. New Send, AI opt-in, selection and
 deletion are unavailable. Checked deletion Retry may renew exact review for
 current own sources within 30 days under restored access and native rights; it
 never admits fresh inactive deletion.
@@ -965,14 +968,14 @@ What the AI does with an incoming private block
 
 - **Text is combined, not rewritten.** After 30 quiet seconds a text-only
   block is held and decided from its originals (its emotion, whether a reply
-  is useful and whether it is frustrated or angry). In AI reading its
+  is useful and whether its wording is hostile). In AI reading its
   originals show together in one bubble headed "N messages · time", with no
   AI label or status.
-- **Calming.** In a chat with **Calm this chat** on (the default, in the
-  Correspondent Profile), a frustrated or angry block is calmed
-  ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md));
-  readiness and notifications wait for its decision. A calmed block's head
-  ends with Calmed.
+- **Soften hostile messages.** With the profile switch On (the default),
+  explicitly hostile wording is softened, independently of mood. Anger or
+  frustration alone leaves text unchanged. The block head ends with
+  **Softened**. Unseen readiness waits for its decision and validated output;
+  notifications follow their independent arrival screen below.
 - **Media is rewritten.** A block with an image, a voice note or a video
   circle is rewritten: transcripts become readable text and images get their
   meaning. Its head reads "AI · N messages · time", and "Not analysed: …"
@@ -1030,19 +1033,14 @@ original quiet deadline; resuming reconciles cached unread targets without
 resetting native cursors or rereading old history. Incoming rewrites have no
 individual Stop. See [streaming and speech recovery](inference.md#provisional-streaming).
 
-The composer has **Rewrite** with its tone dropdown (Neutral, Professional or
-Friendly casual; the last tone is remembered across accounts) and a separate
-**Send**. Enter adds a new line; Rewrite and Send act only from their buttons
-(ADR 44 Q4). Outgoing Rewrite starts on click, preserves attachments and
-cannot send. While it streams ("Processing…"), the field, tone, attachments
-and reply controls are locked, and Send and Rewrite stay visible and disabled.
-**Stop rewrite** keeps the visible partial text as an editable incomplete
-draft ("Stopped · incomplete draft"); **Undo rewrite** restores the complete
-pre-attempt text, also after Stop, until another edit. Reloading attaches to
-the same attempt without another call, and late output cannot overwrite Stop
-or Undo. An outgoing Rewrite paused before dispatch keeps the text and waits
-for another click; interrupted or failed dispatched attempts need a deliberate
-Retry.
+A private composer has separate, always-visible **Generate suggestions** and
+**Send** buttons. Generation preserves the draft, attachments and reply target.
+With a blank draft it offers messages to continue the conversation; with text
+it offers additions at the captured cursor, following that text's intent.
+Selection inserts without sending, and **Undo suggestion** restores the prior
+text. New draft or source changes withdraw the set without regenerating.
+Groups and Saved Messages have ordinary Send and no generation. Enter adds a
+new line. Outgoing Rewrite, tone controls, draft streaming and Stop are removed.
 
 Web URLs, Telegram links, usernames and native named links are tappable in
 originals, rewrites and transcripts; they open in a new tab without automatic
@@ -1072,9 +1070,10 @@ The paperclip opens Photos, GIFs and Stickers. GIFs use the account's saved
 library or a search through the configured bot; stickers use installed packs,
 recent and favorites, with a local name, emoji and keyword filter. A tile
 stages one selection above the composer and **Send** stays the deliberate
-action. A GIF keeps an optional authored caption, and Rewrite changes that text
-only. A sticker sends on its own: the text field steps aside as **Draft
-kept**, and Rewrite, Undo and suggestion insertion wait until removal or
+action. A GIF keeps an optional authored caption, and manual suggestions can
+add to that text without reading the GIF. A sticker sends on its own: the text
+field steps aside as **Draft
+kept**, and generation, Undo and suggestion insertion wait until removal or
 durable local send acceptance restores the exact text, Undo and reply. With no
 kept text, a sticker consumes the reply normally, as a GIF with its caption
 does. A selection survives navigation, reload and restart; unavailable media
@@ -1187,8 +1186,7 @@ Budget, AI and Privacy, plus People for the owner
 [app's runbook](mobile.md) shows each page). Budget shows today's counted
 spending against the Daily Budget and the Group Briefing Budget, each with
 **Change limit** ($0.00 to $10.00), its reset time and **Recent changes**. The
-Daily Budget keeps its $1 default and pays for private AI and every composer
-Rewrite; the $2-default Group Briefing Budget pays for briefing images,
+Daily Budget keeps its $1 default and pays for private AI, arrival screening and manual or automatic suggestions; the $2-default Group Briefing Budget pays for briefing images,
 chunks, final synthesis and Retry across all accounts and groups. A change
 applies to new stages and is logged; $0 holds new work in that family,
 preserving the other ceiling and all spending. Shared refresh protects each
@@ -1196,13 +1194,13 @@ unsaved field, and every Save reads the current server state rather than
 restoring an older response. When the private budget is reached, blocks show
 _Waiting for budget_ and Settings says when the budget day resets. **Model
 calls at once** (1 to 8, default 4) is shared by all accounts and applies at
-once; outgoing Rewrite always goes first and local transcription runs one at a
-time. A block whose provider refused the call shows _Provider busy, retrying
+once; arrival work precedes suggestions and idle memory, and local
+transcription runs one at a time. A block whose provider refused the call shows _Provider busy, retrying
 shortly_ and retries up to three times at no cost before asking for Retry.
 
 **Guidance**, under Settings → AI, groups the editable Processing Guidance
-fields as Rewriting (Faithfulness rules, Incoming rewriting, Calming, Outgoing
-rewriting), Tones (Neutral, Professional, Friendly casual) and Other work
+fields as Rewriting (Faithfulness rules, Incoming rewriting, Soften hostile
+messages), Suggestion styles (Professional, Friendly) and Other work
 (Emotion extraction, Person memory, Account memory, Response suggestions,
 Idioms, When to suggest and Group briefings), each with its default and
 **Reset to default**; saving creates a new version used from the next model
@@ -1253,8 +1251,8 @@ available when judging a rewrite; format reliability and semantic quality are
 separate.
 
 The Daily Budget (default $1; $0.50 for a member) includes private background
-work, its explicit retries and every composer Rewrite across that member's
-accounts. The separate Group Briefing Budget (default $2; $0.50 for a member)
+work, its explicit retries, arrival screens and manual or automatic
+suggestions across that member's accounts. The separate Group Briefing Budget (default $2; $0.50 for a member)
 has no borrowing or combined ceiling. Both use the configured-timezone
 dispatch day, immutable purpose attribution and the same monotonic day
 watermark; late receipts settle the original family and day. Ledger rows from
@@ -1499,6 +1497,25 @@ several: hiding is final and both clients agree. A message deleted before
 Enloq saw its content, and a deleted service notice, are not shown at all.
 
 ## Desktop Web Push
+
+[ADR 20](adr/0020-minimal-reading-and-ready-notifications.md) notifies from
+service arrival. With **Soften hostile messages** On, the pinned decision model
+screens original text or captions within five seconds, including queueing.
+Clean originals notify as soon as screened; hostile text waits for validated
+softening. AI Off, the switch Off, unavailable budget or route, failed or
+malformed screening, deadline and unavailable softening use originals as soon
+as known. Textless media uses a typed label. No memory, history scan or media
+preparation runs for a screen. Combined-block processing and Unseen readiness
+keep their independent 30-second/full-output rules.
+
+The first eligible preview in a 30-second arrival burst alerts; later arrivals
+and late softening silently update that notification. A clean later arrival
+can notify before an earlier hostile one, and the older completion cannot
+replace the newer preview. Each update has a fresh opaque event ID and stable
+group; source, mute, account, foreground and expiry guards are rechecked before
+delivery. The web worker uses that group as its notification tag; Android uses
+its existing per-chat notice identifier. Known-invalid locators show no banner;
+Android retains its generic fallback only when the service cannot be reached.
 
 A newly paired browser asks once
 ([ADR 47](adr/0047-pairing-settings-menus-and-profiles.md) Q5): when the list

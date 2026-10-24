@@ -9,7 +9,7 @@ import pytest
 from enloq.api.server import create_app
 from enloq.application.accounts import AccountManager
 from enloq.config import Settings
-from enloq.domain.models import Chat, Conflict, Message, ProcessingPaused
+from enloq.domain.models import Chat, Message, ProcessingPaused
 from enloq.inference.fake import FakeEngine
 from enloq.storage.accounts import AccountRegistry
 from enloq.storage.store import WINDOW, Store
@@ -66,7 +66,7 @@ async def test_account_pause_persists_without_stopping_sync_send_or_other_accoun
         "1/user:42", 0, lambda d: d.update(text="Send my wording")
     )
     with pytest.raises(ProcessingPaused):
-        await a.rewriting.outgoing("1/user:42", draft["revision"])
+        a.suggestions.generate("1/user:42", draft["revision"])
     assert (await a.delivery.send("1/user:42", draft["revision"]))[
         "state"
     ] == "confirmed"
@@ -127,7 +127,7 @@ async def test_pause_after_provider_wait_never_reserves_or_dispatches(rig, bound
     a.engine = Engine()
     capacity = a.rewriting.work.capacity
     capacity.limit = lambda: 1
-    held = capacity.slot("outgoing")
+    held = capacity.slot("new")
     if boundary == "capacity":
         await held.__aenter__()  # Every model slot is busy.
     a.sync.ingest(incoming(a))
@@ -150,8 +150,7 @@ async def test_pause_after_provider_wait_never_reserves_or_dispatches(rig, bound
     assert len(a.engine.calls) == 1
 
 
-@pytest.mark.parametrize("outgoing", [False, True])
-async def test_started_provider_result_and_receipt_survive_off(rig, outgoing):
+async def test_started_provider_result_and_receipt_survive_off(rig):
     manager, now = rig
     a = manager.get(1)
     entered, release = asyncio.Event(), asyncio.Event()
@@ -165,24 +164,14 @@ async def test_started_provider_result_and_receipt_survive_off(rig, outgoing):
     a.engine = Engine()
     a.sync.ingest(incoming(a))
     now[0] += 31
-    if outgoing:
-        draft = a.store.mutate_draft(
-            "1/user:42", 0, lambda d: d.update(text="Authored outgoing")
-        )
-        work = a.rewriting.outgoing("1/user:42", draft["revision"])
-    else:
-        work = a.process_due()
-    task = asyncio.create_task(work)
+    task = asyncio.create_task(a.process_due())
     await asyncio.wait_for(entered.wait(), 2)
     manager.set_processing(1, False)
     release.set()
     await task
     assert len(a.engine.calls) == 1
     assert a.store.rows("SELECT status FROM reservations")[0]["status"] == "receipted"
-    if outgoing:
-        assert a.store.draft("1/user:42")["state"] == "rewritten"
-    else:
-        assert a.conversation("1/user:42")["blocks"][0]["state"] == "ready"
+    assert a.conversation("1/user:42")["blocks"][0]["state"] == "ready"
 
 
 @pytest.mark.parametrize("boundary", ["capacity", "download", "started"])
@@ -272,32 +261,6 @@ async def test_failed_and_unknown_attempts_are_not_retried_by_toggle(rig):
     assert len(a.engine.calls) == 1
 
 
-async def test_outgoing_pause_before_dispatch_retains_text_without_failed_attempt(rig):
-    manager, now = rig
-    a = manager.get(1)
-    capacity = a.rewriting.work.capacity
-    capacity.limit = lambda: 1
-    held = capacity.slot("outgoing")
-    await held.__aenter__()  # Every model slot is busy.
-    draft = a.store.mutate_draft(
-        "1/user:42", 0, lambda d: d.update(text="My authored text")
-    )
-    task = asyncio.create_task(a.rewriting.outgoing("1/user:42", draft["revision"]))
-    await asyncio.sleep(0.02)
-    manager.set_processing(1, False)
-    await held.__aexit__(None, None, None)
-    with pytest.raises(ProcessingPaused):
-        await task
-    assert not a.engine.calls and not manager.registry.usage()
-    assert a.store.draft("1/user:42")["text"] == "My authored text"
-    assert a.store.rows("SELECT state FROM jobs")[0]["state"] == "paused"
-    manager.set_processing(1, True)
-    await a.process_due()
-    assert not a.engine.calls
-    await a.rewriting.outgoing("1/user:42", a.store.draft("1/user:42")["revision"])
-    assert len(a.engine.calls) == 1
-
-
 def test_eligibility_upgrade_preserves_explicit_exclusions_and_spending(rig):
     manager, now = rig
     a = manager.get(1)
@@ -347,7 +310,9 @@ def test_processing_http_is_account_bound_authenticated_and_shared(tmp_path):
         assert not one.get("/api/accounts/1/processing").json()["ai_enabled"]
 
 
-async def test_reading_view_is_durable_independent_and_does_not_invalidate_rewrite(rig):
+async def test_reading_view_is_durable_independent_and_does_not_invalidate_manual_suggestions(
+    rig,
+):
     manager, now = rig
     registry = manager.registry
     assert registry.reading_view() == {"reading_view": "ai"}
@@ -364,18 +329,19 @@ async def test_reading_view_is_durable_independent_and_does_not_invalidate_rewri
     draft = a.store.mutate_draft(
         "1/user:42", 0, lambda d: d.update(text="Authored outgoing")
     )
-    task = asyncio.create_task(a.rewriting.outgoing("1/user:42", draft["revision"]))
+    a.suggestions.generate("1/user:42", draft["revision"])
+    task = asyncio.create_task(a.process_due())
     await asyncio.wait_for(entered.wait(), 2)
-    tone = registry.preferences()
+    style = a.suggestions.settings("1/user:42")
     registry.set_reading_view("originals")
-    assert registry.preferences() == tone
+    assert a.suggestions.settings("1/user:42") == style
     release.set()
-    assert (await task)["state"] == "rewritten"
-    registry.set_tone("friendly")
+    await task
+    assert a.suggestions.view("1/user:42").state == "ready"
     manager.set_processing(1, False)
     restored = AccountRegistry(manager.settings.data)
     assert restored.reading_view() == {"reading_view": "originals"}
-    assert restored.preferences()["tone"] == "friendly"
+    assert a.suggestions.settings("1/user:42")["style"] == "friendly"
     assert not restored.processing(1)["ai_enabled"]
     assert len(a.engine.calls) == 1
 
@@ -397,15 +363,15 @@ async def test_authorization_loss_differs_from_off_and_keeps_receipt_without_pub
     draft = a.store.mutate_draft(
         "1/user:42", 0, lambda d: d.update(text="Authored text")
     )
-    task = asyncio.create_task(a.rewriting.outgoing("1/user:42", draft["revision"]))
+    a.suggestions.generate("1/user:42", draft["revision"])
+    task = asyncio.create_task(a.process_due())
     await asyncio.wait_for(entered.wait(), 2)
     manager.registry.set_state(1, "requires_login")
     release.set()
-    with pytest.raises(Conflict):
-        await task
+    await task
     recovered = a.store.draft("1/user:42")
-    assert recovered["state"] == "failed"
-    assert recovered["text"] == "Authored text" and recovered["error"]
+    assert recovered == draft
+    assert a.suggestions.view("1/user:42").state == "failed"
     assert a.store.rows("SELECT status FROM reservations")[0]["status"] == "receipted"
 
 

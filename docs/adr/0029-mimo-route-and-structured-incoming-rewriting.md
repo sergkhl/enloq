@@ -22,18 +22,18 @@ proxy's `xiaomi_mimo/mimo-v2.6-flash`, which calls Xiaomi's own API. It
 serves:
 
 - incoming rewriting with hidden image context, for blocks with images, voice
-  notes or video circles that aren't calmed
+  notes or video circles that aren't softened
   ([ADR 54](0054-incoming-text-combined-not-rewritten.md));
-- outgoing Rewrite in Neutral, Professional and Friendly casual;
 - Person Memory, Account Memory and trait notes
   ([ADR 55](0055-person-and-account-memory-and-traits.md));
-- plain Response Suggestions ([ADR 25](0025-emotion-response-suggestions.md));
+- Friendly and Professional Response Suggestions, manual and automatic
+  ([ADR 25](0025-emotion-response-suggestions.md));
 - Daily Briefings ([ADR 34](0034-group-chats-and-daily-briefings.md)).
 
 Every role has one exact route, with no selector, no fallback route or
 provider and no automatic resampling. The other routes are the decision model
 for every decision role ([ADR 30](0030-decider-emotion-classification.md),
-[ADR 49](0049-useful-response-suggestions.md)) and Muse Spark 1.3 for calmed
+[ADR 49](0049-useful-response-suggestions.md)) and Muse Spark 1.3 for softened
 rewrites ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md))
 and idiom sets ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
 MiMo-V2.6-Pro and Pro-UltraSpeed are not adopted; a later upgrade needs its
@@ -59,11 +59,10 @@ cached listing is over 24 hours old (ADR 39). The response must name the
 route as its `model`.
 
 **Reasoning (Q4).** MiMo's reasoning is only on or off, set by Xiaomi's
-`thinking` switch. Outgoing Rewrite runs without it, because the owner waits
-for it and hidden reasoning delays the first streamed word. Background roles
-run with it on and excluded from the result, since quiet periods hide their
-latency and faithfulness and judgement matter more there. Their output caps
-and attempt deadlines are raised so reasoning can't truncate a result.
+`thinking` switch. Incoming, memory, suggestion and group roles run with
+reasoning On and excluded from the result; manual suggestions use the same
+role and route as automatic ones. Outgoing Rewrite is removed (ADR 25).
+Output caps and attempt deadlines are raised so reasoning can't truncate a result.
 Reasoning text is discarded unread.
 
 **Accounting and continuity (Q5, Q6).** Every call counts, from the proxy's
@@ -92,8 +91,8 @@ Copy takes the same text, and previews and notifications collapse it to one
 line. The structure rules live in the owner-editable incoming guidance; the
 plain-text rule lives in the fixed core, because rendering depends on it. The
 Faithfulness Rules, forwarded-content attribution and the empty text of
-image-only blocks are unchanged. Outgoing Rewrite keeps the shape of the
-owner's own message.
+image-only blocks are unchanged. Suggestion insertion keeps the authored
+draft and adds the chosen text at its cursor (ADR 25).
 
 **Speech (Q10, Q11).** Voice notes and video-circle audio are rewritten into
 clear written text, not stitched in. Fillers, false starts, repetition and
@@ -115,15 +114,16 @@ explicit-uncertainty rule visible.
   accepted; reached through the proxy since ADR 39.
 - **Q3:** one route for the generation roles, with no selector or fallback.
   Replaced in part: the decision roles moved to the decision model (ADR 30),
-  and calmed text and idiom sets to Muse Spark 1.3 (ADR 53, ADR 56). Speech
+  and softened text and idiom sets to Muse Spark 1.3 (ADR 53, ADR 56). Speech
   is ADR 39's. One Daily Budget continues.
-- **Q4:** reasoning off for outgoing Rewrite, on and hidden for background
-  roles, with raised caps.
+- **Q4:** reasoning On and hidden for the retained roles, including manual
+  suggestions, with raised caps; outgoing Rewrite is removed.
 - **Q5:** cached results stay; no regeneration or data wipe.
 - **Q6:** a route change restarts each role's format-failure count; nothing
   reruns automatically.
-- **Q7:** structure for incoming rewrites only; outgoing keeps the owner's
-  shape. Since ADR 54 text that isn't calmed is combined, not rewritten.
+- **Q7:** structure for incoming rewrites only; manual suggestions add to
+  the authored draft without replacing it (ADR 25). Since ADR 54 text that
+  isn't softened is combined, not rewritten.
 - **Q8:** plain-text structure as above, returned as ordered parts.
 - **Q9:** grouped by topic in order of first mention, in the sender's voice.
 - **Q10:** speech becomes clear written text, merged by topic.
@@ -144,7 +144,7 @@ explicit-uncertainty rule visible.
   drops Muse's Contributor training terms. Xiaomi keeps prompts for 30 days
   and can't cancel a stream.
 - Hidden reasoning favours faithful restructuring in background work, at the
-  cost of later first words and readiness; outgoing Rewrite stays responsive.
+  cost of later first words and readiness. Suggestion sets publish complete.
 - Plain-text structure needs no rendering change and keeps previews and Copy
   simple, at the cost of no emphasis. Grouping by topic changes the order of
   fragments, so the originals keep the exact sequence; rewriting speech

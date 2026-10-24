@@ -39,15 +39,17 @@ test("Settings changes and restores the controls, lists trust and disconnects", 
 
   await page.getByRole("button", { name: /^AI/ }).tap();
   await expect(page.getByRole("heading", { name: "AI" })).toBeVisible();
-  const suggestions = page.getByRole("switch", { name: "Suggestions" });
+  const suggestions = page.getByRole("switch", {
+    name: "Automatic suggestions",
+  });
   await suggestions.tap();
   await expect(suggestions).toHaveAttribute("aria-checked", "false");
   await suggestions.tap();
   await expect(suggestions).toHaveAttribute("aria-checked", "true");
 
   await page.getByRole("button", { name: /^Guidance/ }).tap();
-  await page.getByRole("button", { name: "Neutral, Default" }).tap();
-  const text = page.getByRole("textbox", { name: "Neutral" });
+  await page.getByRole("button", { name: "Professional, Default" }).tap();
+  const text = page.getByRole("textbox", { name: "Professional" });
   await text.fill(`${await text.inputValue()} Journey edit.`);
   await page.getByRole("button", { name: "Save", exact: true }).tap();
   const reset = page.getByRole("button", { name: "Reset to default" });
@@ -57,7 +59,7 @@ test("Settings changes and restores the controls, lists trust and disconnects", 
   await expect(reset).toBeDisabled();
   await page.getByRole("button", { name: "Back" }).tap();
   await expect(
-    page.getByRole("button", { name: "Neutral, Default" }),
+    page.getByRole("button", { name: "Professional, Default" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Back" }).tap();
   await page.getByRole("button", { name: "Back" }).tap();

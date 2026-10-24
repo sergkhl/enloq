@@ -39,8 +39,8 @@ Each account and group has a durable AI opt-in, initially Off, under the
 account's AI switch in Manage accounts. Processing and the Reading View stay
 separate ([ADR 14](0014-account-ai-processing-and-reading-view.md)): choosing
 AI reading starts no work and opts no group in. Group Off pauses automatic
-briefings and their media stages, while deliberate composer Rewrite stays
-available whenever the account's AI is On and does not opt the group in.
+briefings and their media stages. The composer offers ordinary sends, with
+neither outgoing Rewrite nor suggestions (ADR 25).
 Account Off blocks all new AI. A valid started stage may finish, but no next
 automatic stage starts while paused. The Group AI processing switch sits in
 the group's ⋮ actions sheet, beside Hide Bots
@@ -207,7 +207,7 @@ in-flight calls finish. Lowering it releases pending work only when quiet and
 the four-hour clock permit. Changes reset no clock, invalidate no valid final,
 scan no history and retry no failure, and there is no below-threshold status.
 
-Briefing work runs below private-chat work and deliberate outgoing Rewrite and
+Briefing work runs below private-chat work, manual suggestions included, and
 above idle memory work, taking turns across members, accounts and groups. At
 a concurrency of two or more, group work never takes the last free model slot.
 Started work is not interrupted.
@@ -331,8 +331,9 @@ read-only to them. Settings → Budget shows it with today's spending beside the
 Daily Budget, with an explicit Save.
 
 Briefing image understanding, chunk summaries, final synthesis, classifier
-requests and briefing Retry charge only the group budget. Composer Rewrite,
-in groups too, and the private-chat roles charge the Daily Budget. Reused
+requests and briefing Retry charge only the group budget. Private-chat
+roles, including notification screening and both kinds of suggestions,
+charge the Daily Budget. Reused
 cached work costs nothing, and VPS transcription has no provider charge
 ([ADR 39](0039-litellm-proxy-and-vps-speech.md) owns the hosted fallback). Each
 request's budget is fixed at dispatch, so late receipts are never reassigned.
@@ -371,8 +372,8 @@ even at zero cost.
 
 **Sending.** Deliberate text and media sending and exact native replies work
 under the existing account, target, draft, permission and queue guards, while
-the group's access is verified. Groups offer the Neutral, Professional and
-Friendly casual tones. Sends show Sending, Sent, Not sent or Delivery unknown;
+the group's access is verified. Groups have no outgoing Rewrite, tone
+controls or suggestions. Sends show Sending, Sent, Not sent or Delivery unknown;
 there is no group Read and no member-reader query. Every send keeps the
 connected account's sending identity and the zero-Stars-payment boundary.
 
@@ -391,7 +392,7 @@ media, chunked execution and recovery apply; changed evidence needs a new
 review, and source, access and native rights are checked again before each
 chunk. A briefing is never a deletion target.
 
-**Not in groups.** Recipient emotion, Response Suggestions, calming and memory
+**Not in groups.** Recipient emotion, Response Suggestions, softening and memory
 are private-chat features only; groups teach neither memory
 ([ADR 55](0055-person-and-account-memory-and-traits.md)).
 
@@ -499,7 +500,7 @@ Three interviews settled this ADR, each numbered from Q1. The rollout code's
 - Q9: a concise topic-based account with attribution and source links that
   invents nothing.
 - Q10: ordinary sending and exact replies in groups.
-- Q11: no group emotion, suggestions, calming or memory.
+- Q11: no group emotion, suggestions, softening or memory.
 - Q12: unseen dots without group sound or push.
 - Q13: MiMo through the proxy, no fallback, shared concurrency; money from
   the Group Briefing Budget (Q54).
@@ -509,10 +510,10 @@ Three interviews settled this ADR, each numbered from Q1. The rollout code's
   newest first; nothing before opt-in.
 - Q16: partial briefings name their covered range and missing content.
 - Q17: chunk summaries plus a final briefing for busy days.
-- Q18: below private work and outgoing Rewrite, above idle memory; never the
+- Q18: below private work including manual suggestions, above idle memory; never the
   last free slot.
 - Q19: replaced by Q58: no reserve of the Daily Budget.
-- Q20: group Off pauses briefings, not deliberate composer Rewrite.
+- Q20: group Off pauses briefings; ordinary sending remains independent of AI.
 - Q21: the final briefing streams (Q45, Q46).
 - Q22: counted failures wait for deliberate Retry; automatic backoff only for
   no-work refusals (Q59).
@@ -531,8 +532,8 @@ Three interviews settled this ADR, each numbered from Q1. The rollout code's
   merged.
 - Q32: lost access leaves cached reading read-only and stops new AI and
   native actions; restored access resumes.
-- Q33: replaced by ADR 53: Adaptive no longer exists, and groups offer
-  Neutral, Professional and Friendly casual.
+- Q33: outgoing Rewrite and all tone controls are removed (ADR 25, ADR 53);
+  groups gain no manual suggestions.
 - Q34: no group media prefetch; AI media only inside an admitted update.
 - Q35: attachments through the originals; no day gallery.
 - Q36: Private, Groups and Saved as icon tabs in the account header (ADR 50);

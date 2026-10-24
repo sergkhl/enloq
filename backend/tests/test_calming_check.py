@@ -33,7 +33,12 @@ def originals(case):
 
 def which(text):
     """The authored case whose originals the request carries."""
-    return next(c for c in runner.CASES if originals(c)[:40] in text)
+    return next(
+        c
+        for c in runner.CASES
+        if originals(c)[:40] in text
+        or json.dumps(originals(c)[:40], ensure_ascii=False)[1:-1] in text
+    )
 
 
 async def run(
@@ -79,6 +84,10 @@ async def run(
                 "answers": {
                     "emotion": choice(code, 0.8),
                     "suggestions_useful": {"type": "noul", "noul": 0.1},
+                    "hostility": {
+                        "type": "noul",
+                        "noul": float(case["calm"] or calm_everything),
+                    },
                 },
                 "usage": {"input_tokens": 900, "output_tokens": 2, "cost": 0.000018},
             },
@@ -261,8 +270,10 @@ async def test_a_kept_insult_or_a_calmed_neutral_message_is_a_miss(tmp_path):
 async def test_a_calmed_warm_message_is_a_miss(tmp_path):
     report, *_ = await run(tmp_path, calm_everything=True)
     assert not report["passed"]
-    assert set(report["misses"]) == {"neutral_en", "warm_en", "neutral_ru", "warm_ru"}
-    assert all(m == ["neutral_or_warm_calmed"] for m in report["misses"].values())
+    assert set(report["misses"]) == {
+        case["name"] for case in runner.CASES if not case["calm"]
+    }
+    assert all(m == ["non_hostile_softened"] for m in report["misses"].values())
 
 
 def test_the_rules_match_authored_literals_threats_and_shouting():
@@ -279,11 +290,11 @@ def test_the_rules_match_authored_literals_threats_and_shouting():
 
 
 async def test_a_failed_calmed_rewrite_shows_the_originals_and_is_a_miss(tmp_path):
-    report, *_ = await run(tmp_path, broken="caps_en")
+    report, *_ = await run(tmp_path, broken="insult_short_en")
     assert not report["passed"] and "stopped" not in report
-    result = next(r for r in report["results"] if r["name"] == "caps_en")
+    result = next(r for r in report["results"] if r["name"] == "insult_short_en")
     assert result["calming"]["state"] == "failed" and not result["calming"]["calmed"]
-    assert result["misses"] == ["shouting"]
+    assert result["misses"] == ["insult:useless"]
 
 
 async def test_sarcasm_read_literally_is_a_miss(tmp_path):
@@ -295,9 +306,9 @@ async def test_sarcasm_read_literally_is_a_miss(tmp_path):
 
 
 async def test_a_refused_calmed_rewrite_is_retried_as_the_app_retries_it(tmp_path):
-    report, decisions, rewrites, *_ = await run(tmp_path, refused="caps_ru")
+    report, decisions, rewrites, *_ = await run(tmp_path, refused="insult_short_ru")
     assert report["passed"], report["misses"]
-    result = next(r for r in report["results"] if r["name"] == "caps_ru")
+    result = next(r for r in report["results"] if r["name"] == "insult_short_ru")
     assert result["calming"]["refusals"] == 1 and result["calming"]["calmed"]
     # The refused request counts, and the retry made no second decision.
     assert report["requests"]["rewrite"] == len(HOSTILE) + 1
@@ -313,9 +324,9 @@ async def test_a_voice_note_refused_twice_is_retried_and_decided_again(tmp_path)
 
 
 async def test_a_rewrite_still_refused_leaves_its_case_unverified(tmp_path):
-    report, *_ = await run(tmp_path, refused="caps_ru", refusals=3)
+    report, *_ = await run(tmp_path, refused="insult_short_ru", refusals=3)
     assert not report["passed"] and not report["misses"]
-    assert report["unverified"] == ["caps_ru"]
-    result = next(r for r in report["results"] if r["name"] == "caps_ru")
+    assert report["unverified"] == ["insult_short_ru"]
+    result = next(r for r in report["results"] if r["name"] == "insult_short_ru")
     assert result["calming"]["refusals"] == runner.RETRIES
     assert result["calming"]["state"] == "queued"

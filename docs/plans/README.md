@@ -16,8 +16,10 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-None. Every earlier plan is delivered; what remains open is in
-[TODO.md](TODO.md).
+1. [Prompt notifications, hostile-only softening and manual suggestions](2026-10-24-notifications-and-suggestions.md).
+
+Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
+implementation or deployment.
 
 ## How a plan runs
 

@@ -140,9 +140,10 @@ read-only contacts and search calls are on the MTProto allow-list.
 **An opened chat before it is recent (Q17).** A chat opened through New
 Message, a member's profile or a chat link shows its history read from
 Telegram (the latest page, then Load earlier) as originals only: its old
-messages get no rewrite, emotion, suggestions or memory. It stays out of the
+messages get no automatic rewrite, emotion, suggestions or memory. It stays out of the
 Private list until a message is sent or received there; from then on the
-Recent Chat rules apply. Rewrite works on its draft. Chat links open any of
+Recent Chat rules apply. Manual suggestions can use its draft as intent,
+without processing or scanning older history (ADR 25). Chat links open any of
 the account's private chats, amending ADR 36 Q5. Not adopted: making an
 opened chat recent at once, which would process its unread messages.
 

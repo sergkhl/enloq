@@ -7,6 +7,8 @@ import "./suggestions.css";
 export type SuggestionsView = components["schemas"]["SuggestionsView"];
 const NONE: SuggestionsView = {
   state: "none",
+  kind: "automatic",
+  style: "friendly",
   reason: null,
   attempt: null,
   options: [],

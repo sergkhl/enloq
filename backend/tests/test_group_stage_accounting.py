@@ -622,13 +622,14 @@ def test_older_failed_retry_cannot_regenerate_sources_now_covered_by_newer_final
 async def test_private_path_preserves_on_dispatch_guidance_and_never_charges_group_batch(
     rig,
 ):
-    job, calls = queue(rig.store, "private", "outgoing_rewrite"), []
+    job, calls = queue(rig.store, "private", "incoming_rewrite"), []
 
     class PrivateEngine(ControlledEngine):
         async def generate(self, role, value):
             self.calls.append((role, copy.deepcopy(value)))
             return EngineResponse(
-                {"text": "Authored private rewrite."}, actual_nanos=37
+                {"text": "Authored private rewrite.", "image_context": []},
+                actual_nanos=37,
             )
 
     result = await rig.work.run(
@@ -648,5 +649,5 @@ async def test_private_path_preserves_on_dispatch_guidance_and_never_charges_gro
     )
     with pytest.raises(Refused, match="group briefing role"):
         rig.work.reserve(
-            queue(rig.store, "wrong-hook", "outgoing_rewrite"), "mimo", **hooks(rig)
+            queue(rig.store, "wrong-hook", "incoming_rewrite"), "mimo", **hooks(rig)
         )

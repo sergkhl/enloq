@@ -30,10 +30,6 @@ import { MediaPicker, type PickerKind } from "./MediaPicker";
 import { SelectedMediaPreview } from "./SelectedMediaPreview";
 import "./composer.css";
 
-type Preferences = {
-  tone: components["schemas"]["Tone"]["tone"];
-  revision: number;
-};
 export function Composer({
   account,
   visible,
@@ -130,10 +126,6 @@ export function Composer({
   const mounted = useRef(true);
   const visibleNow = useRef(visible);
   visibleNow.current = visible;
-  const [preferences, setPreferences] = useState<Preferences>({
-    tone: "neutral",
-    revision: 0,
-  });
   const fileInput = useRef<HTMLInputElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const selectedField = useRef<HTMLDivElement>(null);
@@ -148,7 +140,6 @@ export function Composer({
     [sending, setSending] = useState(false),
     [error, setError] = useState("");
   // The tone sheet, as in the app (ADR 44 MW3).
-  const [choosingTone, setChoosingTone] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
   // The paperclip's sheet and the GIF and sticker picker (ADR 46 CU5).
   const [attachSheet, setAttachSheet] = useState(false);
@@ -181,7 +172,6 @@ export function Composer({
     mounted.current = true;
     const leave = () => {
       mediaRequest.current?.abort();
-      setChoosingTone(false);
       setFocusSelection(false);
       setFocusAt(null);
       composing.current = false;
@@ -198,7 +188,6 @@ export function Composer({
   useEffect(() => {
     if (!visible) {
       mediaRequest.current?.abort();
-      setChoosingTone(false);
       setFocusSelection(false);
       setFocusAt(null);
       composing.current = false;
@@ -247,11 +236,6 @@ export function Composer({
     else field.current?.focus();
     setFocusSelection(false);
   }, [focusSelection, draft.selected_media?.id, visible]);
-  useEffect(() => {
-    void workspaceApi<Preferences>("preferences")
-      .then(setPreferences)
-      .catch((e) => setError(e.message));
-  }, []);
   function apply(value: Draft, version?: number) {
     if (value.revision < server.current.revision) return;
     if (value.revision >= server.current.revision) server.current = value;
@@ -344,29 +328,32 @@ export function Composer({
       edit({ reply_to: reply.identity });
     }
   }, [reply, sending, locked, mediaBusy]);
-  async function rewrite() {
-    if (action.current || !canRewrite()) return;
+  async function generate() {
+    if (action.current || !canGenerate()) return;
     const clicked = current.current;
-    action.current = "rewrite";
+    const cursor = caret.current;
+    action.current = "generate";
     setWorking(true);
     setError("");
     try {
       await save();
-      if (action.current !== "rewrite") return;
       if (!sameDraftContent(current.current, clicked))
         throw new Error(
-          "The draft changed before Rewrite. Review it and rewrite again.",
+          "The draft changed before generating suggestions. Review it and try again.",
         );
-      const version = edits.current;
-      const result = await chatApi<Draft>(account, chat.peer, "/rewrite", {
-        revision: server.current.revision,
-      });
-      apply(result, version);
-      if (dirty.current) await save();
+      await chatApi<SuggestionsView>(
+        account,
+        chat.peer,
+        "/suggestions/generate",
+        {
+          revision: server.current.revision,
+          cursor,
+        },
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      if (action.current === "rewrite") action.current = null;
+      action.current = null;
       setWorking(false);
       void refresh();
     }
@@ -572,27 +559,6 @@ export function Composer({
       }
     }
   }
-  async function stop() {
-    const shown = current.current;
-    ignoredAttempt.current = shown.attempt || null;
-    const version = ++edits.current;
-    setError("");
-    try {
-      apply(
-        await chatApi<Draft>(account, chat.peer, "/rewrite/stop", {
-          revision: shown.revision,
-          attempt: shown.attempt,
-          text: shown.partial ? shown.text : null,
-        }),
-        version,
-      );
-      setWorking(false);
-    } catch (e) {
-      ignoredAttempt.current = null;
-      setError((e as Error).message);
-      void refresh();
-    }
-  }
   async function send() {
     if (action.current || !canSend()) return;
     action.current = "send";
@@ -739,13 +705,12 @@ export function Composer({
       window.removeEventListener("beforeunload", closing);
     };
   }, [sending, attaching, undoing]);
-  function canRewrite() {
+  function canGenerate() {
     return (
       processing &&
       nativeAvailable &&
       current.current.selected_media?.kind !== "sticker" &&
       current.current.selected_media?.status !== "preparing" &&
-      !!current.current.text.trim() &&
       current.current.state !== "rewriting" &&
       !locked &&
       !attaching &&
@@ -808,18 +773,6 @@ export function Composer({
   // Saved Messages has no AI for now (ADR 50 Q3, Q17): no Rewrite, tone,
   // Undo or suggestions.
   const saved = chat.kind === "saved";
-  const tone = preferences.tone;
-  const toneName = {
-    neutral: "Neutral",
-    professional: "Professional",
-    friendly: "Friendly casual",
-  }[tone];
-  const rewriteStatus =
-    processing === false
-      ? "AI processing is Off for this account"
-      : !nativeAvailable
-        ? "Native group access is unavailable"
-        : `Rewrite · ${toneName}`;
   return (
     <footer className={`composer-wrap${streaming ? " is-rewriting" : ""}`}>
       {retained && (
@@ -959,19 +912,17 @@ export function Composer({
         >
           <Paperclip size={18} />
         </button>
-        {saved ? (
+        {saved || group ? (
           <span className="composer-spacer" />
         ) : (
           <div className="rewrite-controls">
             <button
               className="rewrite-button"
-              aria-label="Rewrite"
-              disabled={!canRewrite()}
-              title={rewriteStatus}
-              aria-description={rewriteStatus}
-              onClick={() => void rewrite()}
+              aria-label="Generate suggestions"
+              disabled={!canGenerate()}
+              onClick={() => void generate()}
             >
-              {locked ? (
+              {working ? (
                 <LoaderCircle
                   size={16}
                   className="work-spinner"
@@ -980,44 +931,11 @@ export function Composer({
               ) : (
                 <Pencil size={16} aria-hidden="true" />
               )}
-              <span>Rewrite · {toneName}</span>
+              <span>Generate suggestions</span>
             </button>
-            <button
-              type="button"
-              className="tone-switch"
-              aria-label="Rewrite tone"
-              aria-haspopup="dialog"
-              disabled={
-                retained ||
-                locked ||
-                selecting ||
-                sending ||
-                attaching ||
-                inserting ||
-                mediaBusy
-              }
-              onClick={() => setChoosingTone(true)}
-            >
-              <ChevronDown size={16} aria-hidden="true" />
-            </button>
-            {streaming && (
-              <button
-                className="stop-rewrite"
-                aria-label="Stop rewrite"
-                title="Stop rewrite"
-                onClick={() => void stop()}
-              >
-                <Square size={15} />
-              </button>
-            )}
             <button
               className="undo-button"
-              aria-label={
-                draft.state === "inserted" ? "Undo suggestion" : "Undo rewrite"
-              }
-              title={
-                draft.state === "inserted" ? "Undo suggestion" : "Undo rewrite"
-              }
+              aria-label="Undo suggestion"
               disabled={!canUndo()}
               onClick={() => void undo()}
             >
@@ -1037,37 +955,10 @@ export function Composer({
           <Send size={18} />
         </button>
       </div>
-      {(streaming || draft.state === "stopped") && (
-        <small className="rewrite-state" role="status">
-          {streaming ? "Processing…" : "Stopped · incomplete draft"}
-        </small>
-      )}
       {(error || draft.error) && (
         <p className="composer-error" role="alert">
           {error || draft.error}
         </p>
-      )}
-      {choosingTone && (
-        <ToneSheet
-          tone={tone}
-          onChoose={async (next) => {
-            setChoosingTone(false);
-            if (action.current || next === tone) return;
-            action.current = "tone";
-            setSelecting(true);
-            try {
-              setPreferences(
-                await workspaceApi<Preferences>("preferences", { tone: next }),
-              );
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              action.current = null;
-              setSelecting(false);
-            }
-          }}
-          onClose={() => setChoosingTone(false)}
-        />
       )}
       {/* The paperclip offers Photos, GIFs and Stickers (ADR 46 CU5). */}
       {attachSheet && (
@@ -1114,60 +1005,5 @@ export function Composer({
         onSelect={selectMedia}
       />
     </footer>
-  );
-}
-
-const TONES = [
-  ["neutral", "Neutral"],
-  ["professional", "Professional"],
-  ["friendly", "Friendly casual"],
-] as const;
-
-// The rewrite tones as a sheet of choices, as in the app (Adaptive left with
-// ADR 53).
-function ToneSheet({
-  tone,
-  onChoose,
-  onClose,
-}: {
-  tone: Preferences["tone"];
-  onChoose: (tone: Preferences["tone"]) => void;
-  onClose: () => void;
-}) {
-  const first = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    first.current?.focus();
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, [onClose]);
-  return (
-    <div className="sheet-scrim" onClick={onClose}>
-      <div
-        className="sheet-bottom"
-        role="radiogroup"
-        aria-label="Rewrite tone"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {TONES.map(([value, label], index) => (
-          <button
-            key={value}
-            ref={index === 0 ? first : undefined}
-            type="button"
-            role="radio"
-            aria-checked={value === tone}
-            className="sheet-item"
-            onClick={() => onChoose(value)}
-          >
-            <span className="sheet-check">
-              {value === tone && <Check size={20} aria-hidden="true" />}
-            </span>
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }

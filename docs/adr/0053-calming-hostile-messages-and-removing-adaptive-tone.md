@@ -2,134 +2,149 @@
 status: accepted
 ---
 
-# Calming hostile messages, and removing Adaptive tone
+# Soften hostile messages
 
 ## Context
 
-Enloq works on the functionality that matters to people and removes what
-isn't needed. The mood emoji, reply suggestions, deleted
-messages' last words, notifications, Hide Bots and Person Memory stay as they
-are. Two changes follow: Adaptive tone leaves outgoing Rewrite, and incoming
-messages from a frustrated or angry sender are calmed. The Q numbers are this
-ADR's own.
+Hostile wording can make correspondence hard to read. Frustration or anger
+alone must not cause rewriting. This ADR owns the explicit hostile-wording
+decision and **Soften hostile messages**;
+[ADR 20](0020-minimal-reading-and-ready-notifications.md) owns notification
+timing. The Q numbers are this ADR's own.
 
 ## Decision
 
-### Adaptive tone leaves
+### Outgoing rewriting
 
-**Removed (Q1).** Outgoing Rewrite keeps Neutral, Professional and Friendly
-casual, in private chats as in groups.
+**Removed (Q1).** Outgoing Rewrite and all its tone controls are removed in
+private chats and groups. Private chats instead offer manual suggestions
+([ADR 25](0025-emotion-response-suggestions.md)); groups gain no suggestions.
+Friendly, Professional and Idioms are suggestion styles
+([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
 
-**No backward compatibility (Q2).** A remembered Adaptive tone, the global
-one or a person's, became Neutral, and the owner-editable Adaptive guidance
-left with shipped-defaults revision 12. The mood decision stays: the mood
-emoji, reply suggestions and group ad filtering still use it. This amends
+**No backward compatibility (Q2).** No outgoing rewrite mode, Neutral or
+Adaptive tone or outgoing-only guidance is retained. The mood decision stays
+for the mood emoji and automatic suggestion eligibility, independently of
+hostility. This replaces the outgoing behavior in
 [ADR 22](0022-recipient-emotion-and-adaptive-rewriting.md) and the Adaptive
 parts of [ADR 26](0026-mobile-message-actions-and-send-status.md) and
 [ADR 30](0030-decider-emotion-classification.md).
 
-### Calming a hostile chat
+### Soften hostile messages
 
-**What it does (Q3).** In a private chat, an incoming block the mood decision
-marks frustrated or angry is rewritten calmly: it keeps every fact, request,
-condition, deadline and any threat, stated plainly; says the sender's feeling
-in a few neutral words, such as "Alex is angry about the late payment"; and
-drops insults, sarcasm, shouting and blame. Only frustrated or angry blocks
-are calmed; warm, excited, sad and worried messages keep their wording. Since
-[ADR 54](0054-incoming-text-combined-not-rewritten.md) calming is the one
-automatic rewrite of incoming text.
+**What it does (Q3).** An explicit decision-model answer about hostile
+wording, separate from Recipient Emotion, is the only trigger. Hostility
+toward anyone may qualify: insults, aggressive blame, intimidation and
+hostile sarcasm, interpreted in context. Frustration, anger, emphatic
+profanity, friendly teasing and reporting someone else's insult do not
+qualify by themselves. Neither a mood code nor sarcasm alone authorizes
+softening.
 
-**On by default, one switch per chat (Q4).** Calming is on in every private
-chat, for the owner and every member. Each person's Correspondent Profile has
-a **Calm this chat** switch, beside Remember this chat and Suggestions, that
-turns it off for that chat only.
+A hostile private block is rewritten with every fact, request, condition,
+amount, deadline and threat stated plainly. Insults, hostile sarcasm,
+shouting and blame are removed; sarcasm is rendered by its meaning, and an
+expressed feeling is named briefly only when supported by the evidence.
+Hostility supplies no invented feeling or attribution. An angry or frustrated
+block without hostile wording keeps its text. Softening is the only
+automatic rewrite of incoming text
+([ADR 54](0054-incoming-text-combined-not-rewritten.md)); media retains its
+ordinary rewrite.
 
-**The Calmed label (Q5).** No header tag shows calming. Each calmed message
-carries a small **Calmed** label, and its original stays one tap away, as
-every rewrite's does.
+**On by default, one switch per chat (Q4).** Each private chat's
+Correspondent Profile has **Soften hostile messages**, On by default for
+the owner and every member, beside Remember this chat, Automatic suggestions
+and Style. It controls softening and notification screening in that chat;
+Off permits immediate original previews. This vocabulary replaces Calming,
+Calm this chat and Calmed throughout the feature. Existing per-chat On/Off
+choices are preserved.
 
-**Any length (Q6).** A frustrated or angry block is calmed whatever its
-length. The Processing Character Threshold no longer applies to private
-chats (ADR 54).
+**The Softened label (Q5).** Each softened message carries a small
+**Softened** label, its original one tap away. No header tag is added.
 
-**The decision comes first (Q7).** In a chat with calming on, every eligible
-private block gets its mood decision from its originals before any rewrite,
-as held blocks do under
-[ADR 49](0049-useful-response-suggestions.md) Q3; then at most one rewrite
-runs, calmed or not. The rewrite, its readiness and its notification wait for
-the decision, typically a few seconds, and image meanings don't feed that
-decision. In a chat with calming off, a block with media keeps ADR 30's
-order: the rewrite first, the decision after. Not adopted: rewriting first
-and again calmly, which would show and notify the hostile version first.
+**Any length (Q6).** A hostile block is softened at any length; the Processing
+Character Threshold does not apply to private chats (ADR 54).
 
-**The Calming guidance (Q8).** An owner-editable field, **Calming**, in
-Settings → AI → Guidance holds Q3's wording as its default, after a fixed
-calming frame. It is added to the Faithfulness Rules and the incoming
-guidance only for blocks being calmed.
+**The decision comes first (Q7).** With softening On, notification text and
+captions are screened on arrival on the adopted decision route, from original
+wording and bounded cached same-chat context. The screen reads no raw images,
+memory or traits and scans no history. ADR 20 sets its five-second deadline
+and original-text fallback. Clean previews wait for no other AI stage;
+hostile previews normally wait for validated softened wording. Textless
+media uses a typed label immediately, and a clean later arrival need not
+wait for an earlier hostile message.
 
-**Scope in time (Q9).** Calming applies to blocks rewritten while it is on:
-switching it on redoes nothing already shown, and switching it off leaves
-calmed messages calmed.
+Combined-block decisions and rewrites retain 30 quiet seconds. Before a
+rewrite, the explicit hostility answer decides whether to soften; a mood
+decision may accompany it but cannot replace it. Reuse a screening answer
+only for proven unchanged inputs and context; changed or combined sources
+need a current decision. No partial stream is a notification preview. With
+softening Off, media keeps its ordinary rewrite and the mood decision may
+follow it. An unavailable or unusable decision authorizes no softening;
+notifications use ADR 20's original fallback.
 
-**The mood emoji (Q10).** It shows as usual; the calmed text states the
-feeling anyway.
+**The softening guidance (Q8).** The owner-editable **Soften hostile
+messages** field in Settings → AI → Guidance holds Q3's wording after a
+fixed softening frame. It joins the Faithfulness Rules and incoming guidance
+only for hostile blocks. The decision's fixed hostile-wording criteria are
+independent of editable Emotion extraction guidance.
 
-**Private chats only (Q11)**, as the mood emoji and suggestions are.
+**Scope in time (Q9).** Switching On redoes nothing already shown; switching
+Off leaves softened renderings intact.
 
-**Sarcasm.** The incoming decision request also asks, as a fixed question
-with no owner field, whether the latest block is sarcastic. A calmed rewrite
-of a sarcastic block is told so, and the fixed calming frame says to render
-sarcasm by what it means. A missing answer means no hint; a malformed one
-fails the decision like the others.
+**The mood emoji (Q10).** It keeps its separate emotion rule. Softened text
+asserts no emotion merely because hostility was found.
 
-**Muse writes calmed text.** MiMo read sarcasm literally too often, with
-reasoning on or off. Calmed rewrites therefore run on
-`openrouter/meta/muse-spark-1.3-contributor` through the proxy, whose route
-pins Meta with low reasoning hidden, at its listed $0.10 and $0.20 per
-million input and output tokens; its rates come from OpenRouter's public
-listing, as the proxy records none. The route
-[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md) retired returns
-for this role (and ADR 56's idiom sets) only; every other rewrite stays on
-MiMo. Muse draws on Meta's shared upstream pool: a calmed rewrite refused
-with HTTP 429 retries after 30, 60 and 120 seconds (or the provider's
-delay), then fails with Retry, and the originals show meanwhile.
+**Private chats only (Q11).** Groups and Saved Messages have no softening.
+
+**Sarcasm.** The block decision also asks whether it is sarcastic, with no
+owner field. The softened rewrite receives that hint and must render the
+meaning rather than the literal sarcastic claim. Missing sarcasm supplies no
+hint; malformed output fails the decision. Sarcasm without hostility starts
+no softening.
+
+**The writer.** Softened text uses
+`openrouter/meta/muse-spark-1.3-contributor` through the proxy, with Meta
+pinned and low reasoning hidden, under the adopted route and rates. Every
+other incoming rewrite stays on MiMo. The app keeps bounded no-work retries
+for Muse refusals. Notifications take the original fallback when required
+work cannot proceed, without waiting through those retries; completion
+never adds another alert.
 
 ### Quality must not degrade
 
-**The rule (Q12).** About 24 authored blocks, half Russian and half English:
-short insults, long rants with amounts and deadlines, legal and safety
-threats, sarcasm, ALL CAPS, a voice-note transcript, a forwarded hostile
-message, frustrated but polite messages, and four neutral or warm messages.
-Calming passes only if, in every case, the calmed text keeps every fact,
-request, condition, amount, deadline and threat of the originals, invents
-nothing, keeps the language, removes the insults, sarcasm and shouting and
-reads sarcasm by what it means, and if no neutral or warm message is calmed.
-Zero misses.
+**The rule (Q12).** About 30 authored Russian and English blocks:
+insults, rants with amounts and deadlines, legal and safety threats, hostile
+sarcasm, shouting, speech, forwarded hostility and third-party attacks, plus
+non-hostile frustrated and angry messages, friendly teasing, reported insults
+and neutral or warm controls. Preserve every fact, request, condition,
+amount, deadline and threat; invent nothing; keep the language; remove
+hostile presentation; interpret hostile sarcasm by its meaning. Non-hostile
+controls must not be softened. Zero misses.
 
-**The judges (Q13).** `scripts/check-calming.py` checks automatically that
-every authored amount, date, name and threat survives. A judge model,
-`chatgpt/gpt-6.1-sol` through the proxy's subscription route, reads authored
-texts only and counts a literal reading of sarcasm as a miss; the decision
-model may judge where text matching can't. The owner then reads every pair.
+**The judges (Q13).** The finite check uses deterministic checks for authored
+values and threats; the adopted judge in `scripts/check-calming.py` reads
+authored text only and checks sarcasm. The owner reads the pairs. Earlier
+mood-triggered results do not prove the hostile-only classifier boundary.
 
-**A gate (Q14).** The check must pass before calming goes live. It stays in
-the repository, to rerun whenever the Calming guidance is edited.
+**A gate (Q14).** The check must cover the hostile-only rule before the
+changed behavior goes live. Rerun it when the Soften hostile messages
+guidance changes.
 
-**Live (Q15).** After deployment, test messages between Maya, the test
-account, and the Owner Account check calming through the real paths, in the
-VPS browser first.
+**Live (Q15).** After deployment, recognizable test messages between Maya,
+the test account, and the Owner Account check the real paths in the VPS
+browser first, within the standing target and budget boundaries.
 
 ## Consequences
 
-- A hostile block's readiness waits a few seconds for its decision in
-  calming chats; a frustrated or angry one is then rewritten on Muse, at
-  Muse's rates, against the member's Daily Budget.
-- Muse's shared upstream pool can refuse; a key of the owner's own with Meta
-  would be the remedy if refusals become common.
-- This amends ADR 22, ADR 26 and ADR 30 (Adaptive), ADR 29 (Muse for calmed
-  text), ADR 35 (calming at any length) and ADR 49 (the decision first).
+- Only hostile wording triggers the Muse rewrite, against the member's Daily
+  Budget; mood and automatic suggestion eligibility stay independent.
+- Clean notifications wait at most five seconds for screening. The chosen
+  original fallback may expose hostile wording, including when a required
+  softened rewrite fails.
+- Ordinary app retries and notification fallback are distinct outcomes.
 
 ## Open owner gates
 
-The gate passed on Muse. The owner's reading of that passing run's pairs is
-still open.
+The owner's reading of authored pairs remains open. Current implementation
+limits live in [inference](../inference.md#calming) and
+[TODO](../plans/TODO.md).

@@ -100,7 +100,7 @@ async def test_requests_go_to_the_configured_endpoint_on_another_host(tmp_path):
     mimo = OpenRouterEngine(settings, user=USER, client=client)
     assert (await mimo.verify())["endpoint"] == ELSEWHERE
     await mimo.generate(
-        "outgoing_rewrite", {"messages": [{"id": 91}], "text": "authored"}
+        "response_suggestions", {"messages": [{"id": 91}], "text": "authored"}
     )
     decider = DeciderEngine(settings, user=USER, client=client)
     await decider.generate("emotion_classification", {"state": {"authored": True}})
@@ -161,7 +161,7 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
     )
     assert await engine.prepare({}) == 151_388_160
     result = await engine.generate(
-        "outgoing_rewrite",
+        "response_suggestions",
         {
             "messages": [{"id": 91}, {"id": 85}],
             "text": "authored",
@@ -174,12 +174,12 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
     )
     assert result.actual_nanos == 1200 and "reasoning" not in str(result)
     assert result.usage["finish_reason"] == "stop"
-    assert seen[0]["max_tokens"] == 4096
+    assert seen[0]["max_tokens"] == 16384
     assert seen[0]["model"] == MODEL
     # The proxy route names the provider; OpenRouter routing fields are gone.
     assert "provider" not in seen[0] and "reasoning" not in seen[0]
     assert "tool_choice" not in seen[0]
-    assert seen[0]["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert seen[0]["extra_body"] == {"thinking": {"type": "enabled"}}
     assert seen[0]["user"] == "authored-provider-pseudonym"
     parts = seen[0]["messages"][1]["content"]
     assert json.loads(parts[1]["text"])["native_message_id"] == 91
@@ -235,7 +235,7 @@ async def test_reply_without_usage_cost_takes_the_proxy_header_cost(tmp_path):
         settings, user="authored-provider-pseudonym", client=client
     )
     result = await engine.generate(
-        "outgoing_rewrite", {"messages": [{"id": 91}], "text": "authored"}
+        "response_suggestions", {"messages": [{"id": 91}], "text": "authored"}
     )
     assert result.usage["cost"] == 0.0000021 and result.actual_nanos == 2100
     await client.aclose()

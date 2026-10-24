@@ -8,7 +8,7 @@ import httpx
 import pytest
 from enloq.application.accounts import AccountManager
 from enloq.config import Settings, private_write
-from enloq.domain.models import Chat, Unavailable
+from enloq.domain.models import Chat
 from enloq.inference.openrouter import MODEL, OpenRouterEngine
 
 from backend.tests.proxy_helpers import ENDPOINT
@@ -327,40 +327,6 @@ async def test_off_and_budget_waits_keep_pending_route_retry_without_spending(
     rig.now[0] = waiting["due"]
     await rig.app.process_due()
     finished(rig, role)
-
-
-@pytest.mark.parametrize(
-    "unavailable,reason",
-    [("missing", "route unavailable"), ("proxy_refusal", "Model proxy HTTP 503")],
-)
-async def test_outgoing_route_failure_is_immediate_and_keeps_text_and_undo(
-    rig, unavailable, reason
-):
-    if unavailable == "proxy_refusal":
-        rig.endpoints, rig.status = [exact_route()], 503
-    draft = rig.app.store.mutate_draft(
-        KEY,
-        0,
-        lambda d: d.update(
-            text="Previously rewritten owner text.",
-            undo="Original owner text.",
-            state="rewritten",
-        ),
-    )
-    with pytest.raises(Unavailable, match=reason):
-        await rig.app.rewriting.outgoing(KEY, draft["revision"])
-    failed = rig.app.store.draft(KEY)
-    assert failed["state"] == "failed" and failed["error"]
-    assert failed["text"] == draft["text"] and failed["undo"] == draft["undo"]
-    assert rig.app.store.rows(
-        "SELECT state FROM jobs WHERE role='outgoing_rewrite'"
-    ) == [{"state": "failed"}]
-    rig.now[0] += 3600
-    await rig.app.process_due()
-    assert len(rig.checks) == 1
-    no_dispatch(rig)
-    restored = rig.app.rewriting.undo(KEY, failed["revision"])
-    assert restored["text"] == "Original owner text."
 
 
 @pytest.mark.parametrize("role", ROLES)

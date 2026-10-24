@@ -87,9 +87,12 @@ def answers(code="worried", probability=0.8, **extra):
 
 
 def incoming_answers(code="worried", probability=0.8, useful=0.7):
-    """An incoming request's two answers (ADR 49 Q2)."""
+    """Independent emotion, usefulness and hostile-wording answers."""
     return answers(
-        code, probability, suggestions_useful={"type": "noul", "noul": useful}
+        code,
+        probability,
+        suggestions_useful={"type": "noul", "noul": useful},
+        hostility={"type": "noul", "noul": 0.0},
     )
 
 
@@ -199,7 +202,12 @@ async def test_one_exact_decision_request_and_its_receipt(tmp_path):
     assert payload["state"] == state
     # ADR 49 Q2: the emotion choice and the usefulness yes/no, one request;
     # ADR 53: whether the block is sarcastic, a fixed question.
-    assert set(payload["questions"]) == {"emotion", "suggestions_useful", "sarcasm"}
+    assert set(payload["questions"]) == {
+        "emotion",
+        "suggestions_useful",
+        "hostility",
+        "sarcasm",
+    }
     question = payload["questions"]["emotion"]
     assert question["type"] == "choice"
     assert list(question["criteria"]) == list(CODES) == list(EMOTION_CRITERIA)
@@ -505,7 +513,7 @@ def test_each_question_carries_only_its_own_owner_guidance():
     # ADR 49: both requests ask both questions; ADR 53: only the incoming one
     # asks whether the block is sarcastic.
     assert set(reaction) == {"emotion", "suggestions_useful"}
-    assert set(incoming) == {"emotion", "suggestions_useful", "sarcasm"}
+    assert set(incoming) == {"emotion", "suggestions_useful", "hostility", "sarcasm"}
     for question in (incoming["emotion"], reaction["emotion"]):
         assert "Owner-edited emotion guidance." in question["instructions"]
         assert "usefulness guidance" not in question["instructions"]

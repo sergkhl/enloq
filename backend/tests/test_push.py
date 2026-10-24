@@ -151,7 +151,7 @@ async def test_wire_payload_is_opaque_while_local_validation_keeps_display_conte
     assert visible["text"] == (
         "Notifications are ready on this browser."
         if test_event
-        else "Validated rewrite"
+        else "Authored request, not a promise."
     )
     assert visible["account"] and visible["count"] == 1 and visible["silent"]
     assert visible["expires"] == decoded["expires"]

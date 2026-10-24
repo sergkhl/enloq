@@ -47,7 +47,7 @@ export function ProcessingSettings({
       />
       <Divider />
       <SettingSwitch
-        label="Suggestions"
+        label="Automatic suggestions"
         explanation={EXPLAIN.suggestions}
         route="suggestions"
         testID="suggestions-switch"

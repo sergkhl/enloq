@@ -161,7 +161,7 @@ def test_sticker_edit_guard_allows_reply_only_without_clearing_exact_kept_undo_o
     assert refused.status_code == 400 and app.store.draft(KEY) == after
     assert (
         client.post(BASE + "/rewrite", json={"revision": after["revision"]}).status_code
-        == 400
+        == 404
     )
     assert (
         client.post(BASE + "/undo", json={"revision": after["revision"]}).status_code

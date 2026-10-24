@@ -288,57 +288,6 @@ def edit(app, text, reply_to=None):
     )
 
 
-async def test_outgoing_tones_undo_and_no_implicit_delivery(tmp_path):
-    a = fixture(tmp_path)
-    registry = AccountRegistry(tmp_path)
-    for tone in ("neutral", "professional", "friendly"):
-        registry.set_tone(tone)
-        draft = edit(
-            a, "I may agree only if the total is below 20. Do not confirm yet."
-        )
-        result = await a.rewriting.outgoing("1/user:42", draft["revision"])
-        assert a.engine.calls[-1][1]["tone"] == tone
-        assert result["undo"] == draft["text"] and result["text"] == draft["text"]
-        assert not a.transport.deliveries
-        restored = a.rewriting.undo("1/user:42", result["revision"])
-        assert restored["text"] == draft["text"] and restored["undo"] is None
-    assert fixture(tmp_path, account=2).rewriting.preferences()["tone"] == "friendly"
-    empty = edit(a, " ")
-    with pytest.raises(Refused):
-        await a.rewriting.outgoing("1/user:42", empty["revision"])
-
-
-@pytest.mark.parametrize("change", ["text", "tone"])
-async def test_late_outgoing_does_not_overwrite_edits_or_tone(tmp_path, change):
-    import asyncio
-
-    from enloq.domain.models import Conflict
-
-    a = fixture(tmp_path)
-    draft = edit(a, "My original words")
-    start, finish = asyncio.Event(), asyncio.Event()
-
-    async def delayed(role, packet):
-        start.set()
-        await finish.wait()
-        return {"text": "A rewritten version"}
-
-    a.engine.generate = delayed
-    task = asyncio.create_task(a.rewriting.outgoing("1/user:42", draft["revision"]))
-    await start.wait()
-    if change == "text":
-        edit(a, "New words typed while waiting")
-    else:
-        AccountRegistry(tmp_path).set_tone("professional")
-    finish.set()
-    with pytest.raises(Conflict):
-        await task
-    assert a.store.draft("1/user:42")["text"] == (
-        "New words typed while waiting" if change == "text" else "My original words"
-    )
-    assert not a.transport.deliveries
-
-
 async def test_send_snapshot_unknown_restart_reconciliation_and_new_edits(tmp_path):
     a = fixture(tmp_path)
     a.sync.ingest(message(a))
@@ -520,7 +469,9 @@ def attach(app, name="authored.png"):
     )
 
 
-async def test_durable_image_only_send_and_caption_rewrite_preserve_selection(tmp_path):
+async def test_durable_image_only_send_and_manual_suggestions_preserve_selection(
+    tmp_path,
+):
     a = fixture(tmp_path)
     draft = attach(a)
     identity = draft["attachments"][0]
@@ -528,9 +479,15 @@ async def test_durable_image_only_send_and_caption_rewrite_preserve_selection(tm
     assert path.stat().st_mode & 0o777 == 0o600
     assert fixture(tmp_path).store.draft("1/user:42")["attachments"] == [identity]
     draft = edit(a, "I prefer this one, if it fits.")
-    rewritten = await a.rewriting.outgoing("1/user:42", draft["revision"])
-    assert rewritten["attachments"] == [identity]
-    undone = a.rewriting.undo("1/user:42", rewritten["revision"])
+    a.suggestions.generate("1/user:42", draft["revision"])
+    for _ in range(4):
+        await a.process_due()
+    shown = a.suggestions.view("1/user:42")
+    inserted = a.suggestions.insert("1/user:42", draft["revision"], shown.attempt, 0)[
+        "draft"
+    ]
+    assert inserted["attachments"] == [identity]
+    undone = a.rewriting.undo("1/user:42", inserted["revision"])
     assert undone["attachments"] == [identity]
     draft = edit(a, "")
     sent = await a.delivery.send("1/user:42", draft["revision"])

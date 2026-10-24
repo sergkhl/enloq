@@ -409,10 +409,11 @@ describe("GIFs and stickers in the composer", () => {
     );
     expect(await screen.findByText("Draft kept")).toBeTruthy();
     expect(screen.getByText("Preparing sticker…")).toBeTruthy();
-    // The text field steps aside; Rewrite waits.
+    // The text field steps aside; generation waits.
     expect(screen.queryByLabelText("Message")).toBeNull();
     expect(
-      screen.getByLabelText("Rewrite").props.accessibilityState.disabled,
+      screen.getByLabelText("Generate suggestions").props.accessibilityState
+        .disabled,
     ).toBe(true);
     await fireEvent.press(screen.getByLabelText("Remove the sticker"));
     await waitFor(() =>

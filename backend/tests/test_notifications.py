@@ -32,27 +32,31 @@ def complete(app, *, text="Validated rewrite", state="ready"):
 def pending(app):
     app.notifications.advance()
     return [
-        app.notifications.candidate(r)
+        candidate
         for r in app.notifications.rows()
-        if r["state"] == "pending"
+        if (candidate := app.notifications.candidate(r))
     ]
 
 
-def test_quiet_extension_ready_unchanged_output_and_new_burst_in_same_block(rig):
+def test_fallback_before_quiet_unchanged_output_and_new_burst_in_same_block(rig):
     app, now = rig
     incoming(app, text="Same words")
-    now[0] += 20
+    now[0] += 5
+    candidate = pending(app)[0]
+    assert candidate["text"] == "Same words"
+    app.notifications.finish(app.notifications.rows()[0])
+    now[0] += 15
     incoming(app, 2, text="Same words")
     complete(app, text="Same words")
-    now[0] += 11
-    assert pending(app) == []
-    now[0] += 20
+    now[0] += 5
     candidate = pending(app)[0]
     assert candidate["count"] == 2 and candidate["text"] == "Same words"
+    assert candidate["silent"]
     row = app.notifications.rows()[0]
     assert app.notifications.finish(row)
     assert not app.notifications.finish(row)
     assert pending(app) == []
+    now[0] += 31
     incoming(app, 3)
     complete(app)
     now[0] += 31
@@ -62,7 +66,7 @@ def test_quiet_extension_ready_unchanged_output_and_new_burst_in_same_block(rig)
     assert not app.store.rows("SELECT * FROM reservations")
 
 
-def test_multiple_blocks_preview_newest_and_wait_for_completion(rig):
+def test_multiple_blocks_preview_newest_original_without_waiting_for_completion(rig):
     app, now = rig
     incoming(app)
     app.sync.ingest(message(app, 2, outgoing=True))
@@ -72,12 +76,13 @@ def test_multiple_blocks_preview_newest_and_wait_for_completion(rig):
             "UPDATE blocks SET state='ready',rendered='Older result',rendered_revision=revision WHERE id='1/user:42/1'"
         )
     now[0] += 31
-    assert pending(app) == []
+    candidate = pending(app)[0]
+    assert candidate["text"] == "Authored request, not a promise."
     with app.store.transaction() as db:
         db.execute(
             "UPDATE blocks SET state='ready',rendered='Newest result',rendered_revision=revision WHERE id='1/user:42/3'"
         )
-    assert pending(app)[0]["text"] == "Newest result"
+    assert pending(app)[0] == candidate
     assert pending(app)[0]["count"] == 2
 
 
@@ -132,6 +137,10 @@ def test_non_new_sources_do_not_manufacture_events(rig, source):
 def test_pending_candidates_are_revalidated_before_dispatch(rig, invalid):
     app, now = rig
     source = incoming(app)
+    if invalid == "output":
+        with app.store.transaction() as db:
+            db.execute("UPDATE notice_sources SET state='hostile'")
+            db.execute("UPDATE blocks SET calmed=1")
     complete(app)
     now[0] += 31
     assert len(pending(app)) == 1
@@ -154,7 +163,10 @@ def test_pending_candidates_are_revalidated_before_dispatch(rig, invalid):
         with app.store.transaction() as db:
             db.execute("UPDATE blocks SET state='working',rendered='Provisional'")
     assert app.notifications.candidate(row) is None
-    assert pending(app) == []
+    if invalid == "edit":
+        assert pending(app)[0]["text"] == "Changed within same timestamp"
+    else:
+        assert pending(app) == []
 
 
 def test_restart_and_latest_pending_only_without_content_in_event_state(rig):
@@ -204,7 +216,7 @@ def test_edit_during_quiet_updates_candidate_without_extending_burst(rig):
     assert app.notifications.rows()[0]["quiet"] == original_due
     complete(app, text="Current validated edit")
     now[0] += 21
-    assert pending(app)[0]["text"] == "Current validated edit"
+    assert pending(app)[0]["text"] == "Current edited source"
 
 
 async def test_native_edited_event_is_not_a_new_message_even_when_unseen(rig):

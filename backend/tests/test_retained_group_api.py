@@ -311,7 +311,7 @@ def test_retained_group_rejects_new_native_send_catalog_and_composer_rewrite(
     r.now[0] += WINDOW + 1
     r.server.state.accounts.set_processing(1, True)
     actions = (
-        ("/rewrite", {"revision": before["revision"]}),
+        ("/suggestions/generate", {"revision": before["revision"]}),
         ("/send", {"revision": before["revision"]}),
         ("/processing", {"enabled": True}),
         ("/catalog/refresh", {"revision": catalog.json()["revision"]}),

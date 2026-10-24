@@ -214,25 +214,6 @@ CHECK_2_INCOMING = [
         "to change) with the worry kept.",
     ),
 ]
-OUTGOING = [
-    (
-        "outgoing_neutral",
-        "english_fragments",
-        "neutral",
-        "cant do friday sorry, maybe next week? lmk which day works for u",
-        "Neutral; keeps the refusal, the next-week offer and the question; keeps the "
-        "owner's single-paragraph shape.",
-    ),
-    (
-        "outgoing_professional",
-        "russian_block",
-        "professional",
-        "Я сейчас не могу одолжить деньги. Могу помочь найти вариант подешевле на "
-        "выходных.",
-        "Professional in Russian; the refusal and the weekend offer stay; no "
-        "invented promise or apology for fault (Adaptive left with ADR 53).",
-    ),
-]
 MEMORY = {
     "name": "memory_consolidation",
     "messages": [
@@ -438,8 +419,6 @@ async def observe(
                     # Each role is driven explicitly, one request per case.
                     app.memory.enabled = lambda: False
                     app.suggestions.enabled = lambda: False
-                    tone = {"tone": "neutral", "revision": 0}
-                    app.rewriting.preferences = lambda: tone
                     chats = {}
 
                     def chat(name):
@@ -558,24 +537,6 @@ async def observe(
                                 )
                             ]
                             finish(job["id"])
-
-                    async def rewrite_outgoing(name, source, value, draft, expectation):
-                        begin(name, tone=value, draft=draft, expectation=expectation)
-                        tone.update(tone=value, revision=tone["revision"] + 1)
-                        key = chats[source][1]
-                        current = store.draft(key)
-                        current = store.mutate_draft(
-                            key, current["revision"], lambda d: d.update(text=draft)
-                        )
-                        owner = app.rewriting.outgoing_work
-                        pending = owner.start(key, current["revision"])
-                        try:
-                            await owner.tasks[pending["attempt"]]
-                        except Refused:
-                            pass
-                        finally:
-                            engine.current["result"] = store.draft(key)["text"]
-                            finish(pending["attempt"])
 
                     async def consolidate_memory():
                         case = MEMORY
@@ -723,8 +684,6 @@ async def observe(
                         if check == 1:
                             for case in CHECK_1_INCOMING:
                                 await rewrite_incoming(*case)
-                            for case in OUTGOING:
-                                await rewrite_outgoing(*case)
                             await consolidate_memory()
                             await suggest()
                         elif check == 2:

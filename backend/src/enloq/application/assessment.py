@@ -349,6 +349,16 @@ class Assessment:
                     self.app.suggestions.schedule_reaction(
                         db, key, owned, packet, result.emotion
                     )
+                else:
+                    self.app.suggestions.diagnose(
+                        reason="automatic_off"
+                        if not suggestions
+                        else "no_qualifying_reaction_signal",
+                        source="reaction",
+                        emotion=result.emotion,
+                        usefulness=result.usefulness,
+                        threshold=0.5,
+                    )
         except ProviderRefused as refusal:
             self.refused(job, refusal)
         except asyncio.CancelledError:

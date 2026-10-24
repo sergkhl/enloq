@@ -17,7 +17,7 @@ export const GUIDANCE_GROUPS: { title: string; fields: GuidanceField[] }[] = [
         name: "faithfulness",
         label: "Faithfulness rules",
         explanation:
-          "Keeps facts, requests, refusals and conditions in every rewrite, incoming and outgoing.",
+          "Keeps facts, requests, refusals and conditions in incoming rewrites.",
       },
       {
         name: "incoming",
@@ -26,34 +26,25 @@ export const GUIDANCE_GROUPS: { title: string; fields: GuidanceField[] }[] = [
       },
       {
         name: "calming",
-        label: "Calming",
+        label: "Soften hostile messages",
         explanation:
-          "How angry or frustrated incoming messages are rewritten calmly, in chats that calm them.",
-      },
-      {
-        name: "outgoing",
-        label: "Outgoing rewriting",
-        explanation: "How your drafts are rewritten before you send them.",
+          "How hostile wording is softened, keeping facts and threats. Anger alone is left unchanged.",
       },
     ],
   },
   {
-    title: "Tones",
+    title: "Suggestion styles",
     fields: [
-      {
-        name: "tone_neutral",
-        label: "Neutral",
-        explanation: "The Neutral tone for your drafts.",
-      },
       {
         name: "tone_professional",
         label: "Professional",
-        explanation: "The Professional tone for your drafts.",
+        explanation:
+          "Professional wording for manual and automatic suggestions.",
       },
       {
         name: "tone_friendly",
-        label: "Friendly casual",
-        explanation: "The Friendly casual tone for your drafts.",
+        label: "Friendly",
+        explanation: "Friendly wording for manual and automatic suggestions.",
       },
     ],
   },
@@ -108,16 +99,6 @@ export const PAUSED_ROLES: Record<string, { label: string; fields: string[] }> =
     incoming_rewrite: {
       label: "Incoming rewrites",
       fields: ["faithfulness", "incoming", "calming"],
-    },
-    outgoing_rewrite: {
-      label: "Outgoing rewrites",
-      fields: [
-        "faithfulness",
-        "outgoing",
-        "tone_neutral",
-        "tone_professional",
-        "tone_friendly",
-      ],
     },
     chat_memory: {
       label: "Memory updates",

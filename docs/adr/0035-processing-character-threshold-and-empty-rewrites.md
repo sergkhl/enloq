@@ -41,24 +41,24 @@ short addition to an already long unit qualifies after quiet.
 **What it governs (Q2).** Automatic group briefing updates (ADR 34). In
 private chats, text blocks are not rewritten automatically (ADR 54); the
 threshold gates their rewriting only while the registry's `text_rewriting`
-switch, off by default and not in Settings, is on. Calming a frustrated or
-angry block ignores it ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
+switch, off by default and not in Settings, is on. Softening a hostile block
+ignores it ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
 Q6). Every new or changed private block gets its decision request (emotion,
 suggestion usefulness and sarcasm) from its originals after its quiet period,
 whatever its length ([ADR 49](0049-useful-response-suggestions.md) Q3).
-Deliberate composer Rewrite, failure Retry and Rewrite earlier messages keep
-their explicit behavior; Reaction Assessment and memory keep their own gates.
+Manual suggestions, failure Retry and Rewrite earlier messages keep their
+explicit behavior; Reaction Assessment and memory keep their own gates.
 
 **Media (Q4).** A unit with a new or changed analysable image, voice note or
 Video Circle is exempt from the text gate and keeps its bounded media
 preparation. A unit of Non-AI Media only makes no model call.
 
 **Waiting and readiness (Q5, Q6).** Held messages stay readable as originals.
-Unseen readiness and notifications use the original fallback after 30 quiet
-seconds with the usual viewing, mute and notification guards; where calming
-is on, they wait for the block's decision (ADR 54). Later processing never
-alerts again for the same burst. No timeout bypasses the threshold, and there
-is no waiting status or character counter.
+Unseen readiness retains 30 quiet seconds and waits for required hostile-wording
+decisions and softening (ADR 54). Notifications follow ADR 20's immediate
+screen, five-second deadline and original fallback; they do not wait for the
+character threshold or mood. Later processing never alerts again. No timeout
+bypasses the threshold, and there is no waiting status or character counter.
 
 **Runtime changes (Q11).** The latest saved threshold is checked again before
 automatic preparation and before provider dispatch. Raising it holds
@@ -79,14 +79,12 @@ completeness or quality.
 Showing originals." The fixed code stays in operational evidence, and Retry
 remains.
 
-**Status words (Q10).** Incoming work in progress reads "Analyzing…", and the
-earlier-messages run "Analyzing earlier messages · X of Y"; factual
-preparation stages such as transcription keep their own words. A combined
-text block shows no status (ADR 54). Streamed composer work reads
-"Processing…" with the busy spinner and no "incomplete" suffix while active;
-after a deliberate Stop it reads "Stopped · incomplete draft"
-([ADR 19](0019-streamed-rewriting-and-observed-message-history.md)). Text stays
-provisional until final validation, with one busy indicator.
+**Status words (Q10).** Incoming work reads "Analyzing…", and earlier work
+"Analyzing earlier messages · X of Y"; factual preparation stages keep their
+own words. Combined text shows no status (ADR 54). Outgoing draft streaming,
+Processing and Stopped · incomplete draft are removed with Rewrite (ADR 25).
+Suggestion work shows actual preparation, waiting and failure without
+changing the draft.
 
 The 30 quiet seconds before automatic incoming work, final validation,
 currentness guards, deliberate Retry, the absence of automatic resampling,
@@ -106,7 +104,7 @@ cached results and the budget, target and privacy boundaries are unchanged.
 - Q1: count the whole block (or briefing day), not each message; no reset
   after a success.
 - Q2: governs automatic group briefings, and private text rewriting only
-  while `text_rewriting` is on; calming ignores it; decisions run for every
+  while `text_rewriting` is on; softening ignores it; decisions run for every
   block (ADR 49 Q3, ADR 53 Q6, ADR 54).
 - Q3: Unicode code points of trimmed originals and captions; nothing added or
   generated counts.

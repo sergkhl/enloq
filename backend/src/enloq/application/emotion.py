@@ -561,7 +561,7 @@ class Emotion:
                 )
                 # ADR 53 Q6: a held block found frustrated or angry is calmed.
                 self.app.calming.release(
-                    db, job, result.code, sarcastic=result.sarcastic
+                    db, job, result.hostile, sarcastic=result.sarcastic
                 )
         except ProviderRefused as refusal:
             self.refused(job, refusal)

@@ -62,7 +62,7 @@ test("answer stances fold for every client, reopen and insert into the draft wit
   await expect(field).toHaveValue("");
 });
 
-test("the profile's Suggestions choice turns the chat's suggestions off and on", async ({
+test("the profile controls Automatic suggestions separately from shared Style", async ({
   page,
 }) => {
   await answers(page);
@@ -71,13 +71,13 @@ test("the profile's Suggestions choice turns the chat's suggestions off and on",
   const profile = page.getByRole("button", {
     name: /^Suggestion fixture,.* open profile$/,
   });
-  const choice = page.getByRole("radiogroup", { name: "Suggestions" });
+  const choice = page.getByRole("radiogroup", { name: "Style" });
+  const automatic = page.getByRole("switch", { name: "Automatic suggestions" });
   try {
     await profile.tap();
-    await expect(choice.getByRole("radio", { name: "On" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    await expect(
+      choice.getByRole("radio", { name: "Friendly" }),
+    ).toHaveAttribute("aria-checked", "true");
     // Idioms is chosen per chat since its launch (ADR 56 Q20 A).
     await expect(choice.getByRole("radio")).toHaveCount(3);
     await choice.getByRole("radio", { name: "Idioms" }).tap();
@@ -85,41 +85,29 @@ test("the profile's Suggestions choice turns the chat's suggestions off and on",
       "aria-checked",
       "true",
     );
+    await expect(automatic).toHaveAttribute("aria-checked", "true");
+    await automatic.tap();
+    await expect(automatic).toHaveAttribute("aria-checked", "false");
+    await choice.getByRole("radio", { name: "Professional" }).tap();
     await expect(
-      page.getByText(
-        "Suggestions use idioms, proverbs, set expressions and phrasal verbs in this chat's language.",
-      ),
-    ).toBeVisible();
-    await choice.getByRole("radio", { name: "On" }).tap();
-    await expect(
-      page.getByText(
-        "Short reply suggestions appear above the composer when a message is emotional or calls for a reply.",
-      ),
-    ).toBeVisible();
-    await choice.getByRole("radio", { name: "Off" }).tap();
-    await expect(choice.getByRole("radio", { name: "Off" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    await expect(
-      page.getByText("No reply suggestions in this chat."),
-    ).toBeVisible();
+      choice.getByRole("radio", { name: "Professional" }),
+    ).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "Back", exact: true }).tap();
     // Off shows nothing in the chat; On again shows the set prepared before
     // while it is still valid.
     await expect(area).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Generate suggestions" }),
+    ).toBeEnabled();
     await profile.tap();
-    await choice.getByRole("radio", { name: "On" }).tap();
-    await expect(choice.getByRole("radio", { name: "On" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    await automatic.tap();
+    await expect(automatic).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "Back", exact: true }).tap();
     await expect(area.getByRole("button", { name: /^Accept/ })).toBeVisible();
   } finally {
     // The journeys share the fixture: the chat goes back to On.
-    const restored = await page.request.post(`${CHAT}/suggestions/choice`, {
-      data: { choice: "on" },
+    const restored = await page.request.post(`${CHAT}/suggestions/settings`, {
+      data: { automatic: true, style: "friendly" },
       headers: { Origin: ORIGIN },
     });
     expect(restored.status()).toBe(200);

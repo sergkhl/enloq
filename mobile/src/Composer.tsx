@@ -18,7 +18,6 @@ import { useConnection } from "./connection";
 import { participantLabel } from "../../shared/participantLabel";
 import { replyQuoteText } from "../../shared/replyQuote";
 import type { NativeMessage, Snapshot } from "./conversation";
-import { TONES, useTone, type Tone } from "./data";
 import type { Composer } from "./drafts";
 import { MediaPicker, type PickerKind } from "./MediaPicker";
 import { ReplyQuote } from "./ReplyQuote";
@@ -80,11 +79,7 @@ export function ComposerBar({
   onSent: () => void;
 }) {
   const palette = usePalette();
-  const { tone, choose } = useTone();
-  const tones = Object.keys(TONES) as Tone[];
-  const [choosing, setChoosing] = useState(false);
   const [attachMenu, setAttachMenu] = useState(false);
-  const [toneNote, setToneNote] = useState("");
   const input = useRef<TextInput>(null);
   // GIFs and Stickers (ADR 46 CU5).
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -101,15 +96,9 @@ export function ComposerBar({
     !sticker &&
     composer.action !== "send" &&
     composer.action !== "undo";
-  const status = !aiEnabled
-    ? "AI processing is Off for this account"
-    : !nativeAvailable
-      ? "Native group access is unavailable"
-      : `Rewrite · ${TONES[tone]}`;
-  const undoLabel =
-    draft.state === "inserted" ? "Undo suggestion" : "Undo rewrite";
+  const undoLabel = "Undo suggestion";
   const busy = !!composer.action || streaming;
-  const rewritable = composer.canRewrite && aiEnabled && nativeAvailable;
+  const generatable = composer.canGenerate && aiEnabled && nativeAvailable;
   const sendable = composer.canSend && nativeAvailable;
 
   function pickAfterSheet() {
@@ -215,66 +204,29 @@ export function ComposerBar({
             palette={palette}
           />
         )}
-        {rewrite ? (
-          <>
-            <View style={[styles.split, { borderColor: palette.line }]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Rewrite"
-                accessibilityHint={status}
-                accessibilityState={{ disabled: !rewritable }}
-                disabled={!rewritable}
-                onPress={() => void composer.rewrite()}
-                style={({ pressed }) => [
-                  styles.rewrite,
-                  {
-                    opacity: rewritable ? 1 : 0.5,
-                    backgroundColor: pressed ? palette.panel : "transparent",
-                  },
-                ]}
-              >
-                {streaming || composer.action === "rewrite" ? (
-                  <ActivityIndicator size="small" color={palette.accent} />
-                ) : (
-                  <Ionicons name="pencil" size={16} color={palette.accent} />
-                )}
-                <Text
-                  numberOfLines={1}
-                  style={[styles.label, { color: palette.accent }]}
-                >
-                  Rewrite · {TONES[tone]}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Rewrite tone"
-                disabled={busy}
-                hitSlop={6}
-                onPress={() => setChoosing(true)}
-                style={[
-                  styles.tone,
-                  { borderColor: palette.line, opacity: busy ? 0.5 : 1 },
-                ]}
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={16}
-                  color={palette.accent}
-                />
-              </Pressable>
-            </View>
-            {streaming ? (
-              <IconButton
-                label="Stop rewrite"
-                icon="stop"
-                disabled={!!composer.action}
-                onPress={() => void composer.stop()}
-                palette={palette}
-              />
-            ) : null}
-          </>
+        {rewrite && !group ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Generate suggestions"
+            accessibilityState={{ disabled: !generatable }}
+            disabled={!generatable}
+            onPress={() => void composer.generate()}
+            style={[styles.rewrite, { opacity: generatable ? 1 : 0.5 }]}
+          >
+            {composer.action === "generate" ? (
+              <ActivityIndicator size="small" color={palette.accent} />
+            ) : (
+              <Ionicons name="pencil" size={16} color={palette.accent} />
+            )}
+            <Text
+              numberOfLines={1}
+              style={[styles.label, { color: palette.accent }]}
+            >
+              Generate suggestions
+            </Text>
+          </Pressable>
         ) : null}
-        {rewrite ? (
+        {rewrite && !group ? (
           <IconButton
             label={undoLabel}
             icon="arrow-undo"
@@ -313,45 +265,14 @@ export function ComposerBar({
           Native group access is unavailable
         </Text>
       ) : null}
-      {streaming || draft.state === "stopped" ? (
-        <Text
-          accessibilityRole="text"
-          style={[styles.small, { color: palette.muted }]}
-        >
-          {streaming ? "Processing…" : "Stopped · incomplete draft"}
-        </Text>
-      ) : null}
-      {composer.note || toneNote ? (
+      {composer.note ? (
         <Text
           accessibilityRole="alert"
           style={[styles.small, { color: palette.error }]}
         >
-          {composer.note || toneNote}
+          {composer.note}
         </Text>
       ) : null}
-      <ChoiceSheet
-        visible={choosing}
-        title="Rewrite tone"
-        palette={palette}
-        onClose={() => setChoosing(false)}
-        choices={tones.map((option) => ({
-          key: option,
-          label: TONES[option],
-          role: "radio",
-          selected: option === tone,
-          onPress: async () => {
-            setChoosing(false);
-            setToneNote("");
-            try {
-              await choose(option);
-            } catch (error) {
-              setToneNote(
-                error instanceof Error ? error.message : String(error),
-              );
-            }
-          },
-        }))}
-      />
       <ChoiceSheet
         visible={attachMenu}
         title="Attach"

@@ -564,23 +564,13 @@ describe("writing in a group (AG6)", () => {
     });
   });
 
-  test("a group offers the three tones", async () => {
-    tone = "neutral";
+  test("a group has Send and no suggestion generation or rewrite controls", async () => {
     await mount();
-    expect(await screen.findByText("Rewrite · Neutral")).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText("Rewrite tone"));
-    expect(screen.getByRole("radio", { name: "Neutral" })).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "Friendly casual" })).toBeTruthy();
-    expect(screen.queryByRole("radio", { name: "Adaptive" })).toBeNull();
+    expect(await screen.findByLabelText("Send")).toBeTruthy();
+    expect(screen.queryByLabelText("Generate suggestions")).toBeNull();
+    expect(screen.queryByLabelText("Rewrite")).toBeNull();
+    expect(screen.queryByLabelText("Rewrite tone")).toBeNull();
     expect(posts.some((post) => post.path === "tone")).toBe(false);
-    await fireEvent.press(screen.getByRole("radio", { name: "Professional" }));
-    await waitFor(() =>
-      expect(posts).toContainEqual({
-        path: "tone",
-        body: { tone: "professional" },
-      }),
-    );
-    expect(await screen.findByText("Rewrite · Professional")).toBeTruthy();
   });
 
   test("without verified group access nothing is sent or rewritten", async () => {
@@ -593,7 +583,7 @@ describe("writing in a group (AG6)", () => {
     expect(
       await screen.findByText("Native group access is unavailable"),
     ).toBeTruthy();
-    for (const name of ["Send", "Rewrite", "Attach"])
+    for (const name of ["Send", "Attach"])
       expect(
         screen.getByLabelText(name).props.accessibilityState,
       ).toMatchObject({ disabled: true });

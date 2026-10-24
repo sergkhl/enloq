@@ -62,10 +62,10 @@ test("a calm question gets suggestions; fold, choice and idioms hold", async ({
   page,
 }) => {
   test.setTimeout(900000);
-  const read = await page.request.get(`${CHAT}/suggestions/choice`);
+  const read = await page.request.get(`${CHAT}/suggestions/settings`);
   expect(read.status()).toBe(200);
   const choice = await read.json();
-  expect(choice).toEqual({ choice: "on", idioms: true });
+  expect(choice.automatic).toBe(true);
   const remembered = (await (await page.request.get(`${CHAT}/remember`)).json())
     .enabled;
 
@@ -92,20 +92,22 @@ test("a calm question gets suggestions; fold, choice and idioms hold", async ({
 
     // The profile: Off hides the set; Idioms shows it again, as written.
     const profile = page.getByRole("button", { name: /open profile$/ });
-    const radios = page.getByRole("radiogroup", { name: "Suggestions" });
+    const radios = page.getByRole("radiogroup", { name: "Style" });
     await profile.tap();
     await expect(radios.getByRole("radio")).toHaveCount(3);
     await expect(
       page.getByRole("switch", { name: "Remember this chat" }),
     ).toHaveAttribute("aria-checked", String(remembered));
-    await radios.getByRole("radio", { name: "Off" }).tap();
-    await expect(radios.getByRole("radio", { name: "Off" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    const automatic = page.getByRole("switch", {
+      name: "Automatic suggestions",
+    });
+    await automatic.tap();
+    await expect(automatic).toHaveAttribute("aria-checked", "false");
     await page.getByRole("button", { name: "Back", exact: true }).tap();
     await expect(area).toHaveCount(0);
     await profile.tap();
+    await automatic.tap();
+    await expect(automatic).toHaveAttribute("aria-checked", "true");
     await radios.getByRole("radio", { name: "Idioms" }).tap();
     await expect(radios.getByRole("radio", { name: "Idioms" })).toHaveAttribute(
       "aria-checked",
@@ -130,8 +132,8 @@ test("a calm question gets suggestions; fold, choice and idioms hold", async ({
     });
   } finally {
     // The chat's own choice is the owner's: put back what was read.
-    await page.request.post(`${CHAT}/suggestions/choice`, {
-      data: { choice: choice.choice },
+    await page.request.post(`${CHAT}/suggestions/settings`, {
+      data: { automatic: choice.automatic, style: choice.style },
       headers: { Origin: ORIGIN },
     });
   }

@@ -94,12 +94,13 @@ def test_a_phone_gets_the_opaque_payload_and_fetches_the_details(rig):
     assert details.status_code == 200
     assert details.json() | {"expires": 0} == {
         "id": payload["id"],
+        "group": notice(conversation)["burst"],
         "account_id": 1,
         "peer": "user:42",
         "sender": "Authored sender",
         "account": app.state.accounts.registry.get(1)["name"][:80],
         "count": 1,
-        "text": "Validated rewrite",
+        "text": "Authored request, not a promise.",
         "expires": 0,
         "silent": False,
     }

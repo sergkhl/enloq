@@ -563,7 +563,7 @@ async def observe(
         muse = muse_factory(settings, registry, bounds)
         decider = decider_factory(settings, registry, bounds)
         judge = judge_factory(settings, registry, bounds)
-        live, writer = domain.IDIOMS_LIVE, domain.IDIOMS_WRITER
+        writer = domain.IDIOMS_WRITER
 
         def save():
             report["elapsed_seconds"] = time.monotonic() - bounds.started
@@ -606,7 +606,6 @@ async def observe(
                     app = Conversations(store, transport, route, decider, muse)
                     # This process alone: Idioms can be chosen here, and each
                     # writer in turn writes the idiom sets (Q16 A).
-                    domain.IDIOMS_LIVE = True
                     app.calming.default = False
                     app.memory.enabled = lambda: False
                     app.suggestions.enabled = lambda: True
@@ -622,7 +621,9 @@ async def observe(
                                 bounds.admit()
                                 peer = f"user:{960 + number * 100 + index}"
                                 ingest(app, store, peer, value)
-                                app.suggestions.set_choice(f"1/{peer}", "idioms")
+                                app.suggestions.set_settings(
+                                    f"1/{peer}", True, "idioms"
+                                )
                                 record = await write(app, store, peer, value)
                                 value["state"] = record.get("state")
                                 value["failure"] = record.get("failure")
@@ -668,7 +669,7 @@ async def observe(
                         assert not transport.deliveries
                         assert not transport.reaction_calls
                     finally:
-                        domain.IDIOMS_LIVE, domain.IDIOMS_WRITER = live, writer
+                        domain.IDIOMS_WRITER = writer
                         tasks = list(app.tasks)
                         for task in tasks:
                             task.cancel()

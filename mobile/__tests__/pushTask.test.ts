@@ -139,6 +139,69 @@ test("an unreachable server still leaves a generic notice", async () => {
   ]);
 });
 
+test.each([400, 401, 403])(
+  "a refused or revoked locator (%s) shows no duplicate generic banner",
+  async (status) => {
+    serve(() => ({
+      status,
+      body: { detail: "Notification is no longer available" },
+    }));
+    await run(push({}));
+    expect(mockNotifications.scheduled).toHaveLength(0);
+  },
+);
+
+test("later burst updates replace the chat notice without sound", async () => {
+  serve(() => ({
+    status: 200,
+    body: {
+      account_id: 1,
+      peer: "user:42",
+      sender: "Authored sender",
+      text: "Newer preview",
+      silent: true,
+    },
+  }));
+  await run(push({ id: "b".repeat(32), silent: true }));
+  expect(mockNotifications.scheduled[0]).toMatchObject({
+    identifier: "chat:1:user:42",
+    content: { sound: false, body: "Newer preview" },
+    trigger: { channelId: "messages-quiet" },
+  });
+  await expect(
+    handler.handleNotification({
+      request: {
+        content: {
+          title: "Authored sender",
+          body: "Newer preview",
+          sound: null,
+        },
+      },
+    } as unknown as Notifications.Notification),
+  ).resolves.toMatchObject({ shouldPlaySound: false });
+});
+
+test("redelivery of the same event alerts once across concurrent task callbacks", async () => {
+  serve(() => ({
+    status: 200,
+    body: {
+      account_id: 1,
+      peer: "user:42",
+      sender: "Authored sender",
+      text: "Authored preview",
+      silent: false,
+    },
+  }));
+  await Promise.all([run(push({})), run(push({}))]);
+  await run(push({}));
+  expect(mockNotifications.scheduled).toHaveLength(1);
+  await run(push({ id: "c".repeat(32), silent: true }));
+  expect(mockNotifications.scheduled).toHaveLength(2);
+  expect(mockNotifications.scheduled[1]).toMatchObject({
+    content: { sound: false },
+  });
+});
+
 test("a phone without its credential shows only the generic notice", async () => {
   mockStore.clear();
   const calls = serve(() => ({ status: 500, body: null }));

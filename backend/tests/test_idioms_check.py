@@ -51,7 +51,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
     )
     registry = AccountRegistry(settings.data)
     before = registry.guidance()
-    live = (domain.IDIOMS_LIVE, domain.IDIOMS_WRITER)
+    writer = domain.IDIOMS_WRITER
     written, labels, judged, refusing, garbled = [], [], [], [], []
 
     def write(request):
@@ -196,7 +196,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
     for path in (folder / "report.json", folder / "sets.md"):
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
     # The gate sets each writer in its own process only and puts them back.
-    assert (domain.IDIOMS_LIVE, domain.IDIOMS_WRITER) == live
+    assert domain.IDIOMS_WRITER == writer
     assert registry.guidance() == before and report["telegram_calls"] == 0
     return report, written, labels, judged, folder
 

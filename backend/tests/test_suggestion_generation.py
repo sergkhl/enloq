@@ -128,6 +128,7 @@ class Decider:
         code = self.source.emotion
         answers = {
             "emotion": choice(code, 0.9),
+            "hostility": {"type": "noul", "noul": 0.0},
             # ADR 49 Q2: the authored usefulness answer.
             "suggestions_useful": {"type": "noul", "noul": self.source.useful},
         }
@@ -377,6 +378,7 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
         "context",
         "direct_reply",
         "recipient_emotion",
+        "style",
         "memory",
     }
     assert data["memory"]["person"] == [{"text": "Protected memory fact"}]

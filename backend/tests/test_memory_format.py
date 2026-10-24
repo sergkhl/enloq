@@ -11,7 +11,6 @@ from enloq.inference.base import EngineResponse
 from enloq.inference.openrouter import (
     BACKGROUND_OUTPUT_TOKENS,
     MODEL,
-    OUTGOING_OUTPUT_TOKENS,
     TAKEAWAY_CHARACTERS,
     OpenRouterEngine,
     output_schema,
@@ -136,7 +135,6 @@ async def adapter(tmp_path):
 
 # Xiaomi's own thinking switch; its reasoning text is never read or retained.
 HIDDEN = {"type": "enabled"}
-OFF = {"type": "disabled"}
 
 
 @pytest.mark.parametrize(
@@ -144,9 +142,7 @@ OFF = {"type": "disabled"}
     [
         ("chat_memory", False, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
         ("incoming_rewrite", False, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
-        ("outgoing_rewrite", False, OUTGOING_OUTPUT_TOKENS, OFF),
         ("incoming_rewrite", True, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
-        ("outgoing_rewrite", True, OUTGOING_OUTPUT_TOKENS, OFF),
     ],
 )
 async def test_each_role_has_its_reasoning_and_cap_and_every_receipt_records_it(

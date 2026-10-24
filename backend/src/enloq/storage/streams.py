@@ -47,10 +47,13 @@ class RewriteStreams:
                 and draft.get("revision") == row["draft_revision"]
             ):
                 base = json.loads(row["base"])
+                if base.get("state") != "inserted":
+                    base["undo"] = None
                 base.update(
                     revision=draft["revision"] + 1,
-                    state="failed",
-                    error="Rewrite interrupted; use explicit Retry",
+                    state="idle",
+                    attempt=None,
+                    error=None,
                 )
                 db.execute(
                     "UPDATE drafts SET body=? WHERE chat_key=?",
@@ -59,6 +62,28 @@ class RewriteStreams:
         # An explicit outgoing attempt cannot be dispatched automatically after
         # interruption, even if it was still waiting for capacity.
         db.execute(
-            "UPDATE jobs SET state='failed',error='Rewrite interrupted; use explicit Retry' WHERE role='outgoing_rewrite' AND state IN ('queued','claimed')"
+            "UPDATE jobs SET state='cancelled',error='Outgoing Rewrite removed' WHERE role='outgoing_rewrite' AND state IN ('queued','claimed','running')"
         )
+        # The removed composer path can also have stopped between saving its
+        # draft and opening a stream. Recover its authored text without leaving
+        # an unreachable lock or old Rewrite Undo control behind. Completed or
+        # deliberately stopped text stays exactly as the user left it.
+        for row in db.execute(
+            "SELECT chat_key,body FROM drafts WHERE json_extract(body,'$.state') IN ('rewriting','rewritten','stopped','failed')"
+        ).fetchall():
+            draft = json.loads(row["body"])
+            if draft["state"] == "rewriting" and isinstance(draft.get("undo"), str):
+                draft["text"] = draft["undo"]
+            draft.update(
+                state="idle",
+                attempt=None,
+                undo=None,
+                error=None,
+                revision=draft["revision"] + 1,
+            )
+            draft.pop("partial", None)
+            db.execute(
+                "UPDATE drafts SET body=? WHERE chat_key=?",
+                (json.dumps(draft), row["chat_key"]),
+            )
         db.execute("DELETE FROM rewrite_streams")

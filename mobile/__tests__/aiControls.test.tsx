@@ -298,9 +298,9 @@ describe("AI controls in the conversation", () => {
     expect(
       await screen.findByText("Anna is angry about the late refund of 240."),
     ).toBeTruthy();
-    expect(screen.getAllByText(/^AI · 1 message · .+ · Calmed$/)).toHaveLength(
-      1,
-    );
+    expect(
+      screen.getAllByText(/^AI · 1 message · .+ · Softened$/),
+    ).toHaveLength(1);
   });
 
   test("the header says AI off and opens the profile", async () => {
@@ -322,13 +322,15 @@ describe("the Correspondent Profile", () => {
   let posts: { url: string; body: unknown }[];
   let online: boolean;
   let calming: boolean;
-  let suggesting: { choice: string; idioms: boolean };
+  let suggesting: { automatic: boolean; style: string };
+  let refuseSettings = false;
 
   beforeEach(() => {
     reset();
     online = true;
     calming = true;
-    suggesting = { choice: "on", idioms: false };
+    suggesting = { automatic: true, style: "friendly" };
+    refuseSettings = false;
     posts = [];
     mockStore.set("enloq.credential", SAVED);
     mockParams.account = "1";
@@ -386,18 +388,16 @@ describe("the Correspondent Profile", () => {
         }
         return { status: 200, body: { enabled: calming } };
       }
-      // ADR 56 Q12 A: the chat's Suggestions choice; Idioms is refused
-      // while it can't be chosen.
-      if (url.endsWith("/suggestions/choice")) {
+      if (url.endsWith("/suggestions/settings")) {
         if (init.method === "POST") {
           const body = JSON.parse(init.body!);
           posts.push({ url, body });
-          if (body.choice === "idioms" && !suggesting.idioms)
+          if (refuseSettings)
             return {
               status: 400,
-              body: { detail: "Idioms can't be chosen yet" },
+              body: { detail: "Settings could not be saved" },
             };
-          suggesting = { ...suggesting, choice: body.choice };
+          suggesting = body;
         }
         return { status: 200, body: suggesting };
       }
@@ -481,10 +481,10 @@ describe("the Correspondent Profile", () => {
     expect(posts[1]!.body).toEqual({ revision: "m2" });
   });
 
-  test("Calm this chat is on, and turns calming off (ADR 53 Q4)", async () => {
+  test("Soften hostile messages is on and can be switched off", async () => {
     await mount();
     await screen.findByText("Anna Petrova");
-    const calm = screen.getByLabelText("Calm this chat");
+    const calm = screen.getByLabelText("Soften hostile messages");
     await waitFor(() => expect(calm.props.value).toBe(true));
     await fireEvent(calm, "valueChange", false);
     await waitFor(() =>
@@ -496,60 +496,64 @@ describe("the Correspondent Profile", () => {
       ]),
     );
     await waitFor(() =>
-      expect(screen.getByLabelText("Calm this chat").props.value).toBe(false),
+      expect(screen.getByLabelText("Soften hostile messages").props.value).toBe(
+        false,
+      ),
     );
   });
 
-  test("the Suggestions choice is On, and turns Off (ADR 56 Q12 A)", async () => {
+  test("Automatic suggestions can be turned off independently of Style", async () => {
     await mount();
     await screen.findByText("Anna Petrova");
+    const automatic = await screen.findByLabelText("Automatic suggestions");
+    expect(automatic.props.value).toBe(true);
     expect(
-      await screen.findByRole("radio", { name: "On", checked: true }),
+      screen.getByRole("radio", { name: "Friendly", checked: true }),
     ).toBeTruthy();
-    // Idioms shows only once it can be chosen (Q17).
-    expect(screen.queryByRole("radio", { name: "Idioms" })).toBeNull();
-    expect(
-      screen.getByText(
-        "Short reply suggestions appear above the composer when a message is emotional or calls for a reply.",
-      ),
-    ).toBeTruthy();
-    await fireEvent.press(screen.getByTestId("suggestions-off"));
+    expect(screen.getByRole("radio", { name: "Idioms" })).toBeTruthy();
+    await fireEvent(automatic, "valueChange", false);
     await waitFor(() =>
       expect(posts).toEqual([
         {
-          url: expect.stringContaining("/chats/user%3A101/suggestions/choice"),
-          body: { choice: "off" },
+          url: expect.stringContaining(
+            "/chats/user%3A101/suggestions/settings",
+          ),
+          body: { automatic: false, style: "friendly" },
         },
       ]),
     );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Automatic suggestions").props.value).toBe(
+        false,
+      ),
+    );
     expect(
-      await screen.findByRole("radio", { name: "Off", checked: true }),
+      screen.getByRole("radio", { name: "Friendly", checked: true }),
     ).toBeTruthy();
-    expect(screen.getByText("No reply suggestions in this chat.")).toBeTruthy();
   });
 
-  test("Idioms shows once it can be chosen, and a refusal shows beneath", async () => {
-    suggesting = { choice: "on", idioms: true };
+  test("Style applies with automation off and save failures remain visible", async () => {
+    suggesting = { automatic: false, style: "professional" };
     await mount();
     const idioms = await screen.findByRole("radio", { name: "Idioms" });
-    // The service stopped offering it after the profile opened.
-    suggesting = { choice: "on", idioms: false };
+    refuseSettings = true;
     await fireEvent.press(idioms);
-    expect(await screen.findByText("Idioms can't be chosen yet")).toBeTruthy();
+    expect(await screen.findByText("Settings could not be saved")).toBeTruthy();
     expect(
-      screen.getByRole("radio", { name: "On", checked: true }),
+      screen.getByRole("radio", { name: "Professional", checked: true }),
     ).toBeTruthy();
-    suggesting = { choice: "on", idioms: true };
+    refuseSettings = false;
     await fireEvent.press(screen.getByRole("radio", { name: "Idioms" }));
     expect(
       await screen.findByRole("radio", { name: "Idioms", checked: true }),
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "Suggestions use idioms, proverbs, set expressions and phrasal verbs in this chat's language.",
+        "Idioms, proverbs, set expressions and phrasal verbs in this chat's language.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Idioms can't be chosen yet")).toBeNull();
+    expect(screen.queryByText("Settings could not be saved")).toBeNull();
+    expect(posts.at(-1)?.body).toEqual({ automatic: false, style: "idioms" });
   });
 
   test("it copies the chat link, which left the header (ADR 47 Q8)", async () => {

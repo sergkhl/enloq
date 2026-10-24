@@ -158,7 +158,7 @@ def test_extraction_guidance_is_global_editable_and_decision_only(tmp_path):
     for role in ("emotion_classification", "reaction_assessment"):
         question = decision_questions(role, version)["emotion"]
         assert "AUTHORED-EXTRACTION" in question["instructions"]
-    for role in ("incoming_rewrite", "chat_memory", "outgoing_rewrite"):
+    for role in ("incoming_rewrite", "chat_memory", "response_suggestions"):
         assert "AUTHORED-EXTRACTION" not in instructions(role, {}, version)
     assert (
         registry.set_guidance({"emotion": None})["fields"]["emotion"]

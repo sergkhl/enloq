@@ -54,8 +54,12 @@ def test_instructions_keep_a_fixed_core_around_delimited_owner_fields():
     assert system.startswith(CORE)
     assert "OWNER-INCOMING" in owner_section(system, "incoming rewriting")
     assert "[Owner guidance: faithfulness]" not in system  # Emptied by the owner.
-    outgoing = instructions("outgoing_rewrite", {}, snapshot({"tone_friendly": "T-F"}))
-    assert "T-F" in owner_section(outgoing, "tone definitions")
+    suggestions = instructions(
+        "response_suggestions",
+        {"style": "friendly"},
+        snapshot({"tone_friendly": "T-F"}),
+    )
+    assert "T-F" in owner_section(suggestions, "suggestion style")
     memory = instructions(
         "chat_memory", {}, snapshot({"memory": "M-G", "account_memory": "A-G"})
     )
@@ -104,14 +108,15 @@ async def test_muse_sends_guidance_as_instructions_never_as_content(tmp_path):
     )
     packet = {
         "draft": {"text": "Authored words."},
-        "tone": "neutral",
         "inputs": {},
-        "guidance": snapshot({"outgoing": "OWNER-OUTGOING"}, 7),
+        "guidance": snapshot({"suggestions": "OWNER-SUGGESTIONS"}, 7),
     }
-    await engine.generate("outgoing_rewrite", packet)
+    await engine.generate("response_suggestions", packet)
     system, user = seen[0]["messages"]
-    assert "OWNER-OUTGOING" in owner_section(system["content"], "outgoing rewriting")
-    assert "OWNER-OUTGOING" not in json.dumps(user)
+    assert "OWNER-SUGGESTIONS" in owner_section(
+        system["content"], "response suggestions"
+    )
+    assert "OWNER-SUGGESTIONS" not in json.dumps(user)
     assert "guidance" not in json.loads(user["content"][0]["text"])
 
 
@@ -129,8 +134,6 @@ async def test_saved_guidance_reaches_the_next_call_while_started_calls_keep_the
         if len(seen) == 1:
             started.set()
             await release.wait()
-        if role == "outgoing_rewrite":
-            return {"text": packet["draft"]["text"]}
         return {"text": "Rewritten.", "image_context": []}
 
     app.engine.generate = generate
@@ -158,10 +161,6 @@ async def test_saved_guidance_reaches_the_next_call_while_started_calls_keep_the
         )
     ]
     assert receipts == [(0, DEFAULTS_REVISION), (1, DEFAULTS_REVISION)]
-    draft = app.store.mutate_draft("1/user:42", 0, lambda d: d.update(text="Mine."))
-    rewritten = await app.rewriting.outgoing("1/user:42", draft["revision"])
-    assert rewritten["guidance_version"] == 1
-    assert rewritten["defaults_revision"] == DEFAULTS_REVISION
     assert registry.set_guidance({"incoming": None})["fields"] == DEFAULTS
     with pytest.raises(Refused):
         registry.set_guidance({"incoming": "x" * 4001})
@@ -175,8 +174,6 @@ async def test_three_format_failures_pause_only_that_roles_automation(rig):
     blocks(app, 5)
 
     async def broken(role, packet):
-        if role == "outgoing_rewrite":
-            return {"text": packet["draft"]["text"]}
         return EngineResponse({"wrong": "format"})
 
     app.engine.generate = broken
@@ -186,8 +183,6 @@ async def test_three_format_failures_pause_only_that_roles_automation(rig):
     assert app.rewriting.next_job() is None  # Automatic work waits.
     stages = {b["stage"] for b in app.conversation("1/user:42")["blocks"]}
     assert "format_paused" in stages
-    draft = app.store.mutate_draft("1/user:42", 0, lambda d: d.update(text="Mine."))
-    await app.rewriting.outgoing("1/user:42", draft["revision"])  # Unaffected.
     failed = app.conversation("1/user:42")["blocks"][0]
     app.rewriting.retry(failed["id"])  # A deliberate click still runs.
     assert app.rewriting.next_job()["scope"] == failed["id"]
@@ -206,18 +201,18 @@ def test_rewrite_endpoints_take_no_prompt_and_browsers_share_guidance(tmp_path):
         base = "/api/accounts/1/chats/user:101"
         draft = client.get(base).json()["draft"]
         response = client.post(
-            f"{base}/rewrite",
+            f"{base}/suggestions/generate",
             json={"revision": draft["revision"], "prompt": "Say yes."},
             headers=origin,
         )
         assert response.status_code == 422
         saved = client.post(
             "/api/settings/guidance",
-            json={"fields": {"tone_neutral": "Plain and brief."}},
+            json={"fields": {"tone_professional": "Plain and brief."}},
             headers=origin,
         ).json()["guidance"]
-        assert saved["fields"]["tone_neutral"] == "Plain and brief."
-        assert saved["defaults"]["tone_neutral"] == DEFAULTS["tone_neutral"]
+        assert saved["fields"]["tone_professional"] == "Plain and brief."
+        assert saved["defaults"]["tone_professional"] == DEFAULTS["tone_professional"]
         assert (
             client.get("/api/settings").json()["guidance"]["version"]
             == saved["version"]
@@ -225,7 +220,7 @@ def test_rewrite_endpoints_take_no_prompt_and_browsers_share_guidance(tmp_path):
         assert (
             client.post(
                 "/api/settings/guidance",
-                json={"fields": {"tone_neutral": "x" * 4001}},
+                json={"fields": {"tone_professional": "x" * 4001}},
                 headers=origin,
             ).status_code
             == 400

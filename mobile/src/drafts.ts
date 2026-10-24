@@ -63,7 +63,7 @@ export const REPLY_HOLDS: Record<ReplyHold, string> = {
 };
 
 export type Action =
-  "rewrite" | "stop" | "undo" | "send" | "insert" | "attach" | "media";
+  "generate" | "undo" | "send" | "insert" | "attach" | "media";
 
 // What the phone keeps of an unsaved draft until the service holds it (Q20).
 type Kept = { text: string; reply_to: number | null };
@@ -279,11 +279,8 @@ export function useComposer(
   }
 
   const ready = !!server && !s.action && !locked;
-  const canRewrite =
-    ready &&
-    !sticker &&
-    server.selected_media?.status !== "preparing" &&
-    !!s.text.trim();
+  const canGenerate =
+    ready && !sticker && server.selected_media?.status !== "preparing";
   // A staged GIF or sticker sends once ready, a GIF with the text as its
   // caption (ADR 32, ADR 46 CU5).
   const canSend =
@@ -308,7 +305,7 @@ export function useComposer(
     // The latest outcome or refusal, the save state, else the draft's error.
     note: s.note || s.saveNote || server?.error || "",
     pending: s.pending,
-    canRewrite,
+    canGenerate,
     canSend,
     canUndo,
     canInsert,
@@ -316,43 +313,20 @@ export function useComposer(
     setCaret: (caret: number | null) => {
       s.caret = caret;
     },
-    rewrite: () =>
+    generate: () =>
       act(
-        "rewrite",
-        "The draft changed before Rewrite. Review it and rewrite again.",
+        "generate",
+        "The draft changed before generating suggestions. Review it and try again.",
         async () => {
-          adopt(
-            await api<Draft>(`${path}/rewrite`, {
-              body: { revision: s.server!.revision },
-            }),
+          await api<Schemas["SuggestionsView"]>(
+            `${path}/suggestions/generate`,
+            {
+              body: { revision: s.server!.revision, cursor: s.caret },
+            },
           );
           void reload();
         },
       ),
-    // Keeps the text shown so far as an editable, incomplete draft (ADR 19).
-    stop: async () => {
-      const shown = s.server;
-      if (!shown || shown.state !== "rewriting" || !shown.attempt) return;
-      if (s.action) return;
-      s.action = "stop";
-      render();
-      try {
-        adopt(
-          await api<Draft>(`${path}/rewrite/stop`, {
-            body: {
-              revision: shown.revision,
-              attempt: shown.attempt,
-              text: shown.partial ? shown.text : null,
-            },
-          }),
-        );
-      } catch (error) {
-        s.note = failed(error);
-      } finally {
-        s.action = null;
-        render();
-      }
-    },
     undo: async () => {
       const shown = s.server;
       if (!shown || shown.undo === null || s.dirty || s.action) return;

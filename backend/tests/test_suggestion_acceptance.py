@@ -124,6 +124,7 @@ async def test_finite_pass_uses_shared_accounting_and_stops_at_bounds(tmp_path, 
             "context",
             "direct_reply",
             "recipient_emotion",
+            "style",
         }
         assert packet["recipient_emotion"] == result["emotion"]
         assert packet["messages"][-1]["text"] == result["input"]

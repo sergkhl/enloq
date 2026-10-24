@@ -53,9 +53,9 @@ after its 30 quiet seconds, whether or not it is rewritten.
   read from Telegram, and each held revision is decided once; a changed block
   is held anew.
 - Since [ADR 54](0054-incoming-text-combined-not-rewritten.md) every text
-  block is held this way, and in a chat with calming on so is a block with
+  block is held this way, and in a chat with softening On so is a block with
   media ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
-  Q7). In a chat with calming off, a block with images, voice notes or
+  Q7). In a chat with softening Off, a block with images, voice notes or
   circles is classified after its rewrite, which supplies image meanings.
 - A block of Non-AI Media only makes no call.
 
@@ -90,7 +90,8 @@ check.
 
 **Answer labels (Q8).** Accept, Decline and Later join Acknowledge, Support,
 Clarify and Celebrate. A set holding `accept` or `decline` holds another
-stance beside it (Q20).
+stance beside it (Q20), except a draft-guided manual addition following the
+user's explicit stance (ADR 25).
 
 **When to suggest (Q9).** The field is "When to suggest", under Guidance's
 Other work, explained as "When short reply suggestions are worth offering".
@@ -102,9 +103,11 @@ it needs no answer: ok, thanks, a goodbye, an answer that closes the owner's
 own question, a forward or link with no question of its own, or automated
 content."
 
-**One switch (Q10).** The one Suggestions switch, the owner's and
-server-wide, covers every suggestion, answers included. ADR 56 Q12 adds each
-chat's own choice beneath it.
+**Automatic suggestions (Q10).** The owner's server-wide switch is named
+Automatic suggestions; each private chat has its own automatic On/Off and
+Style (ADR 56 Q12). Both switches govern automatic sets only. Manual
+requests remain available when either is Off, under normal Account AI and
+budget controls (ADR 25).
 
 **Folding (Q11).** Both clients can fold a set. Since ADR 56 Q12 B a folded
 set stays folded on every client until the next set arrives.
@@ -169,16 +172,21 @@ dropping the labels.
 
 **Deferrals may stand alone (Q20).** A deferral commits to nothing, so Q8's
 rule applies to a yes or a no only: a set holding `accept` or `decline` holds
-another stance beside it, and `later` may stand alone.
+another stance beside it, and `later` may stand alone. A draft-guided manual
+addition follows the user's explicit stance instead of inventing an opposing
+one (ADR 25).
 
 **Carried over from ADR 25.**
 
 - Private chats only.
-- Automatic only: no Generate or Retry, and no backfill of existing chats.
-- Only the latest unanswered block, withdrawn by new incoming content, a later
-  outgoing message, changed evidence or 12 hours.
-- Insertion never sends or rewrites. MiMo writes plain sets; Muse Spark 1.3
-  writes idiom sets (ADR 56 Q20).
+- Automatic sets follow the existing qualifying source without backfill;
+  explicit manual generation can continue a conversation after the user has
+  answered, without an emotion or usefulness gate.
+- Automatic sets keep the latest unanswered source and its twelve-hour
+  lifetime. Manual sets use their request time and captured draft/context;
+  new content, sends or changed inputs withdraw them (ADR 25).
+- Insertion at the cursor never sends or replaces the draft. MiMo writes
+  Friendly and Professional sets; Muse writes Idioms (ADR 56 Q20).
 - Members' suggestion calls count in their own budgets
   ([ADR 48](0048-members-on-the-shared-service.md)).
 

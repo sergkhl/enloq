@@ -144,9 +144,11 @@ currentness, target and budget gates. No sparkles anywhere.
 
 **No Rewrite now (Q23).** There is no per-block first-time processing
 control. Automatic initial, new or changed and unread catch-up processing,
-the chat-level Rewrite earlier messages action and composer Rewrite remain.
+the chat-level Rewrite earlier messages action remain. The private composer
+offers manual suggestions instead of outgoing Rewrite (ADR 25).
 Retry never becomes first-time processing or regeneration of a completed
-result, and Response Suggestions stay automatic-only.
+result. Automatic suggestion triggers and explicit manual generation follow
+ADR 25; neither is an incoming-result regeneration control.
 
 [Operations](../operations.md#native-deletion-operations) owns the
 mechanics and proof limits.

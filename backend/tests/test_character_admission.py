@@ -82,6 +82,8 @@ async def test_combined_199_then_200_with_quiet_period_and_no_worker_or_reservat
     rig,
 ):
     app, now, registry = rig
+    # This case isolates the independent combined-block threshold path.
+    app.notifications.unavailable = lambda: True
     app.sync.ingest(message(app, text="а" * 100), live=True)
     now[0] += 10
     app.sync.ingest(message(app, 2, text="б" * 99), live=True)
@@ -457,7 +459,7 @@ async def test_unchanged_failure_settings_and_restart_do_not_retry_and_explicit_
     assert block(app)["state"] == "ready" and len(app.engine.calls) == 2
 
 
-async def test_explicit_earlier_processing_and_composer_rewrite_are_exempt(rig):
+async def test_explicit_earlier_processing_and_manual_suggestions_are_exempt(rig):
     app, _, registry = rig
     registry.set_processing_threshold(10_000)
     app.sync.ingest(message(app, text="Authored short point"))
@@ -469,10 +471,12 @@ async def test_explicit_earlier_processing_and_composer_rewrite_are_exempt(rig):
     draft = app.store.mutate_draft(
         KEY, 0, lambda value: value.update(text="My short draft")
     )
-    await app.rewriting.outgoing(KEY, draft["revision"])
+    app.suggestions.generate(KEY, draft["revision"])
+    for _ in range(4):
+        await app.process_due()
     assert [role for role, _ in app.engine.calls] == [
         "incoming_rewrite",
-        "outgoing_rewrite",
+        "response_suggestions",
     ]
 
 

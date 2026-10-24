@@ -28,13 +28,8 @@ ANSWERS = frozenset({"accept", "decline", "later"})
 OPTIONS = 3
 OPTION_CHARACTERS = 280
 EXPIRY = LIFETIME  # The existing 12-hour source-time lifetime.
-# ADR 56 Q12 A: a private chat's Suggestions choice, On by default. Idioms
-# could be chosen once the owner had read the gate's sets (Q17); after three
-# runs the owner launched it with Muse writing idiom sets (Q20 A), while
-# plain sets stay on MiMo.
-Choice = Literal["off", "on", "idioms"]
-DEFAULT_CHOICE = "on"
-IDIOMS_LIVE = True
+# ADR 56: independent per-chat automation and a style shared by both paths.
+Style = Literal["friendly", "professional", "idioms"]
 IDIOMS_WRITER: Literal["mimo", "muse"] = "muse"
 # ADR 56 Q19 A: a block without a usable non-neutral emotion suggests on
 # usefulness alone only from 0.7, so a borderline answer that closes the
@@ -72,7 +67,9 @@ class ResponseSuggestions(Model):
         """Never one-sided (ADR 49 Q4): answers come as different stances.
         Since Q19 the decision model's labels decide this, so the writer's own
         labels are read with ``context={"unlabelled": True}`` and not judged."""
-        if (info.context or {}).get("unlabelled"):
+        if (info.context or {}).get("unlabelled") or (info.context or {}).get(
+            "draft_intent"
+        ):
             return self
         stances = {option.purpose for option in self.options} & ANSWERS
         # Q20: deferring commits to nothing, so later may stand alone; a yes or
@@ -116,6 +113,8 @@ class SuggestionsView(Model):
         | None
     ) = None
     attempt: str | None = None
+    kind: Literal["automatic", "manual"] = "automatic"
+    style: Style = "friendly"
     options: list[SuggestionOption] = Field(default_factory=list)
     # ADR 56 Q12 B: folded on any client, the shown set stays folded on
     # every client until the next set arrives.

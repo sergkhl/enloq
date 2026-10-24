@@ -2,7 +2,9 @@
 are suppressed; each line carries only safe metadata: UTC time, level, logger
 name and the exception class, which are code identifiers, never content."""
 
+import json
 import logging
+import math
 import re
 import time
 
@@ -44,6 +46,7 @@ EVENTS = frozenset(
         # Preparing response suggestions failed; the published emotion is
         # kept and no suggestion work was queued for that source.
         "suggestion_schedule_unavailable",
+        "suggestion_decision",
         # Queueing Emotion Classification failed; the ready incoming result is
         # kept and that block's emotion stays unavailable.
         "emotion_schedule_unavailable",
@@ -72,6 +75,82 @@ EVENTS = frozenset(
     }
 )
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,127}")
+_ATTEMPT = re.compile(r"[a-f0-9]{32}")
+_REASONS = frozenset(
+    {
+        "requested",
+        "published",
+        "failed",
+        "cancelled",
+        "automatic_off",
+        "manual_owns_area",
+        "schedule_unavailable",
+        "explicit_or_older_processing",
+        "newer_reaction",
+        "automatic_signal",
+        "no_current_qualifying_signal",
+        "chat_automatic_off",
+        "source_replaced",
+        "unchanged_source",
+        "scheduled",
+        "input_too_large",
+        "waiting_paused",
+        "waiting_budget",
+        "no_qualifying_reaction_signal",
+    }
+)
+
+
+def suggestion_fields(record):
+    """An allowlist, independent of caller formatting, never arbitrary content."""
+    raw = getattr(record, "suggestion_decision", {})
+    if not isinstance(raw, dict):
+        return {}
+    safe = {}
+    choices = {
+        "trigger": {"manual", "automatic"},
+        "reason": _REASONS,
+        "source": {"incoming", "reaction"},
+        "style": {"friendly", "professional", "idioms"},
+        "emotion": {
+            "neutral",
+            "positive",
+            "excited",
+            "sad",
+            "worried",
+            "frustrated",
+            "angry",
+            "confused",
+            "unknown",
+        },
+        "outcome": {
+            "format",
+            "provider",
+            "refused",
+            "interrupted",
+            "too_large",
+            "changed",
+            "replaced",
+            "answered",
+            "expired",
+            "ineligible",
+        },
+    }
+    for field, values in choices.items():
+        value = raw.get(field)
+        if isinstance(value, str) and value in values:
+            safe[field] = value
+    attempt = raw.get("attempt")
+    if isinstance(attempt, str) and _ATTEMPT.fullmatch(attempt):
+        safe["attempt"] = attempt
+    for field in ("probability", "usefulness", "threshold", "emotion_threshold"):
+        value = raw.get(field)
+        if type(value) in (float, int) and math.isfinite(value) and 0 <= value <= 1:
+            safe[field] = value
+    count = raw.get("options")
+    if type(count) is int and 0 <= count <= 3:
+        safe["options"] = count
+    return safe
 
 
 def _identifier(value):
@@ -99,6 +178,8 @@ class SafeFormatter(logging.Formatter):
         )
         if record.exc_info and record.exc_info[0] is not None:
             line += " error=" + _identifier(record.exc_info[0].__name__)
+        if event == "suggestion_decision" and record.name == "enloq.suggestions":
+            line += " " + json.dumps(suggestion_fields(record), sort_keys=True)
         return line
 
 
@@ -108,6 +189,7 @@ def configure_logging():
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(logging.WARNING)
+    logging.getLogger("enloq.suggestions").setLevel(logging.DEBUG)
     # Python warnings go through the same redaction instead of raw stderr.
     logging.captureWarnings(True)
     for name in ("telethon", "httpx", "httpcore", "uvicorn.access"):

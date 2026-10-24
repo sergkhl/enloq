@@ -6,14 +6,15 @@ status: accepted
 
 ## Context
 
-Answering an emotional message, or one that needs a decision, takes effort.
-Response Suggestions offer a few short replies the owner can insert and edit,
-while substantial answers and commitments stay the owner's. They are a narrow
+Answering and continuing a conversation take effort. Response Suggestions
+offer a few short messages the user can insert and edit, automatically or on
+a manual request. Outgoing Rewrite and its tone controls are removed;
+generation leaves the authored draft intact. Suggestions are a narrow
 exception to [ADR 13](0013-clean-slate-rewriting-rebuild.md)'s exclusion of
 automatic suggested answers and
 [ADR 15](0015-owner-controlled-processing-memory-and-prompts.md)'s
-no-suggested-answer output rule. Ordinary incoming and outgoing rewrites keep
-their meaning-preserving roles, and the retired attention, task and
+no-suggested-answer output rule. Incoming rewrites keep their
+meaning-preserving role, and the retired attention, task and
 classification features don't return.
 
 [ADR 49](0049-useful-response-suggestions.md) added the decision model's
@@ -34,10 +35,9 @@ never fills a quota and never gives communication coaching. The owner
 chooses, edits and sends deliberately; preparing a set never touches the
 draft.
 
-**When they appear.** Only in private chats, only for the latest unanswered
+**Automatic generation.** Only in private chats, for the latest unanswered
 incoming block or a correspondent's qualifying reaction
-([ADR 26](0026-mobile-message-actions-and-send-status.md)), and
-automatically:
+([ADR 26](0026-mobile-message-actions-and-send-status.md)):
 
 - An incoming block qualifies with a usable non-neutral emotion (positive or
   warm, excited, sad, worried, frustrated, angry or confused) or with the
@@ -48,10 +48,37 @@ automatically:
 - Neutral, unknown, pending, expired or unavailable emotion qualifies nothing
   by itself.
 
-Preparation follows the block's or reaction's decision
+Both the owner's server-wide and the chat's **Automatic suggestions**
+switches must be On. Preparation follows the block's or reaction's decision
 ([ADR 30](0030-decider-emotion-classification.md)). Unchanged results are
 reused across reads, refreshes and restarts. Groups and Saved Messages have no
 suggestions.
+
+**Manual generation.** A separate, always-visible Generate suggestions button
+replaces outgoing Rewrite in private-chat composers; Send remains separate.
+It works after the user's own latest message, in a neutral exchange or after
+a conversation has ended, without an unanswered-block, emotion or usefulness
+gate. Automatic suggestions Off does not block it. Account AI, budget,
+capacity, trust and the normal composer action guards still apply. Groups
+lose Rewrite without gaining suggestions; Saved Messages keeps no AI.
+
+With an empty draft, a manual request offers complete messages grounded in
+the available recent conversation and enabled memory. With a nonempty draft,
+the text supplies the user's intent: options are additions that fit its
+captured insertion point, using the whole draft as context rather than
+repeating or replacing it. A draft alone is sufficient when recent chat
+context is unavailable. The request uses bounded cached same-chat context,
+transcripts and image meanings, never an older-history scan or a reply chain.
+Automatic requests continue to use their conversation evidence, not the
+unfinished draft. Generation itself changes no draft text or attachments.
+
+Each deliberate press requests fresh alternatives, even on unchanged input;
+duplicate taps during one active request share that attempt. There is no
+automatic resampling. A manual attempt owns the suggestion area until
+withdrawn or explicitly replaced: later automatic output cannot overwrite
+it. Editing its draft or changing its conversation evidence withdraws it,
+including late output, and starts no replacement call. Another press captures
+the revised draft and context.
 
 **Added meaning.** Options may offer grounded acknowledgement, sympathy,
 celebration and gentle questions the owner hasn't written. When the person
@@ -67,8 +94,15 @@ Support keeps the person's refusals and boundaries; an inferred emotion is
 context, not knowledge of someone's inner state; a reaction never counts as
 agreement.
 
-**Evidence.** The latest original incoming block, or the reaction and its
-exact target, with bounded Supporting Context: up to 20 preceding recent
+A draft-guided manual addition follows the intent the user has supplied,
+including an explicit answer stance; it does not need to offer an opposing
+stance to that intent. This does not authorize facts, feelings or commitments
+that neither the draft nor the permitted evidence supplies.
+
+**Evidence.** Automatic sets read the latest original incoming block, or the
+reaction and its exact target. Manual sets read the captured draft intent
+and available recent conversation as above. Both keep bounded Supporting
+Context: up to 20 preceding recent
 same-chat messages and the one directly replied-to message, including their
 transcripts and image context. The messages decide the response; emotion
 guides its expression, and emotion-label templates aren't enough. In a chat
@@ -79,10 +113,11 @@ never claiming it is still true, and an Account Memory entry is stated only
 in the chat it came from (ADR 55 Q15, Q16). No older history is scanned, and
 suggestions turn no emotion into a profile.
 
-**A separate request.** Each set is its own bounded background request after
-the decision publishes. MiMo writes plain sets and Muse Spark 1.3 writes idiom
-sets (ADR 56 Q20); one decision request then labels the replies. Rewriting has
-priority over suggestions, which run ahead of idle memory work. Only complete,
+**A separate request.** Each set is its own bounded request: automatic work
+follows the decision, and manual work is queued on the click. MiMo writes
+Friendly and Professional sets and Muse Spark 1.3 writes Idioms
+(ADR 56 Q20); one decision request then labels the replies. Incoming
+rewriting has priority over suggestions, which run ahead of idle memory work. Only complete,
 validated sets are published. Incoming text, readiness, unseen state and
 notifications never wait for suggestions, and a failed set leaves the
 incoming result intact. Every request counts in the Concurrency Limit and in
@@ -91,21 +126,25 @@ the Daily Budget of the member whose account it serves
 
 **Presentation and insertion.** A compact area above the composer shows each
 option's full wording and label, in both reading views. It belongs to the
-latest qualifying block or reaction. Folding a set is remembered on every
-client until the next set arrives (ADR 56); there is no notification or row
+latest qualifying block or reaction, or the current manual attempt. Folding
+is remembered on every client until the next set arrives (ADR 56); there is no notification or row
 marker. Choosing an option inserts it into an empty draft, or at the saved
 cursor in an existing draft (its end when none is known), keeping the text,
 chosen images and reply target. Undo restores the whole previous draft. The
 composer's action and revision locks apply, focus returns to the composer, and
 insertion neither sends nor rewrites.
 
-**Tone and language.** Wording follows the emotion and the conversation, not
-the Rewrite tone; changing the tone regenerates nothing, and an inserted
-option can be rewritten as usual. Options use the latest block's language; for
+**Style and language.** The chat's **Style**, Friendly, Professional or
+Idioms, applies to both manual and automatic sets (ADR 56). Friendly is the
+default. Style changes apply to the next generation; existing and running
+sets retain their captured style, with no replacement call. Emotion and
+conversation guide the wording within that style. Options use the latest
+block's language; for
 a mixed block, the owner's established recent language in that chat,
 otherwise the dominant incoming language. There is no language selector.
+When the draft is the only evidence, its language supplies the language.
 
-**Lifetime.** A set is withdrawn by new incoming content, changed, deleted or
+**Lifetime.** An automatic set is withdrawn by new incoming content, changed, deleted or
 re-transcribed evidence, the 12-hour expiry from the source's time, any later
 outgoing message in the chat (from any Telegram client, GIFs and stickers
 included, [ADR 32](0032-gif-and-sticker-sending.md) Q23), or the owner's own
@@ -117,17 +156,25 @@ restore a stale set, and nothing changes wording already inserted into the
 draft. The emotion keeps its own validity rule: sending withdraws suggestions
 without clearing it.
 
-**Owner controls.** One global Suggestions switch, the owner's and
-server-wide, initially On; an account whose AI processing is Off prepares no
-sets. Off hides every set and stops new work, while started work may finish
-into the cache; On reuses valid sets and resumes on the next new or changed
-block, without a backfill. Each private
-chat's Correspondent Profile adds Off · On · Idioms (ADR 56 Q2). Three
-owner-editable guidance fields shape the work, with the usual Save, Reset and
-versions, for future generation only: Response suggestions, When to suggest
-(ADR 49 Q9) and Idioms (ADR 56 Q6).
+A manual set lasts at most twelve hours from its request, rather than the
+time of an incoming block. Draft edits, new conversation content, a send or
+changed source evidence withdraw it sooner. The pending-send suspension and
+non-send restoration rules apply only while its captured inputs remain valid.
 
-**Automatic only.** There is no Generate, Retry or Regenerate. Opening,
+**Controls.** Settings → AI names the owner's server-wide switch
+**Automatic suggestions**, initially On. Each private chat's Correspondent
+Profile separates **Automatic suggestions** On/Off from **Style**
+Friendly/Professional/Idioms, set by that chat's member (ADR 56 Q12).
+Automation Off hides automatic sets and cancels queued automatic work, while
+started work may finish into cache; it neither hides nor disables manual
+sets. On reuses still-valid automatic sets and resumes at the next qualifying
+new or changed source, without backfill. An account whose AI processing is
+Off prepares neither kind of set. Owner-editable guidance retains Save,
+Reset and versions for future calls: Response suggestions, When to suggest,
+Friendly, Professional and Idioms (ADR 56 Q6).
+
+**No implicit generation.** Apart from the automatic triggers and deliberate
+manual presses above, opening,
 refreshing, restarting, switching On or editing guidance neither backfills nor
 regenerates; a deliberate Retry of an incoming block prepares no set. A failed
 set shows an unobtrusive status and composing stays available; the next new or
@@ -135,9 +182,18 @@ changed block may qualify again. Budget waits and refusals where the provider
 did no work keep the ordinary bounded background handling, and a processed,
 unchanged input is never resampled automatically.
 
-**Natural wording.** The shipped Response suggestions guidance ends with "Keep
-the wording slightly less formal." Matching the owner's personal style is
-deferred.
+**Decision diagnostics.** A content-free debug record explains each automatic
+generation or skip: trigger, emotion, usefulness score, threshold and applied
+gate, setting or freshness reason, followed by the attempt's outcome. It
+distinguishes a decision not to schedule from a scheduled attempt that later
+waited, failed, was superseded or produced no options. Use opaque correlation
+identities; never record message bodies, drafts, prompts, names, account or
+chat identifiers, credentials or model reasoning text. Manual attempts record
+their explicit trigger and outcome under the same content limits.
+
+**Natural wording.** Friendly is warm and natural without forced slang or
+emojis; Professional is clear and businesslike without needless formality.
+Matching the user's personal style beyond those choices is deferred.
 
 **Typography.** Newly generated options get one-character punctuation
 mappings outside protected literal content, keeping the spacing:
@@ -161,8 +217,8 @@ drafts are never normalized, no option is filtered and no extra call is made.
 
 ### Questions
 
-- **Q1:** short editable replies with purpose labels; Rewrite keeps its
-  authored-text role.
+- **Q1:** short editable messages with purpose labels; outgoing Rewrite and
+  its tone controls are removed.
 - **Q2:** prepared automatically with the latest block's processing; the
   trigger is ADR 56's either signal.
 - **Q3:** qualifying emotions as above; a neutral or uncertain block now
@@ -171,24 +227,24 @@ drafts are never normalized, no option is filtered and no extra call is made.
   idiom limits.
 - **Q5:** evidence as above; replaced in part by ADR 55: memory's cares-about
   entries are read.
-- **Q6:** a separate background request after the decision; writers and
-  labels as above.
+- **Q6:** a separate request after the automatic decision or on a manual
+  press; writers and labels as above.
 - **Q7:** the area above the composer in both reading views; the fold is
   remembered across clients (ADR 56).
 - **Q8:** insertion at the cursor with Undo; never sends or rewrites.
-- **Q9:** independent of the Rewrite tone.
+- **Q9:** one per-chat Style for manual and automatic sets; no Rewrite tone.
 - **Q10:** the language rule above.
 - **Q11:** the lifetime above.
-- **Q12:** automatic only; no Generate, Retry or Regenerate, and no backfill.
-- **Q13:** one global Suggestions switch, now with each chat's choice beneath
-  it.
-- **Q14:** an editable Response suggestions field, joined by When to suggest
-  and Idioms.
+- **Q12:** automatic triggers plus explicit manual generation as above;
+  fresh alternatives require a deliberate press, never a read or restart.
+- **Q13:** global and per-chat Automatic suggestions switches; manual
+  generation remains available when either is Off.
+- **Q14:** editable Response suggestions, When to suggest and style guidance.
 
 The natural-wording follow-up has its own numbering:
 
-- **Wording Q1, Q2, Q4, Q6:** suggestions only; current wording kept, slightly
-  less formal; personal style deferred; future generation only.
+- **Wording Q1, Q2, Q4, Q6:** suggestions only, shaped by the chosen Style;
+  personal-style matching deferred; future generation only.
 - **Wording Q3, Q5, Q7, Q8:** the typography mappings above, deterministic and
   without extra instructions; literals preserved; slashes allowed.
 

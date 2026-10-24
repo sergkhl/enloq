@@ -46,9 +46,9 @@ original.
 rewritten again, a voice note can't be re-transcribed on request, and there is
 no first-time Rewrite now (ADR 31 Q23). First-time processing,
 transcription, automatic handling of changed evidence, original playback, raw
-transcripts, failure Retry and the composer's Rewrite of authored text all
-stay. Show transcript may start a transcript that is missing
-(ADR 51 Q9). Response Suggestions stay automatic only.
+transcripts and failure Retry stay. Show transcript may start a missing
+transcript (ADR 51 Q9). Response Suggestions support automatic triggers and
+manual generation; the manual button replaces outgoing Rewrite (ADR 25).
 
 **Immediate local sending.** Send immediately shows the submitted text, images
 and reply target as a Pending Send, drawn exactly as a sent message

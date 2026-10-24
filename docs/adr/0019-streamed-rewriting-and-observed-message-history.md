@@ -14,37 +14,21 @@ versions, and how speech is recognized.
 
 ## Decision
 
-**Streamed rewrites.** A rewrite's text replaces the incoming message in AI
-view, or the draft in the composer, as it arrives, rather than appearing in a
-separate preview. This covers every rewrite: blocks with media, calmed text
-([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)) and
-outgoing Rewrite; text that isn't calmed is not rewritten
-([ADR 54](0054-incoming-text-combined-not-rewritten.md)). Incomplete text is
-provisional and final validation is still required. The originals stay
-reachable, the Reading View stays separate from processing, incoming work
-still waits 30 quiet seconds, and outgoing Rewrite starts on the click.
+**Streamed rewrites.** Incoming rewrite text replaces its message in AI
+reading as it arrives, covering blocks with media and softened hostile text
+([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)).
+Text-only blocks without hostility stay combined
+([ADR 54](0054-incoming-text-combined-not-rewritten.md)). Output is
+provisional until final validation; failure restores an applicable earlier
+rendering or the originals and shows a reason and Retry. Partial output is
+never cached as a completed rewrite or used for a notification preview.
 
-- **Failure.** Failed or invalid output restores the draft as it was before
-  the attempt, never overwriting newer edits; incoming work falls back to an
-  applicable earlier rewrite or the originals. A short reason and Retry show,
-  and partial output is never cached as a completed rewrite.
-- **The composer while streaming.** It shows "Processing…" with the busy
-  spinner ([ADR 35](0035-processing-character-threshold-and-empty-rewrites.md)).
-  Editing text, tone, attachments and reply is paused; Send and Rewrite stay
-  visible but disabled. Undo stops applying the stream, restores the earlier
-  draft and resumes editing at once.
-- **Stop.** Outgoing only. It keeps the text shown so far as an editable draft
-  marked "Stopped · incomplete draft", or the original when nothing new has
-  arrived, and Undo restores the full earlier draft until the next edit. Late
-  chunks and results can't overwrite a stopped draft on any client or after a
-  reconnect. Stop cancels the request best effort; Xiaomi's endpoint can't
-  cancel a stream, so the provider may finish and bill
-  ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)). Costs
-  count either way, and cancellation is told apart from invalid format.
-  Incoming rewrites have no Stop.
-- **Leaving.** Leaving the chat or closing the client cancels nothing started
-  on the service; reopening attaches to the same attempt or its result, with
-  no duplicate call. A service interruption takes the failure path.
+Incoming work retains 30 quiet seconds and has no Stop. Leaving the chat or
+closing a client cancels no service-owned work; reopening attaches to the
+same attempt or result. Outgoing Rewrite and its draft stream, tones, Stop
+and rewrite Undo are removed. Manual suggestions publish complete validated
+sets without touching the draft; selection inserts with Undo under
+[ADR 25](0025-emotion-response-suggestions.md).
 
 **Observed message history.** Enloq keeps every native text or caption
 version and deletion it observes, for incoming and outgoing messages, with
@@ -85,7 +69,7 @@ mechanics.
 `@username` are tappable in originals, rewrites and transcripts in both
 clients, keeping their real destinations; the web opens them in a new tab.
 The composer stays plain text. Controls are icons with accessible names;
-Rewrite keeps a short label. Active work shows a spinner, and queued, paused,
+Generate suggestions keeps its visible label. Active work shows a spinner, and queued, paused,
 failed and completed work stay distinguishable.
 
 **Speech recognition.** Whisper large-v3-turbo, with automatic language
@@ -124,8 +108,8 @@ uncertain: a possibly misheard word keeps its best reading followed by "(?)"
 
 ## Consequences
 
-- Progress shows where the owner reads or writes, at the cost of handling
-  interrupted output and protecting the owner's draft explicitly.
+- Incoming progress shows where the user reads; suggestion generation leaves
+  the authored draft intact.
 - Retracted correspondence stays readable on the service for up to 30 days
   from its date, but is never current information for the model.
 - Voices of correspondents reach ElevenLabs for long notes and when the VPS

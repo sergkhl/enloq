@@ -105,10 +105,11 @@ Saved Messages stay the owner's.
 
 **AI settings stay the owner's (Q13, Q20).** "For simplicity for now", every
 AI setting stays server-wide and only the owner changes it: Guidance, the
-Processing Character Threshold, the Memory and Suggestions switches and the
-Concurrency Limit. Hide Bots, the reading view and the tone are each
-member's, since a shared switch would flip the owner's too. Per-chat choices
-in a Correspondent Profile (Calm this chat, Remember this chat, Suggestions)
+Processing Character Threshold, the Memory and Automatic suggestions switches
+and the Concurrency Limit. Hide Bots and the reading view are each member's,
+since a shared switch would flip the owner's too. Per-chat controls in a
+Correspondent Profile (Soften hostile messages, Remember this chat,
+Automatic suggestions and Style)
 belong to that chat's member. A member's Settings shows Notifications, Budget
 (read-only) and Privacy, with Leave; the owner's adds AI and People.
 
@@ -141,7 +142,8 @@ between members before the owner approves anyone.
   Group Briefing Budget ([ADR 34](0034-group-chats-and-daily-briefings.md))
   are per member and owner-set; the push destination
   ([ADR 20](0020-minimal-reading-and-ready-notifications.md)), Hide Bots, the
-  reading view and the tone are per member. ADR 47 Q13's refusal of a sign-in
+  reading view are per member; Automatic suggestions and Style belong to each
+  chat's member. ADR 47 Q13's refusal of a sign-in
   while the Owner Account is signed in, and Q14's open proposal, end.
 - Model routes, session ownership and the beta rules are otherwise
   unchanged.

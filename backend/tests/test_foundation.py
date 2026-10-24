@@ -1,9 +1,49 @@
+import json
 import logging
 
 import pytest
 from enloq.config import Settings, private_read, private_write
 from enloq.domain.models import Refused
 from enloq.logs import SafeFormatter
+
+
+def test_suggestion_diagnostics_allow_only_bounded_content_free_fields():
+    record = logging.LogRecord(
+        "enloq.suggestions", logging.DEBUG, "", 0, "suggestion_decision", (), None
+    )
+    record.suggestion_decision = {
+        "attempt": "a" * 32,
+        "trigger": "automatic",
+        "reason": "automatic_signal",
+        "emotion": "angry",
+        "probability": 0.8,
+        "usefulness": 0.2,
+        "threshold": 0.7,
+        "body": "Private canary",
+        "chat_key": "Private canary",
+        "prompt": "Private canary",
+        "style": "Private canary",
+        "outcome": "Private canary",
+        "options": 100000,
+    }
+    line = SafeFormatter().format(record)
+    assert "Private canary" not in line and "chat_key" not in line
+    fields = json.loads(line.split("suggestion_decision ")[1])
+    assert fields == {
+        "attempt": "a" * 32,
+        "trigger": "automatic",
+        "reason": "automatic_signal",
+        "emotion": "angry",
+        "probability": 0.8,
+        "usefulness": 0.2,
+        "threshold": 0.7,
+    }
+    record.suggestion_decision = {
+        "attempt": "1/user:42",
+        "reason": "Private canary",
+        "usefulness": float("nan"),
+    }
+    assert SafeFormatter().format(record).endswith("suggestion_decision {}")
 
 
 def test_offline_does_not_read_credentials(tmp_path, monkeypatch):
@@ -88,7 +128,8 @@ def test_app_warning_call_sites_use_fixed_event_codes():
                 and isinstance(node.func, ast.Attribute)
                 and isinstance(node.func.value, ast.Name)
                 and node.func.value.id == "_LOG"
-                and node.func.attr in {"warning", "error", "critical", "exception"}
+                and node.func.attr
+                in {"debug", "warning", "error", "critical", "exception"}
             ):
                 code = node.args[0] if node.args else None
                 assert (

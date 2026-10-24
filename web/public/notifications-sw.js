@@ -62,7 +62,7 @@ self.addEventListener("push", (event) => {
         `${value.sender} · ${value.account}`,
         {
           body: `${value.count > 1 ? `${value.count} messages · ` : ""}${value.text}`,
-          tag: value.id,
+          tag: value.group || value.id,
           renotify: false,
           silent: value.silent,
           data: { id: value.id },

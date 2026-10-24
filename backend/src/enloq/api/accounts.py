@@ -92,10 +92,6 @@ class LoginState(Model):
     code_length: int | None = None
 
 
-class Tone(Model):
-    tone: Literal["neutral", "professional", "friendly"]
-
-
 class ReadingView(Model):
     reading_view: Literal["ai", "originals"]
 
@@ -154,7 +150,7 @@ class GuidanceEdit(Model):
 
 
 class GuidanceKeep(Model):
-    role: Literal["incoming_rewrite", "outgoing_rewrite", "chat_memory"]
+    role: Literal["incoming_rewrite", "chat_memory"]
 
 
 class MemorySwitch(Model):
@@ -205,11 +201,7 @@ def account_routes(manager, logins, auth):
     async def set_processing(account_id: int, body: Processing):
         return manager.set_processing(account_id, body.ai_enabled)
 
-    # Each member's own reading view, tone and Hide Bots (ADR 48 Q20).
-    @router.get("/preferences")
-    def preferences(request: Request):
-        return manager.registry.preferences(request.state.member)
-
+    # Each member's own reading view and Hide Bots (ADR 48 Q20).
     @router.get("/preferences/reading-view", response_model=ReadingView)
     def reading_view(request: Request):
         return manager.registry.reading_view(request.state.member)
@@ -227,10 +219,6 @@ def account_routes(manager, logins, auth):
     @router.post("/preferences/hide-bots", response_model=HideBots)
     def set_hide_bots(body: HideBots, request: Request):
         return manager.registry.set_hide_bots(body.hide_bots, request.state.member)
-
-    @router.post("/preferences")
-    def set_tone(body: Tone, request: Request):
-        return manager.registry.set_tone(body.tone, request.state.member)
 
     @router.get("/accounts", response_model=Accounts)
     def accounts(request: Request):

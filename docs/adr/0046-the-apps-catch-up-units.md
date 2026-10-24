@@ -47,9 +47,9 @@ emotion with its details and Copy chat link. The service reads the username,
 phone and bio from Telegram each time the profile opens, through
 `users.GetFullUserRequest`, which its read allow-list permits, and keeps none
 of them. Offline, the profile shows what the cached chat holds. Later ADRs
-add the chat's own switches and what memory holds about the person: Calm this
-chat ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)),
-the Suggestions choice
+add the chat's own controls and what memory holds: Soften hostile
+messages ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)),
+Automatic suggestions and Style
 ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)),
 Remember this chat, Cares about and Traits
 ([ADR 55](0055-person-and-account-memory-and-traits.md)). Not adopted: a

@@ -227,9 +227,6 @@ async def test_memory_reaches_only_newer_incoming_targets_never_cut_for_it(tmp_p
     await a.process_due()  # The Emotion Classification that follows it.
     assert packet["memory"]["note"].startswith("Unverified")
     assert packet["memory"]["entries"][0]["citations"] == [1]
-    draft = a.store.mutate_draft(KEY, 0, lambda d: d.update(text="My own words."))
-    await a.rewriting.outgoing(KEY, draft["revision"])
-    assert "memory" not in a.engine.calls[-1][1]
     older = a.rewriting.block(f"{KEY}/3")
     assert older["state"] == "original"
     assert a.rewriting.process_older(KEY) == 2

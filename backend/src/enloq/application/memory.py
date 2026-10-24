@@ -297,7 +297,7 @@ class Memory:
     def local_idle(self, job_id=None):
         return (
             not self.store.rows(
-                "SELECT id FROM jobs WHERE state IN ('queued','claimed','running') AND role IN ('incoming_rewrite','outgoing_rewrite','transcript','emotion_classification','response_suggestions','suggestion_labels') LIMIT 1"
+                "SELECT id FROM jobs WHERE state IN ('queued','claimed','running') AND role IN ('incoming_rewrite','transcript','emotion_classification','hostility_screen','response_suggestions','suggestion_labels') LIMIT 1"
             )
             and not self.app.media.transcription_lock.locked()
             and (not hasattr(self.app, "briefings") or self.app.briefings.local_idle())

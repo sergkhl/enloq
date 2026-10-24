@@ -82,7 +82,8 @@ async def test_new_native_activity_defers_an_already_queued_update(tmp_path, out
         ("incoming_rewrite", "queued", "older"),
         ("incoming_rewrite", "claimed", "new"),
         ("incoming_rewrite", "running", "new"),
-        ("outgoing_rewrite", "queued", "outgoing"),
+        ("response_suggestions", "queued", "suggestions"),
+        ("hostility_screen", "queued", "new"),
         ("transcript", "queued", "new"),
         ("transcript", "running", "new"),
     ],
@@ -95,7 +96,8 @@ async def test_every_waiting_or_preparing_communication_stage_blocks_memory(
     pending(app, now)
     app.memory.schedule(KEY)
     waiting_job(app, role, state, klass)
-    assert app.rewriting.next_job() is None
+    next_job = app.rewriting.next_job()
+    assert next_job is None or next_job["role"] != "chat_memory"
     await fold(app)
     assert not app.engine.calls and app.rewriting.work.capacity.running == 0
     finish_waiting(app)
@@ -111,7 +113,7 @@ async def test_dispatch_rechecks_idle_after_route_preparation(tmp_path):
     app.memory.schedule(KEY)
 
     async def prepare(packet):
-        waiting_job(app, "outgoing_rewrite")
+        waiting_job(app, "response_suggestions")
 
     app.engine.prepare = prepare
     job = await fold(app)
@@ -233,7 +235,15 @@ async def test_one_memory_globally_fair_accounts_and_new_communication_mid_call(
             if len(seen) == 1:
                 started.set()
                 await release.wait()
-            return update() if role == "chat_memory" else {"text": "Done."}
+            return (
+                update()
+                if role == "chat_memory"
+                else {
+                    "options": [
+                        {"purpose": "acknowledge", "text": "Authored continuation."}
+                    ]
+                }
+            )
 
         app.engine.generate = generate
     manager.dispatch()
@@ -243,22 +253,26 @@ async def test_one_memory_globally_fair_accounts_and_new_communication_mid_call(
     draft = app.store.mutate_draft(
         "2/user:42", 0, lambda d: d.update(text="Owner words.")
     )
-    outgoing = asyncio.create_task(
-        app.rewriting.outgoing("2/user:42", draft["revision"])
-    )
+    app.suggestions.generate("2/user:42", draft["revision"])
+    manager.dispatch()
     await asyncio.sleep(0.05)
     if limit == 1:
         assert len(seen) == 1
     else:
-        assert seen[-1] == (2, "outgoing_rewrite")
+        assert seen[-1] == (2, "response_suggestions")
     release.set()
-    await outgoing
     if manager.active:
         await asyncio.gather(*manager.active)
     manager.dispatch()
     if manager.active:
         await asyncio.gather(*manager.active)
-    assert seen == [(1, "chat_memory"), (2, "outgoing_rewrite"), (2, "chat_memory")]
+    # At limit one the explicit generation waits for the active memory call;
+    # it is still ahead of the next account's idle memory fold.
+    for _ in range(4):
+        manager.dispatch()
+        if manager.active:
+            await asyncio.gather(*manager.active)
+    assert seen == [(1, "chat_memory"), (2, "response_suggestions"), (2, "chat_memory")]
     assert not manager.get(1).memory.candidates(KEY)
     await manager.close()
 

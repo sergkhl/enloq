@@ -82,9 +82,6 @@ async def test_originals_cannot_retry_but_earlier_new_changed_and_unread_work_re
     await app.process_due()
     await app.process_due()
     assert [role for role, _ in app.engine.calls] == ["incoming_rewrite"] * 4
-    draft = app.store.mutate_draft(KEY, 0, lambda d: d.update(text="Owner draft"))
-    await app.rewriting.outgoing(KEY, draft["revision"])
-    assert app.engine.calls[-1][0] == "outgoing_rewrite"
     assert not app.transport.exact_reads and not app.transport.deliveries
 
 

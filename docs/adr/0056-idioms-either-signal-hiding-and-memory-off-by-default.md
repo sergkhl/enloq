@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Idiom suggestions, either signal, hiding suggestions, and memory off by default
+# Suggestion styles, automatic generation, folding and memory off by default
 
 ## Context
 
@@ -26,15 +26,17 @@ Russian chat gets Russian idioms, proverbs and set expressions, an English
 chat English ones and phrasal verbs. Not adopted: English practice in every
 chat, and a language chosen per chat.
 
-**A per-chat control (Q2).** It lives in the Correspondent Profile, for
-members too; Q12 makes it one choice.
+**Per-chat controls (Q2).** Each Correspondent Profile separates Automatic
+suggestions On/Off from Style: Friendly, Professional or Idioms (Q12).
+The chat's member sets both, in the app and the web.
 
-**Either signal (Q3).** An incoming block's suggestions need a usable
+**Either signal (Q3).** An incoming block's automatic suggestions need a usable
 non-neutral emotion *or* the decision model's yes on usefulness, in every
 private chat, idiom chats included. This reverses ADR 49 Q2 C. A yes on
 usefulness counts while the block's decision is current, even when its
 emotion is unknown; an unavailable, changed or expired decision qualifies
-nothing. Q19 sets the bar for blocks without emotion.
+nothing. Q19 sets the bar for blocks without emotion. Manual generation
+follows ADR 25 and bypasses these signal gates.
 
 **What idiom sets may say (Q4).** An option may give gentle advice through a
 proverb or saying, and a common idiom of pleasure or sympathy may voice the
@@ -42,18 +44,23 @@ owner's feelings. The rest of the fixed core stays: no invented facts, no
 admitted fault, no pressure and no commitments outside answer stances. Other
 chats keep ADR 49's limits. Not adopted: keeping every limit.
 
-**From the next block (Q5).** A choice applies from the next block that
-qualifies: a set takes the chat's choice when it is scheduled, and only a
-later Off cancels queued work. A set already written stays as it is, and
-nothing is regenerated.
+**From the next generation (Q5).** Each set captures Style when scheduled,
+whether automatic or manual. A style change applies to the next generation;
+existing and running sets retain their style. Changing style starts no
+request and withdraws no set. Automation Off cancels queued automatic work
+only.
 
-**Guidance (Q6).** An owner-editable field, **Idioms**, under Settings → AI
-→ Guidance, with Save, Reset and versions, used only for idiom sets after a
-fixed frame. The frame sets aside "Avoid cliches" and, within Q4's bounds,
-the core's advice and feelings rules.
+**Guidance (Q6).** Owner-editable Friendly, Professional and Idioms fields
+under Settings → AI → Guidance have Save, Reset and versions for future
+sets of either kind. Friendly is warm, natural and conversational without
+forced slang or emojis; Professional is clear, respectful and businesslike
+without unnecessary formality. Shared Response suggestions guidance still
+applies. Idioms follows its fixed frame, setting aside "Avoid cliches" and,
+within Q4's bounds, the advice and feelings rules.
 
-**Suggestions only (Q7).** Rewrite keeps Neutral, Professional and Friendly
-casual.
+**Suggestions only (Q7).** The three styles apply equally to manual and
+automatic suggestions. Outgoing Rewrite, Neutral and its tone controls are
+removed (ADR 25).
 
 **Q8:** delivery scope; no lasting rule.
 
@@ -73,23 +80,31 @@ read no memory. Not adopted: a default Off for the person's side only.
 holder switched Off keeps ADR 55 Q20's rule: what arrived while it was Off is
 never learned.
 
-**The Suggestions choice and the fold (Q12).**
+**Automatic suggestions, Style and the fold (Q12).**
 
-- **One choice per chat (A).** Each private chat's Correspondent Profile has
-  one Suggestions choice, **Off · On · Idioms**, in both clients, On by
-  default. The owner and every member set it for their own chats, and its
-  calls count in that member's own Daily Budget. Off prepares and shows
-  nothing in that chat; a set prepared before shows again on switching back
-  while it is still valid. The one global Suggestions switch, the owner's,
-  still turns every suggestion off. Groups and Saved Messages have no
-  suggestions. Not adopted: one setting for every chat, or one per account.
+- **Separate controls per chat (A).** Each private chat has **Automatic
+  suggestions**, On by default, and **Style**, Friendly by default, with
+  exactly Friendly, Professional and Idioms as choices. Both live in its
+  Correspondent Profile, belong to that chat's member and are shared across
+  their clients. The owner's server-wide switch is also Automatic
+  suggestions. Automatic work needs both switches On; either Off hides
+  automatic sets and stops new automatic work, without blocking or hiding
+  manual sets. On reuses valid automatic sets, without backfill. Calls count
+  in the account member's Daily Budget. Groups and Saved Messages have no
+  suggestions. There is no member-wide or account-wide style or inheritance.
+
+  Existing Off maps to automation Off and Friendly; On to automation On and
+  Friendly; Idioms to automation On and Idioms. Existing global On/Off is
+  preserved for automation. Removed Rewrite tones supply no preference.
+  Settings conversion starts no model work and rewrites no existing result.
+
 - **A remembered fold (B).** A folded set stays folded on every client and
   after reloads until the next set arrives, replacing ADR 49 Q11's
   session-only fold. Not adopted: sets that arrive folded, and an × that
   removes a set.
 
-**Reactions keep needing both (Q13).** A reaction's suggestions need a yes on
-usefulness and a non-neutral emotion. A reaction's emoji alone reads as
+**Reactions keep needing both (Q13).** A reaction's automatic suggestions
+need a yes on usefulness and a non-neutral emotion. A reaction's emoji alone reads as
 positive or negative, so either signal would put options under nearly every
 👍.
 
@@ -102,13 +117,14 @@ none.
 
 **The writer (Q16).** The idioms gate compares MiMo and Muse Spark 1.3 on the
 same authored chats, and Q20 settled the choice: Muse writes idiom sets, and
-plain sets stay on MiMo. Muse's other role is calmed text.
+Friendly and Professional sets stay on MiMo. Muse's other role is softened
+hostile text.
 
 **The idioms gate (Q17).** `scripts/check-idioms.py` runs authored Russian
 and English chats through the real path, and a judge model
-(`chatgpt/gpt-6.1-sol`, as in the calming and memory gates) reads every
+(`chatgpt/gpt-6.1-sol`, as in the softening and memory gates) reads every
 option. A writer passes with no miss on the fixed rules (the chat's language,
-the labels and contrasting stances, and no invented facts, admitted fault,
+the labels and applicable stance rules in ADR 25, and no invented facts, admitted fault,
 pressure or commitments outside answer stances) and with every option
 carrying a real expression in its right meaning in at least 9 sets of 10.
 Weaker results are Low quality. The owner reads every set, and the gate
@@ -131,8 +147,8 @@ the judge and rerunning, more refining, and keeping Idioms hidden.
 
 ## Consequences
 
-- Suggestions appear far more often, for neutral questions and for warm
-  messages, and each chat can turn them off.
+- Automatic generation can be turned off per chat without losing the manual
+  button. Each chat's Style applies to both paths.
 - Memory learns only from the chats the owner or a member turns on.
 - This amends [ADR 25](0025-emotion-response-suggestions.md) and ADR 49 (the
   trigger, a per-chat choice, the remembered fold and idiom sets with their

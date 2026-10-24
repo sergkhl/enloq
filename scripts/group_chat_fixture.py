@@ -155,7 +155,7 @@ def register(server):
                 },
                 "model_calls": len(app.engine.calls),
                 "reads": len(app.transport.exact_reads),
-                "draft": app.rewriting.outgoing_work.view(key),
+                "draft": app.store.draft(key),
                 "operations": [
                     operation_view(json.loads(row["body"]), store.clock())
                     for row in store.rows(
@@ -185,19 +185,6 @@ def register(server):
             }
         if action != "setup":
             raise Refused("Unknown authored group fixture action")
-        # Stop only disposable fixture tasks before replacing their own rows.
-        owner = app.rewriting.outgoing_work
-        tasks = [
-            task
-            for identity, task in owner.tasks.items()
-            if store.rows(
-                "SELECT 1 FROM jobs WHERE id=? AND scope IN (?,?)",
-                (identity, f"{account}/chat:42", f"{account}/channel:42"),
-            )
-        ]
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
         server.state.accounts.set_processing(account, body.get("master", True))
         app.transport.messages = [
             m for m in app.transport.messages if m.peer not in GROUPS

@@ -5,14 +5,6 @@ import { useConnection, useServerChanges } from "./connection";
 
 export type ConversationRow = Schemas["ConversationRow"];
 export type ReadingView = Schemas["ReadingView"]["reading_view"];
-export type Tone = Schemas["Tone"]["tone"];
-
-export const TONES: Record<Tone, string> = {
-  neutral: "Neutral",
-  professional: "Professional",
-  friendly: "Friendly casual",
-};
-
 // One read at a time: a request made while one runs is answered by a single
 // read started after it, so bursts of changes (a streaming rewrite) cost one
 // extra read rather than one each.
@@ -138,48 +130,4 @@ export function useReadingView() {
     [api, view],
   );
   return { view, choose };
-}
-
-// The rewrite tone, remembered once for every client (ADR 13).
-export function useTone() {
-  const { api } = useConnection();
-  const [tone, setTone] = useState<Tone>("neutral");
-  const answered = useRef(false);
-  // As for the reading view: a read older than a saved choice is dropped.
-  const version = useRef(0);
-  const reader = useRef(
-    coalesce(async () => {
-      const started = version.current;
-      const answer = await api<Schemas["Tone"]>("preferences", {
-        keep: "tone",
-      });
-      if (started !== version.current) return;
-      answered.current = true;
-      setTone(answer.tone);
-    }),
-  );
-  useEffect(() => {
-    void readCached<Schemas["Tone"]>("tone").then((kept) => {
-      if (kept && !answered.current) setTone(kept.tone);
-    });
-    void reader.current();
-  }, []);
-  useServerChanges((change) => {
-    if (change.kind === "refresh" || change.shared.includes("tone"))
-      void reader.current();
-  });
-  // Only a saved choice changes the tone shown; a refusal throws.
-  const choose = useCallback(
-    async (next: Tone) => {
-      const mine = ++version.current;
-      const answer = await api<Schemas["Tone"]>("preferences", {
-        body: { tone: next },
-        keep: "tone",
-      });
-      answered.current = true;
-      if (mine === version.current) setTone(answer.tone);
-    },
-    [api],
-  );
-  return { tone, choose };
 }

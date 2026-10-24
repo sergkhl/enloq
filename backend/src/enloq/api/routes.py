@@ -26,7 +26,7 @@ from ..domain.models import (
 )
 from ..domain.selected_media import sticker_selected
 from ..domain.selection_formats import STICKER_BYTES
-from ..domain.suggestions import Choice, SuggestionsView
+from ..domain.suggestions import Style, SuggestionsView
 from ..domain.video import video_candidate
 from ..storage.store import RETENTION
 from ..storage.viewing import ViewedSources
@@ -144,11 +144,6 @@ class BlockRetry(Model):
     revision: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
 
 
-class StopRewrite(Revision):
-    attempt: str = Field(pattern=r"^[a-f0-9]{32}$")
-    text: str | None = Field(default=None, max_length=65536)
-
-
 class UndoRewrite(Revision):
     attempt: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
 
@@ -200,16 +195,13 @@ class SuggestionInsert(Revision):
     cursor: int | None = Field(default=None, ge=0, le=65536)
 
 
-class SuggestionChoice(Model):
-    """A private chat's Suggestions choice (ADR 56 Q12 A), On unless the
-    chat chose otherwise, and whether Idioms can be chosen yet."""
-
-    choice: Choice
-    idioms: bool
+class SuggestionSettings(Model):
+    automatic: StrictBool
+    style: Style
 
 
-class SuggestionChoiceEdit(Model):
-    choice: Choice
+class SuggestionGenerate(Revision):
+    cursor: int | None = Field(default=None, ge=0, le=65536)
 
 
 class SuggestionFold(Model):
@@ -375,8 +367,6 @@ def routes(manager, settings):
 
     @router.post("/chats/{peer}/draft")
     def draft(account_id: int, peer: str, body: DraftEdit):
-        manager.get(account_id).rewriting.outgoing_work.unlocked(key(account_id, peer))
-
         def change(value):
             if sticker_selected(value):
                 if body.text != value["text"]:
@@ -404,14 +394,22 @@ def routes(manager, settings):
             key(account_id, peer), body.revision, body.attempt, body.index, body.cursor
         )
 
-    @router.get("/chats/{peer}/suggestions/choice", response_model=SuggestionChoice)
-    def suggestion_choice(account_id: int, peer: str):
-        return manager.get(account_id).suggestions.choice_view(key(account_id, peer))
+    @router.post("/chats/{peer}/suggestions/generate", response_model=SuggestionsView)
+    def generate_suggestions(account_id: int, peer: str, body: SuggestionGenerate):
+        return manager.get(account_id).suggestions.generate(
+            key(account_id, peer), body.revision, body.cursor
+        )
 
-    @router.post("/chats/{peer}/suggestions/choice", response_model=SuggestionChoice)
-    def set_suggestion_choice(account_id: int, peer: str, body: SuggestionChoiceEdit):
-        return manager.get(account_id).suggestions.set_choice(
-            key(account_id, peer), body.choice
+    @router.get("/chats/{peer}/suggestions/settings", response_model=SuggestionSettings)
+    def suggestion_settings(account_id: int, peer: str):
+        return manager.get(account_id).suggestions.settings(key(account_id, peer))
+
+    @router.post(
+        "/chats/{peer}/suggestions/settings", response_model=SuggestionSettings
+    )
+    def set_suggestion_settings(account_id: int, peer: str, body: SuggestionSettings):
+        return manager.get(account_id).suggestions.set_settings(
+            key(account_id, peer), body.automatic, body.style
         )
 
     @router.post("/chats/{peer}/suggestions/fold", response_model=SuggestionsView)
@@ -745,19 +743,6 @@ def routes(manager, settings):
             "stopped": manager.get(account_id).rewriting.stop(key(account_id, peer))
         }
 
-    @router.post("/chats/{peer}/rewrite")
-    async def rewrite(account_id: int, peer: str, body: Revision):
-        async with manager.lease(account_id) as app:
-            return app.rewriting.outgoing_work.start(
-                key(account_id, peer), body.revision
-            )
-
-    @router.post("/chats/{peer}/rewrite/stop")
-    def stop_rewrite(account_id: int, peer: str, body: StopRewrite):
-        return manager.get(account_id).rewriting.outgoing_work.stop(
-            key(account_id, peer), body.revision, body.attempt, visible=body.text
-        )
-
     @router.post("/chats/{peer}/undo")
     def undo(account_id: int, peer: str, body: UndoRewrite):
         return manager.get(account_id).rewriting.undo(
@@ -793,7 +778,7 @@ def routes(manager, settings):
             guard()
             return {
                 "operation": operation_view(operation, app.store.clock()),
-                "draft": app.rewriting.outgoing_work.view(chat),
+                "draft": app.store.draft(chat),
             }
 
     @router.post("/operations/{identity}/recheck")
@@ -1092,7 +1077,6 @@ def routes(manager, settings):
 
     @router.post("/chats/{peer}/images")
     def attach(account_id: int, peer: str, body: ImageUpload):
-        manager.get(account_id).rewriting.outgoing_work.unlocked(key(account_id, peer))
         return manager.get(account_id).attachments.add(
             key(account_id, peer), body.revision, body.name, body.data
         )
@@ -1108,7 +1092,6 @@ def routes(manager, settings):
 
     @router.post("/chats/{peer}/images/{identity}/remove")
     def remove_image(account_id: int, peer: str, identity: str, body: Revision):
-        manager.get(account_id).rewriting.outgoing_work.unlocked(key(account_id, peer))
         return manager.get(account_id).attachments.remove(
             key(account_id, peer), body.revision, identity
         )

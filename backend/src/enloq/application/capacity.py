@@ -1,6 +1,6 @@
 """One global limit on concurrent model calls, served by priority (ADR 15).
 
-Classes, highest first: outgoing Rewrite, new incoming work (including a
+Classes, highest first: new incoming work (including a
 per-block Rewrite or Retry click), unread catch-up, Reaction Assessment, the
 chat-level older run, response suggestions, group briefings and chat-memory
 updates. Memory is admitted only while communication is idle. With a limit of 2
@@ -16,7 +16,6 @@ from ..domain.models import ProcessingPaused
 
 # All private roles precede group briefings, which precede idle memory (ADR 34).
 CLASSES = (
-    "outgoing",
     "new",
     "catchup",
     "reaction",

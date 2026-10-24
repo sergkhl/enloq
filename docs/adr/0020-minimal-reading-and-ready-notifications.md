@@ -2,13 +2,14 @@
 status: accepted
 ---
 
-# Minimal reading controls and notifications when messages are ready
+# Minimal reading controls and prompt incoming notifications
 
 ## Context
 
 Duplicate original areas, completion badges and alerts at every arrival and
 completion made reading noisy. The owner wants one readable rendering per
-message and one useful alert when new messages are ready to read.
+message and one useful alert per incoming burst. Notification delivery is
+independent of block readiness, with a bounded hostile-wording screen.
 
 ## Decision
 
@@ -69,16 +70,40 @@ invalidation follow, and a failure leaves the details unknown for a later try.
 **When.** New incoming messages in private chats of a member's accounts are
 eligible, respecting Telegram's mute; groups never alert. A burst is an
 account and chat's incoming messages until 30 quiet seconds, independently of
-Incoming Block boundaries. It notifies once its content is ready: its
-validated rewrite when one is made, otherwise its originals once any decision
-it waits for has published
-([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)), or the
-original fallback once AI Off, a budget wait, a failure or nothing to analyse
-is known. Never at native arrival or the first streamed word. A later burst
-may notify again; edits, deletions, old catch-up, explicit retries and
-earlier-message runs, outgoing rewrites, refreshes, restarts and reaction-only
-changes never do. New sources supersede stale candidates, and notification
-work starts no model call.
+Incoming Block boundaries. Its first eligible notification alerts as soon as
+the rules below allow; later arrivals update the grouped notification
+silently. The quiet period groups alerts, never delays screening or a clean
+preview. A later burst may alert again. Edits, deletions, old catch-up,
+explicit retries and earlier-message runs, refreshes, restarts and
+reaction-only changes start no alert. AI completion never adds a second
+alert, and a late older result never replaces a newer eligible preview.
+
+**Screening and original fallback.** In a chat with **Soften hostile
+messages** On, new text and captions go immediately to the decision model's
+explicit hostile-wording test
+([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)). A
+clean result releases the original preview immediately, without waiting for
+the block's quiet period, mood, suggestions or media rewrite. A hostile
+result waits for a complete, validated softened version. That rewrite keeps
+the normal 30 quiet seconds for combined-block processing.
+
+Screening has a five-second deadline from service arrival, including queue
+time. AI Off, unavailable budget or capacity, a refusal, failure, malformed
+answer or that deadline releases the original preview immediately when the
+condition is known. If a required softened rewrite cannot finish, its
+failure likewise releases the original without further screening. This
+fallback may expose hostile wording; it starts no model request, raises no
+budget and is never followed by another alert. Screening obeys the existing
+account AI, route, concurrency, privacy and Daily Budget boundaries; late
+output cannot re-alert. Screening neither schedules suggestions nor records
+memory-learning inputs; those remain owned by ordinary block processing.
+
+With softening Off, originals notify on arrival without screening. Textless
+media notifies on arrival with its typed label; it never waits for speech or
+image processing just to notify. Captions are screened before their wording
+is shown. A cleared clean arrival need not wait for an earlier hostile
+message's rewrite in the same burst; that result may join the group silently
+when ready. Unseen Message readiness retains its separate rules.
 
 **Where.** A chat open in an active client of the member alerts nothing. A
 browser showing another chat plays one chime. Otherwise push goes to the
@@ -96,8 +121,9 @@ browsers and phones, never a chime doubled by a system sound.
 **What a notification carries.** The push payload carries only an opaque
 event ID, expiry and silent flag; the client fetches the details from the
 service and builds the banner. It shows the sender, the account and a short
-preview: the latest validated rewrite or the current original wording, the
-count with the newest preview for several, and a typed label such as Image or
+preview: the cleared original wording, the validated softened wording for a
+hostile message, or the original fallback above; the count with the newest
+eligible preview for several, and a typed label such as Image or
 Voice message for textless media. No thumbnails, unfinished text or extra
 summary. Tapping opens the exact account and chat route
 ([ADR 36](0036-account-and-chat-hash-routes.md)) under the usual draft guards.
@@ -125,8 +151,10 @@ prerequisites, such as Brave's Google push messaging option.
 
 ## Consequences
 
-- One readable rendering and one alert per burst replace stacked copies and
-  arrival or completion noise.
+- One readable rendering and one alert per burst keep arrival updates silent
+  after the first alert; clean previews wait at most for bounded screening.
+- Softening protects previews while available. The chosen failure behavior
+  prioritizes an original-text notification over withholding the alert.
 - Attachment identity keeps real media edits from being mistaken for
   duplicates; uncertain older history is kept rather than destroyed.
 - Push services carry no message text, even encrypted; the banner the client

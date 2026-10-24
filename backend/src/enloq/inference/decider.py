@@ -48,6 +48,7 @@ ROLES = (
     frozenset(
         {
             "emotion_classification",
+            "hostility_screen",
             "reaction_assessment",
             "suggestion_labels",
             "trait_scales",
@@ -199,6 +200,10 @@ def noul(answers, name):
 def validate(role, answers, packet=None):
     """Answers by question name, a supplied option and finite probabilities;
     anything else is a fixed content-free format failure."""
+    if role == "hostility_screen":
+        if not isinstance(answers, dict) or set(answers) != {"hostility"}:
+            raise InvalidOutput("invalid_answer")
+        return noul(answers, "hostility") >= 0.5
     if role in FILTER_ROLES:
         expected = set(filter_questions(role, packet or {}))
         if not isinstance(answers, dict) or set(answers) != expected:
@@ -227,6 +232,7 @@ def validate(role, answers, packet=None):
             suggestions_useful=useful >= USEFUL,
             usefulness=useful,
             sarcasm=noul(answers, "sarcasm") if "sarcasm" in answers else None,
+            hostility=noul(answers, "hostility"),
         )
     return AssessmentResult(
         emotion=decision.code,

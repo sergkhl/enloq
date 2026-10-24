@@ -411,8 +411,8 @@ class Store:
             for trigger in change_triggers("suggestion_state", "chat_key"):
                 db.execute(trigger)
             # ADR 56: each private chat's Suggestions choice.
-            db.execute(suggestions.CHOICE_DDL)
-            for trigger in change_triggers("suggestion_choice", "chat_key"):
+            suggestions.migrate_settings(db)
+            for trigger in change_triggers("suggestion_settings", "chat_key"):
                 db.execute(trigger)
             # ADR 26: reaction metadata and dated correspondent evidence.
             reactions.initialize(db, self.clock())
@@ -479,6 +479,19 @@ class Store:
             )
             for trigger in change_triggers("calming", "chat_key"):
                 db.execute(trigger)
+            # Mood-based releases from the previous design are not hostility
+            # decisions. Reconsider undispatched work under the new contract;
+            # completed renderings and all spending evidence stay intact.
+            db.execute(
+                "UPDATE incoming_deferred SET payload=json_remove(payload,'$.decided') WHERE scope IN "
+                "(SELECT scope FROM jobs WHERE role='incoming_rewrite' AND state IN ('queued','claimed') "
+                "AND json_type(payload,'$.calm')='text')"
+            )
+            db.execute(
+                "UPDATE jobs SET payload=json_remove(payload,'$.calm','$.sarcastic','$.decided') "
+                "WHERE role='incoming_rewrite' AND state IN ('queued','claimed') "
+                "AND json_type(payload,'$.calm')='text'"
+            )
             columns = {r["name"] for r in db.execute("PRAGMA table_info(blocks)")}
             if "calmed" not in columns:
                 db.execute(

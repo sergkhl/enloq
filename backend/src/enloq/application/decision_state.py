@@ -74,4 +74,7 @@ def suggestions(packet, options):
     state["replies"] = [
         {"id": index, "text": option.text} for index, option in enumerate(options, 1)
     ]
+    if packet.get("manual"):
+        state["draft_intent"] = packet.get("draft", "")
+        state["cursor"] = packet.get("cursor")
     return state

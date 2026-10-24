@@ -84,7 +84,7 @@ def authored_group_roles(monkeypatch):
         work,
         "validate_output",
         lambda role, response, packet: validate(
-            "outgoing_rewrite" if role in work.GROUP_ROLES else role, response, packet
+            "incoming_rewrite" if role in work.GROUP_ROLES else role, response, packet
         ),
     )
 
@@ -119,7 +119,9 @@ class HeldEngine:
                 error.receipt = EngineResponse({}, actual_nanos=self.actual)
             raise error
         return EngineResponse(
-            "{invalid" if self.outcome == "invalid" else {"text": "Authored result"},
+            "{invalid"
+            if self.outcome == "invalid"
+            else {"text": "Authored result", "image_context": []},
             actual_nanos=self.actual,
         )
 
@@ -280,7 +282,7 @@ def test_default_interfaces_keep_daily_shape_and_purpose_mapping(tmp_path):
         for role in work.ROLES - work.GROUP_ROLES - FILTER_ROLES
     } == {DAILY}
     assert work.budget_family("future_private_role") == DAILY
-    rig.owners[0].reserve(queue(rig.stores[0], "composer", "outgoing_rewrite"), "mimo")
+    rig.owners[0].reserve(queue(rig.stores[0], "composer", "incoming_rewrite"), "mimo")
     rig.owners[1].reserve(queue(rig.stores[1], "briefing"), "mimo")
     assert rig.registry.usage()[0]["calls"] == 1
     assert rig.registry.usage(family=GROUP)[0]["calls"] == 1
@@ -323,7 +325,7 @@ def test_accounts_share_each_pool_atomically_while_families_are_independent(tmp_
     attempts = [
         (0, queue(rig.stores[0], "group-one")),
         (1, queue(rig.stores[1], "group-two")),
-        (0, queue(rig.stores[0], "daily", "outgoing_rewrite")),
+        (0, queue(rig.stores[0], "daily", "incoming_rewrite")),
     ]
     barrier = threading.Barrier(3)
 
@@ -338,7 +340,7 @@ def test_accounts_share_each_pool_atomically_while_families_are_independent(tmp_
 
     with ThreadPoolExecutor(max_workers=3) as pool:
         outcomes = list(pool.map(reserve, attempts))
-    assert outcomes.count(GROUP) == 1 and outcomes.count("outgoing_rewrite") == 1
+    assert outcomes.count(GROUP) == 1 and outcomes.count("incoming_rewrite") == 1
     assert budget(rig)["spent"] == budget(rig, GROUP)["spent"] == FLAT_UNKNOWN
     assert budget(rig)["calls"] == budget(rig, GROUP)["calls"] == 1
     assert len(rig.registry.rows("SELECT * FROM model_reservations")) == 2
@@ -351,7 +353,7 @@ def test_zero_or_exhausted_family_never_borrows_the_other_allowance(
     rig = accounting(tmp_path)
     other = GROUP if exhausted == DAILY else DAILY
     rig.registry.set_budget(0, family=exhausted)
-    roles = {DAILY: "outgoing_rewrite", GROUP: "group_briefing_chunk"}
+    roles = {DAILY: "incoming_rewrite", GROUP: "group_briefing_chunk"}
     for index, owner in enumerate(rig.owners):
         owner.reserve(queue(rig.stores[index], "allowed", roles[other]), "mimo")
         with pytest.raises(Refused, match="budget reached"):
@@ -387,7 +389,7 @@ def test_group_full_allowance_preserves_the_private_older_quarter_reserve(tmp_pa
 
 def test_runtime_saves_preserve_spending_and_filter_changes_by_family(tmp_path):
     rig = accounting(tmp_path)
-    rig.owners[0].reserve(queue(rig.stores[0], "daily", "outgoing_rewrite"), "mimo")
+    rig.owners[0].reserve(queue(rig.stores[0], "daily", "incoming_rewrite"), "mimo")
     rig.owners[1].reserve(queue(rig.stores[1], "group"), "mimo")
     before = rig.registry.rows("SELECT * FROM model_reservations")
     for family, default in ((DAILY, 1_000_000_000), (GROUP, 2_000_000_000)):
@@ -470,7 +472,7 @@ async def test_late_receipt_settles_original_dispatch_day_and_family(
 ):
     start = datetime(2033, 5, 18, 23, 59, tzinfo=timezone.utc).timestamp()
     rig = accounting(tmp_path, now=start)
-    role = "outgoing_rewrite" if family == DAILY else GROUP
+    role = "incoming_rewrite" if family == DAILY else GROUP
     engine, store = HeldEngine(actual=4321), rig.stores[0]
     job = queue(store, "midnight", role)
     task = asyncio.create_task(rig.owners[0].run(engine, job, {}, lambda: True))
@@ -534,12 +536,12 @@ def test_either_family_future_dispatch_prevents_rollback_from_reopening_both(tmp
     future = budget(rig, GROUP)["day"]
     rig.owners[0].reserve(queue(rig.stores[0], "future-group"), "mimo")
     rig.owners[1].reserve(
-        queue(rig.stores[1], "future-daily", "outgoing_rewrite"), "mimo"
+        queue(rig.stores[1], "future-daily", "incoming_rewrite"), "mimo"
     )
     rig.clock[0] -= 2 * 86400
     for index, family in enumerate((GROUP, DAILY)):
         assert budget(rig, family)["day"] == future and budget(rig, family)["reached"]
-        role = GROUP if family == GROUP else "outgoing_rewrite"
+        role = GROUP if family == GROUP else "incoming_rewrite"
         with pytest.raises(Refused, match="budget reached"):
             rig.owners[index].reserve(
                 queue(rig.stores[index], "rolled-back", role), "mimo"
@@ -588,7 +590,7 @@ async def test_group_outcomes_settle_once_and_keep_invalid_interrupted_unknown_c
     with pytest.raises(Refused, match="already dispatched"):
         await owner.run(engine, job, {}, lambda: True)
     with pytest.raises(Refused, match="already dispatched"):
-        owner.reserve(job | {"role": "outgoing_rewrite"}, "mimo")
+        owner.reserve(job | {"role": "incoming_rewrite"}, "mimo")
     assert (
         engine.calls == [job["role"]] and store.rows("SELECT * FROM receipts") == before
     )
@@ -606,7 +608,7 @@ async def test_group_receipt_counts_larger_provider_cost_without_changing_engine
         "provider": "Xiaomi",
         "choices": [
             {
-                "delta": {"content": '{"text":"Authored output"}'},
+                "delta": {"content": '{"text":"Authored output","image_context":[]}'},
                 "finish_reason": "stop",
             }
         ],

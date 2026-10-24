@@ -6,2142 +6,2275 @@
 export type paths = Record<string, never>;
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** AccountMemoryEntry */
-        AccountMemoryEntry: {
-            /** Id */
-            id: string;
-            /** Text */
-            text: string;
-            /** Citations */
-            citations: number[];
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "model" | "owner";
-            /** Outdated */
-            outdated: {
-                [key: string]: unknown;
-            } | null;
-            /** Created */
-            created: number;
-            /** Guidance */
-            guidance: number | null;
-            /**
-             * Defaults
-             * @default null
-             */
-            defaults: number | null;
-            /** Sources */
-            sources: components["schemas"]["AccountMemorySource"][];
-        };
-        /**
-         * AccountMemorySource
-         * @description An Account Memory citation names the peer of the chat it came from.
-         */
-        AccountMemorySource: {
-            /** Id */
-            id: number;
-            /**
-             * Availability
-             * @enum {string}
-             */
-            availability: "cached" | "not_cached" | "deleted";
-            /** Chat */
-            chat: string;
-        };
-        /**
-         * AccountMemoryView
-         * @description The account's Account Memory: what its holder cares about.
-         */
-        AccountMemoryView: {
-            /** Entries */
-            entries: components["schemas"]["AccountMemoryEntry"][];
-            /** Revision */
-            revision: number;
-            /** Enabled */
-            enabled: boolean;
-        };
-        /** AccountProcessing */
-        AccountProcessing: {
-            /** Ai Enabled */
-            ai_enabled: boolean;
-            /** Account Id */
-            account_id: number;
-        };
-        /** AccountSummary */
-        AccountSummary: {
-            /** Account Id */
-            account_id: number;
-            /** Name */
-            name: string;
-            /** Username */
-            username: string;
-            /** Phone */
-            phone: string;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "authorized" | "logged_out" | "requires_login" | "logout_pending";
-            /** Connected */
-            connected: boolean;
-            /** Status */
-            status: string;
-            /** Ai Enabled */
-            ai_enabled: boolean;
-            /** Photo Id */
-            photo_id: string | null;
-        };
-        /** Accounts */
-        Accounts: {
-            /** Mode */
-            mode: string;
-            /** Timezone */
-            timezone: string;
-            /** Accounts */
-            accounts: components["schemas"]["AccountSummary"][];
-            /** Budget */
-            budget: components["schemas"]["BudgetSummary"][];
-            /** Login Available */
-            login_available: boolean;
-        };
-        /**
-         * Agreement
-         * @description The Member Agreement an unknown account reads (ADR 48 Q3).
-         */
-        Agreement: {
-            /** Version */
-            version: string;
-            /** Title */
-            title: string;
-            /** Paragraphs */
-            paragraphs: string[];
-        };
-        /** AgreementAcceptance */
-        AgreementAcceptance: {
-            /** Version */
-            version: string;
-        };
-        /** AssetRepresentation */
-        AssetRepresentation: {
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "missing" | "ready" | "unsupported";
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "thumbnail" | "gif" | "sticker";
-            /**
-             * Format
-             * @default null
-             */
-            format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
-            /**
-             * Mime
-             * @default null
-             */
-            mime: ("image/jpeg" | "image/png" | "image/webp" | "image/gif" | "video/mp4" | "video/webm" | "application/x-tgsticker") | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Fps
-             * @default null
-             */
-            fps: number | null;
-            /**
-             * Frames
-             * @default null
-             */
-            frames: number | null;
-            /**
-             * Renderer Supported
-             * @default false
-             */
-            renderer_supported: boolean;
-            /**
-             * Features
-             * @default []
-             */
-            features: string[];
-        };
-        /** BlockRetry */
-        BlockRetry: {
-            /** Revision */
-            revision: string;
-        };
-        /** BrowserStatus */
-        BrowserStatus: {
-            /** Authenticated */
-            authenticated: boolean;
-            /**
-             * Waiting
-             * @default false
-             */
-            waiting: boolean;
-        };
-        /** BudgetState */
-        BudgetState: {
-            /** Day */
-            day: string;
-            /** Limit */
-            limit: number;
-            /** Spent */
-            spent: number;
-            /** Calls */
-            calls: number;
-            /** Unknown */
-            unknown: number;
-            /** Flat Unknown */
-            flat_unknown: number;
-            /** Reached */
-            reached: boolean;
-            /** Resets At */
-            resets_at: number;
-            /** Changes */
-            changes: {
-                [key: string]: unknown;
-            }[];
-        };
-        /** BudgetSummary */
-        BudgetSummary: {
-            /** Engine */
-            engine: string;
-            /** Calls */
-            calls: number;
-            /** Reserved */
-            reserved: number;
-            /** Actual */
-            actual: number | null;
-            /** Unknown */
-            unknown: number;
-        };
-        /** CachedOriginalsRead */
-        CachedOriginalsRead: {
-            /** Identities */
-            identities: number[];
-        };
-        /**
-         * Calming
-         * @description A private chat's calming (ADR 53): on unless the chat chose otherwise.
-         */
-        Calming: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /** CalmingEdit */
-        CalmingEdit: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /** CatalogAssetPreparation */
-        CatalogAssetPreparation: {
-            /** Revision */
-            revision: string;
-            /**
-             * Variant
-             * @default thumbnail
-             * @enum {string}
-             */
-            variant: "thumbnail" | "media";
-        };
-        /** CatalogAssetView */
-        CatalogAssetView: {
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "missing" | "ready" | "unsupported";
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "thumbnail" | "gif" | "sticker";
-            /**
-             * Format
-             * @default null
-             */
-            format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
-            /**
-             * Mime
-             * @default null
-             */
-            mime: ("image/jpeg" | "image/png" | "image/webp" | "image/gif" | "video/mp4" | "video/webm" | "application/x-tgsticker") | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Fps
-             * @default null
-             */
-            fps: number | null;
-            /**
-             * Frames
-             * @default null
-             */
-            frames: number | null;
-            /**
-             * Renderer Supported
-             * @default false
-             */
-            renderer_supported: boolean;
-            /**
-             * Features
-             * @default []
-             */
-            features: string[];
-            /** Token */
-            token: string;
-            /** Revision */
-            revision: string;
-            /**
-             * Variant
-             * @enum {string}
-             */
-            variant: "thumbnail" | "media";
-        };
-        /** CatalogItem */
-        CatalogItem: {
-            /** Token */
-            token: string;
-            /** Revision */
-            revision: string;
-            metadata: components["schemas"]["CatalogMetadata"];
-            /** Selectable */
-            selectable: boolean;
-            /**
-             * Unavailable
-             * @default null
-             */
-            unavailable: string | null;
-            preview: components["schemas"]["CatalogPreview"];
-        };
-        /** CatalogMetadata */
-        CatalogMetadata: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "gif" | "sticker";
-            /**
-             * Format
-             * @enum {string}
-             */
-            format: "gif" | "mp4" | "static" | "animated" | "video" | "unsupported";
-            /**
-             * Mime
-             * @default null
-             */
-            mime: string | null;
-            /**
-             * Name
-             * @default null
-             */
-            name: string | null;
-            /**
-             * Size
-             * @default null
-             */
-            size: number | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Emoji
-             * @default null
-             */
-            emoji: string | null;
-            /**
-             * Keywords
-             * @default []
-             */
-            keywords: string[];
-            /**
-             * Requires Premium
-             * @default false
-             */
-            requires_premium: boolean;
-            /**
-             * Unavailable
-             * @default null
-             */
-            unavailable: string | null;
-        };
-        /**
-         * CatalogOpen
-         * @description Explicit JSON picker-open action; no persisted browser query state.
-         */
-        CatalogOpen: Record<string, never>;
-        /** CatalogPack */
-        CatalogPack: {
-            /** Id */
-            id: string;
-            /** Revision */
-            revision: string;
-            /** Title */
-            title: string;
-            /** Short Name */
-            short_name: string;
-            /** Count */
-            count: number;
-            /** Cached */
-            cached: boolean;
-            /** Stale */
-            stale: boolean;
-        };
-        /** CatalogPackView */
-        CatalogPackView: {
-            pack: components["schemas"]["CatalogPack"];
-            /** Items */
-            items: components["schemas"]["CatalogItem"][];
-            /** Updated At */
-            updated_at: number | null;
-            /** Truncated */
-            truncated: boolean;
-            /**
-             * Error
-             * @default null
-             */
-            error: string | null;
-        };
-        /** CatalogPreview */
-        CatalogPreview: {
-            /** Token */
-            token: string;
-            /** Revision */
-            revision: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "thumbnail" | "media" | "unavailable";
-            /**
-             * Format
-             * @enum {string}
-             */
-            format: "gif" | "mp4" | "static" | "animated" | "video" | "unsupported";
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-        };
-        /** CatalogRefresh */
-        CatalogRefresh: {
-            /** Revision */
-            revision: string;
-        };
-        /** CatalogView */
-        CatalogView: {
-            /** Revision */
-            revision: string;
-            /** Updated At */
-            updated_at: number | null;
-            /** Stale */
-            stale: boolean;
-            /** Premium */
-            premium: boolean | null;
-            /** Gifs */
-            gifs: components["schemas"]["CatalogItem"][];
-            /** Recent */
-            recent: components["schemas"]["CatalogItem"][];
-            /** Favorites */
-            favorites: components["schemas"]["CatalogItem"][];
-            /** Packs */
-            packs: components["schemas"]["CatalogPack"][];
-            /** Truncated */
-            truncated: boolean;
-            /**
-             * Error
-             * @default null
-             */
-            error: string | null;
-        };
-        /** Chat */
-        Chat: {
-            /** Account Id */
-            account_id: number;
-            /** Peer */
-            peer: string;
-            /** Title */
-            title: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "private" | "group" | "bot" | "service" | "saved" | "broadcast" | "secret";
-            /**
-             * Muted
-             * @default false
-             */
-            muted: boolean;
-            /**
-             * Archived
-             * @default false
-             */
-            archived: boolean;
-            /**
-             * Ai Eligible
-             * @default true
-             */
-            ai_eligible: boolean;
-            /**
-             * Eligibility Source
-             * @default default
-             * @enum {string}
-             */
-            eligibility_source: "default" | "explicit";
-            /**
-             * Context Revision
-             * @default 0
-             */
-            context_revision: number;
-            /**
-             * Read Through
-             * @default 0
-             */
-            read_through: number;
-            /**
-             * Read Outbox
-             * @default 0
-             */
-            read_outbox: number;
-            /**
-             * Latest Message Id
-             * @default null
-             */
-            latest_message_id: number | null;
-            /**
-             * Photo Id
-             * @default null
-             */
-            photo_id: string | null;
-        };
-        /** ClientDecision */
-        ClientDecision: {
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "approve" | "cancel";
-            /**
-             * Code
-             * @default
-             */
-            code: string;
-        };
-        /** CodeAttempt */
-        CodeAttempt: {
-            /** Id */
-            id: string;
-            /**
-             * Proof
-             * @default
-             */
-            proof: string;
-            /** Expires At */
-            expires_at: number;
-        };
-        /** CodeEntry */
-        CodeEntry: {
-            /** Code */
-            code: string;
-        };
-        /** CodeStart */
-        CodeStart: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /**
-             * Browser
-             * @default false
-             */
-            browser: boolean;
-        };
-        /** Confirmation */
-        Confirmation: {
-            /** Confirm */
-            confirm: boolean;
-        };
-        /** ConversationPreview */
-        ConversationPreview: {
-            /**
-             * Message Id
-             * @default null
-             */
-            message_id: number | null;
-            /**
-             * Date
-             * @default null
-             */
-            date: number | null;
-            /**
-             * Original
-             * @default
-             */
-            original: string;
-            /**
-             * Ai
-             * @default
-             */
-            ai: string;
-            /**
-             * Deleted
-             * @default false
-             */
-            deleted: boolean;
-        };
-        /** ConversationRow */
-        ConversationRow: {
-            /** Account Id */
-            account_id: number;
-            /** Peer */
-            peer: string;
-            /** Title */
-            title: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "private" | "group" | "bot" | "service" | "saved" | "broadcast" | "secret";
-            /**
-             * Muted
-             * @default false
-             */
-            muted: boolean;
-            /**
-             * Archived
-             * @default false
-             */
-            archived: boolean;
-            /**
-             * Ai Eligible
-             * @default true
-             */
-            ai_eligible: boolean;
-            /**
-             * Eligibility Source
-             * @default default
-             * @enum {string}
-             */
-            eligibility_source: "default" | "explicit";
-            /**
-             * Context Revision
-             * @default 0
-             */
-            context_revision: number;
-            /**
-             * Read Through
-             * @default 0
-             */
-            read_through: number;
-            /**
-             * Read Outbox
-             * @default 0
-             */
-            read_outbox: number;
-            /**
-             * Latest Message Id
-             * @default null
-             */
-            latest_message_id: number | null;
-            /**
-             * Photo Id
-             * @default null
-             */
-            photo_id: string | null;
-            /** Activity */
-            activity: number;
-            /**
-             * Processing
-             * @default 0
-             */
-            processing: number;
-            /** Unseen */
-            unseen: boolean;
-            /**
-             * Opening Source
-             * @default null
-             */
-            opening_source: number | null;
-            preview?: components["schemas"]["ConversationPreview"];
-            /** Key */
-            readonly key: string;
-        };
-        /**
-         * CorrespondentProfile
-         * @description What a profile shows beyond the cached chat (ADR 46 Q11).
-         */
-        CorrespondentProfile: {
-            /** Name */
-            name: string;
-            /**
-             * Username
-             * @default null
-             */
-            username: string | null;
-            /**
-             * Phone
-             * @default null
-             */
-            phone: string | null;
-            /**
-             * Bio
-             * @default null
-             */
-            bio: string | null;
-        };
-        /**
-         * DecisionModelState
-         * @description Whether the decision model's route answers (ADR 49 Q14), and since when
-         *     it has not.
-         */
-        DecisionModelState: {
-            /** Available */
-            available: boolean;
-            /**
-             * Since
-             * @default null
-             */
-            since: number | null;
-        };
-        /** DeletionSubmit */
-        DeletionSubmit: {
-            /** Id */
-            id: string;
-            /** Targets */
-            targets: components["schemas"]["DeletionTarget"][];
-            /**
-             * Retry Of
-             * @default null
-             */
-            retry_of: string | null;
-        };
-        /** DeletionTarget */
-        DeletionTarget: {
-            /** Message Id */
-            message_id: number;
-            /** Revision */
-            revision: number;
-            /**
-             * Source Fingerprint
-             * @default null
-             */
-            source_fingerprint: string | null;
-        };
-        /** DeviceClaim */
-        DeviceClaim: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-        };
-        /** DeviceClaimStatus */
-        DeviceClaimStatus: {
-            /** Id */
-            id: string;
-            /** Expires At */
-            expires_at: number;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "waiting" | "pending" | "approved" | "cancelled" | "complete" | "expired" | "already_trusted";
-            /** Code */
-            code: string;
-            /** Label */
-            label: string;
-            /**
-             * Kind
-             * @default
-             * @enum {string}
-             */
-            kind: "" | "browser" | "device";
-            /**
-             * Approver
-             * @default server
-             * @enum {string}
-             */
-            approver: "server" | "browser";
-            /** Proof */
-            proof: string;
-        };
-        /** DeviceCredential */
-        DeviceCredential: {
-            /** Token */
-            token: string;
-        };
-        /**
-         * DeviceNotificationStatus
-         * @description A phone's own push state (ADR 38 Q5), beside the browser destination.
-         */
-        DeviceNotificationStatus: {
-            /** Push */
-            push: boolean;
-            /** Sound */
-            sound: boolean;
-            /** Available */
-            available: boolean;
-            /** Failure */
-            failure: string | null;
-        };
-        /** DevicePreferences */
-        DevicePreferences: {
-            /**
-             * Push
-             * @default null
-             */
-            push: false | null;
-            /**
-             * Sound
-             * @default null
-             */
-            sound: boolean | null;
-        };
-        /**
-         * DeviceToken
-         * @description The phone's FCM registration token (ADR 38).
-         */
-        DeviceToken: {
-            /** Token */
-            token: string;
-        };
-        /** EmotionView */
-        EmotionView: {
-            /**
-             * Code
-             * @default null
-             */
-            code: ("neutral" | "positive" | "excited" | "sad" | "worried" | "frustrated" | "angry" | "confused" | "unknown") | null;
-            /**
-             * Reason
-             * @default unavailable
-             * @enum {string}
-             */
-            reason: "available" | "uncertain" | "pending" | "expired" | "changed" | "invalid" | "unavailable";
-            /**
-             * Source Time
-             * @default null
-             */
-            source_time: number | null;
-            /**
-             * Expires At
-             * @default null
-             */
-            expires_at: number | null;
-            /**
-             * Source
-             * @default incoming
-             * @enum {string}
-             */
-            source: "incoming" | "reaction";
-            /**
-             * Reaction
-             * @default null
-             */
-            reaction: string | null;
-            /**
-             * Target Id
-             * @default null
-             */
-            target_id: number | null;
-        };
-        /** GifSearch */
-        GifSearch: {
-            /** Query */
-            query: string;
-            /** Epoch */
-            epoch: string;
-            /** Request */
-            request: number;
-            /**
-             * Offset
-             * @default
-             */
-            offset: string;
-        };
-        /** GifSearchScope */
-        GifSearchScope: {
-            /** Epoch */
-            epoch: string;
-        };
-        /** GifSearchView */
-        GifSearchView: {
-            /** Epoch */
-            epoch: string;
-            /** Request */
-            request: number;
-            /** Items */
-            items: components["schemas"]["CatalogItem"][];
-            /** Next Offset */
-            next_offset: string | null;
-            /** Truncated */
-            truncated: boolean;
-        };
-        /** GroupProcessing */
-        GroupProcessing: {
-            /** Processing Enabled */
-            processing_enabled: boolean;
-            /** Account Processing Enabled */
-            account_processing_enabled: boolean;
-            /** Effective */
-            effective: boolean;
-            /**
-             * Access
-             * @enum {string}
-             */
-            access: "unknown" | "available" | "lost";
-            /** Supported */
-            supported: boolean;
-            /** Reason */
-            reason: string;
-        };
-        /** GroupProcessingEdit */
-        GroupProcessingEdit: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /**
-         * GroupProfile
-         * @description What a Group Profile shows beyond the cached chat (ADR 47 Q7).
-         */
-        GroupProfile: {
-            /** Title */
-            title: string;
-            /**
-             * Username
-             * @default null
-             */
-            username: string | null;
-            /**
-             * Members
-             * @default null
-             */
-            members: number | null;
-            /**
-             * Description
-             * @default null
-             */
-            description: string | null;
-        };
-        /** GuidanceState */
-        GuidanceState: {
-            /** Version */
-            version: number;
-            /** Defaults Revision */
-            defaults_revision: number;
-            /** Fields */
-            fields: {
-                [key: string]: string;
-            };
-            /** Defaults */
-            defaults: {
-                [key: string]: string;
-            };
-            /** Paused */
-            paused: string[];
-        };
-        /**
-         * Habits
-         * @description Counted from the cached month without a model.
-         */
-        Habits: {
-            /** Messages */
-            messages: number;
-            /** Reply Seconds */
-            reply_seconds: number | null;
-            /** Active From */
-            active_from: number;
-            /** Active To */
-            active_to: number;
-            /** Voice Share */
-            voice_share: number;
-            /** Starts Share */
-            starts_share: number | null;
-        };
-        /** HideBots */
-        HideBots: {
-            /** Hide Bots */
-            hide_bots: boolean;
-        };
-        /** JoinRequest */
-        JoinRequest: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Username */
-            username: string;
-            /** Phone */
-            phone: string;
-            /** Requested At */
-            requested_at: number;
-        };
-        /** LoginState */
-        LoginState: {
-            /** Id */
-            id: string;
-            /**
-             * Method
-             * @enum {string}
-             */
-            method: "qr" | "phone";
-            /**
-             * Stage
-             * @enum {string}
-             */
-            stage: "connecting" | "qr" | "code" | "password" | "agreement" | "complete" | "cancelled" | "expired" | "error";
-            /** Message */
-            message: string;
-            /** Expires At */
-            expires_at: number;
-            /** Delivery */
-            delivery: string | null;
-            /** Next Delivery */
-            next_delivery: string | null;
-            /** Retry At */
-            retry_at: number | null;
-            /** Can Resend */
-            can_resend: boolean;
-            /** Account Id */
-            account_id: number | null;
-            /** Qr Revision */
-            qr_revision: number;
-            /**
-             * Code Length
-             * @default null
-             */
-            code_length: number | null;
-        };
-        /** Me */
-        Me: {
-            /** Id */
-            id: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "owner" | "member";
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "active" | "waiting";
-            /** Name */
-            name: string;
-            /** @default null */
-            agreement: components["schemas"]["Agreement"] | null;
-        };
-        /**
-         * MediaInfo
-         * @description Safe display/placeholder metadata: never phones, vCards or coordinates.
-         */
-        MediaInfo: {
-            /**
-             * File Name
-             * @default null
-             */
-            file_name: string | null;
-            /**
-             * Mime
-             * @default null
-             */
-            mime: string | null;
-            /**
-             * Size
-             * @default null
-             */
-            size: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Voice
-             * @default false
-             */
-            voice: boolean;
-            /**
-             * Sticker
-             * @default null
-             */
-            sticker: ("static" | "animated" | "video") | null;
-            /**
-             * Emoji
-             * @default null
-             */
-            emoji: string | null;
-            /**
-             * Title
-             * @default null
-             */
-            title: string | null;
-            /**
-             * Site
-             * @default null
-             */
-            site: string | null;
-            /**
-             * Question
-             * @default null
-             */
-            question: string | null;
-            /** Options */
-            options?: string[];
-            /**
-             * Live
-             * @default false
-             */
-            live: boolean;
-            /**
-             * Waveform
-             * @default null
-             */
-            waveform: number[] | null;
-            /**
-             * Performer
-             * @default null
-             */
-            performer: string | null;
-        };
-        /** MemberBudgetEdit */
-        MemberBudgetEdit: {
-            /**
-             * Family
-             * @enum {string}
-             */
-            family: "daily" | "group_briefing";
-            /** Limit Usd */
-            limit_usd: number | string;
-        };
-        /** MemberBudgets */
-        MemberBudgets: {
-            /** Member */
-            member: string;
-            budget: components["schemas"]["BudgetState"];
-            group_budget: components["schemas"]["BudgetState"];
-        };
-        /**
-         * MemberProfile
-         * @description A group member's profile (ADR 51 Q14), with their current photo.
-         */
-        MemberProfile: {
-            /** Name */
-            name: string;
-            /**
-             * Username
-             * @default null
-             */
-            username: string | null;
-            /**
-             * Phone
-             * @default null
-             */
-            phone: string | null;
-            /**
-             * Bio
-             * @default null
-             */
-            bio: string | null;
-            /**
-             * Photo Id
-             * @default null
-             */
-            photo_id: string | null;
-        };
-        /** MemoryEntry */
-        MemoryEntry: {
-            /** Id */
-            id: string;
-            /** Chat Key */
-            chat_key: string;
-            /** Text */
-            text: string;
-            /** Citations */
-            citations: number[];
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "model" | "owner";
-            outdated: components["schemas"]["OutdatedMemory"] | null;
-            /** Created */
-            created: number;
-            /** Guidance */
-            guidance: number | null;
-            /**
-             * Defaults
-             * @default null
-             */
-            defaults: number | null;
-            /** Sources */
-            sources: components["schemas"]["MemorySource"][];
-        };
-        /** MemorySource */
-        MemorySource: {
-            /** Id */
-            id: number;
-            /**
-             * Availability
-             * @enum {string}
-             */
-            availability: "cached" | "not_cached" | "deleted";
-        };
-        /**
-         * MemoryView
-         * @description One chat's Person Memory: what the other person cares about.
-         */
-        MemoryView: {
-            /** Entries */
-            entries: components["schemas"]["MemoryEntry"][];
-            /** Revision */
-            revision: number;
-            /** Coverage */
-            coverage: number;
-            /** Error */
-            error: string | null;
-            /** Enabled */
-            enabled: boolean;
-            /** Waiting */
-            waiting: number;
-            /** Updating */
-            updating: boolean;
-        };
-        /** Message */
-        Message: {
-            /** Account Id */
-            account_id: number;
-            /** Peer */
-            peer: string;
-            /** Message Id */
-            message_id: number;
-            /** Revision */
-            revision: number;
-            /**
-             * Native Revision
-             * @default null
-             */
-            native_revision: number | null;
-            /**
-             * Native Edited
-             * @default false
-             */
-            native_edited: boolean;
-            /**
-             * Forwarded
-             * @default null
-             */
-            forwarded: boolean | null;
-            /**
-             * Forwarded From
-             * @default null
-             */
-            forwarded_from: string | null;
-            /**
-             * Forward Date
-             * @default null
-             */
-            forward_date: number | null;
-            /**
-             * Forward Signature
-             * @default null
-             */
-            forward_signature: string | null;
-            /**
-             * Imported
-             * @default null
-             */
-            imported: boolean | null;
-            /**
-             * Forward Read
-             * @default false
-             */
-            forward_read: boolean;
-            /**
-             * Attachment Id
-             * @default null
-             */
-            attachment_id: string | null;
-            /** Date */
-            date: number;
-            /**
-             * Text
-             * @default
-             */
-            text: string;
-            /** Links */
-            links?: components["schemas"]["TextLink"][];
-            /**
-             * Outgoing
-             * @default false
-             */
-            outgoing: boolean;
-            /**
-             * Service
-             * @default false
-             */
-            service: boolean;
-            /**
-             * Mentioned
-             * @default false
-             */
-            mentioned: boolean;
-            /**
-             * Reply To Self
-             * @default false
-             */
-            reply_to_self: boolean;
-            /**
-             * Reply To
-             * @default null
-             */
-            reply_to: number | null;
-            /**
-             * Reply Quote
-             * @default null
-             */
-            reply_quote: string | null;
-            /** @default null */
-            reply_elsewhere: components["schemas"]["ReplyElsewhere"] | null;
-            /**
-             * Reply Story
-             * @default false
-             */
-            reply_story: boolean;
-            /**
-             * Reply Read
-             * @default false
-             */
-            reply_read: boolean;
-            /**
-             * Topic Id
-             * @default null
-             */
-            topic_id: number | null;
-            /**
-             * Media
-             * @default null
-             */
-            media: ("image" | "audio" | "video_note" | "video" | "gif" | "sticker" | "document" | "poll" | "location" | "contact" | "link" | "other" | "unsupported") | null;
-            /** @default null */
-            media_info: components["schemas"]["MediaInfo"] | null;
-            /**
-             * Deleted
-             * @default false
-             */
-            deleted: boolean;
-            /**
-             * Author
-             * @default
-             */
-            author: string;
-            /**
-             * Author Peer
-             * @default null
-             */
-            author_peer: string | null;
-            /**
-             * Sender Is Bot
-             * @default null
-             */
-            sender_is_bot: boolean | null;
-            /**
-             * Author Signature
-             * @default null
-             */
-            author_signature: string | null;
-            /**
-             * Reply Status
-             * @default none
-             * @enum {string}
-             */
-            reply_status: "none" | "available" | "missing" | "unknown";
-        };
-        /** NotificationAttentionStatus */
-        NotificationAttentionStatus: {
-            /** Events */
-            events: string[];
-            /** Sound */
-            sound: boolean;
-            /**
-             * Sound Preset
-             * @default harp
-             * @enum {string}
-             */
-            sound_preset: "harp" | "bell" | "chime" | "pop" | "digital" | "custom";
-            /**
-             * Sound File Name
-             * @default null
-             */
-            sound_file_name: string | null;
-            /**
-             * Sound Revision
-             * @default null
-             */
-            sound_revision: string | null;
-        };
-        /** NotificationPreferences */
-        NotificationPreferences: {
-            /**
-             * Sound
-             * @default null
-             */
-            sound: boolean | null;
-            /**
-             * Push
-             * @default null
-             */
-            push: false | null;
-            /**
-             * Sound Preset
-             * @default null
-             */
-            sound_preset: ("harp" | "bell" | "chime" | "pop" | "digital" | "custom") | null;
-        };
-        /** NotificationSoundUpload */
-        NotificationSoundUpload: {
-            /** Name */
-            name: string;
-            /** Data */
-            data: string;
-        };
-        /** NotificationStatus */
-        NotificationStatus: {
-            /** Browser */
-            browser: string;
-            /** Sound */
-            sound: boolean;
-            /** Push */
-            push: boolean;
-            /** Destination */
-            destination: string | null;
-            /** Failure */
-            failure: string | null;
-            /** Public Key */
-            public_key: string;
-            /**
-             * Sound Preset
-             * @default harp
-             * @enum {string}
-             */
-            sound_preset: "harp" | "bell" | "chime" | "pop" | "digital" | "custom";
-            /**
-             * Sound File Name
-             * @default null
-             */
-            sound_file_name: string | null;
-            /**
-             * Sound Revision
-             * @default null
-             */
-            sound_revision: string | null;
-        };
-        /**
-         * NotificationTarget
-         * @description What a clicked notification opens for the browser it was delivered to.
-         */
-        NotificationTarget: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "conversation" | "test" | "people" | "ai" | "unavailable";
-            /**
-             * Account Id
-             * @default null
-             */
-            account_id: number | null;
-            /**
-             * Peer
-             * @default null
-             */
-            peer: string | null;
-        };
-        /** OutdatedMemory */
-        OutdatedMemory: {
-            /** Citations */
-            citations: number[];
-        };
-        /** PairingStatus */
-        PairingStatus: {
-            /** Id */
-            id: string;
-            /** Expires At */
-            expires_at: number;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "waiting" | "pending" | "approved" | "cancelled" | "complete" | "expired" | "already_trusted";
-            /** Code */
-            code: string;
-            /** Label */
-            label: string;
-            /**
-             * Kind
-             * @default
-             * @enum {string}
-             */
-            kind: "" | "browser" | "device";
-            /**
-             * Approver
-             * @default server
-             * @enum {string}
-             */
-            approver: "server" | "browser";
-        };
-        /** People */
-        People: {
-            /** Requests */
-            requests: components["schemas"]["JoinRequest"][];
-            /** Members */
-            members: components["schemas"]["Person"][];
-        };
-        /** Person */
-        Person: {
-            /** Member */
-            member: string;
-            budget: components["schemas"]["BudgetState"];
-            group_budget: components["schemas"]["BudgetState"];
-            /** Name */
-            name: string;
-            /** Username */
-            username: string;
-            /** Phone */
-            phone: string;
-            /** Approved At */
-            approved_at: number | null;
-            /** Accounts */
-            accounts: number;
-            /** Last Active */
-            last_active: number | null;
-        };
-        /** PreparedVideo */
-        PreparedVideo: {
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "ready" | "unsupported";
-            /** Revision */
-            revision: number;
-            /**
-             * Version
-             * @default null
-             */
-            version: number | null;
-            /** Mime */
-            mime: ("video/mp4" | "video/webm") | null;
-        };
-        /**
-         * Reaction
-         * @description Exactly one native reaction kind: an ordinary emoji, a custom emoji
-         *     (its document ID; never rendered here) or a paid reaction.
-         */
-        Reaction: {
-            /**
-             * Emoji
-             * @default null
-             */
-            emoji: string | null;
-            /**
-             * Custom
-             * @default null
-             */
-            custom: string | null;
-            /**
-             * Paid
-             * @default false
-             */
-            paid: boolean;
-        };
-        /** ReactionChipView */
-        ReactionChipView: {
-            reaction: components["schemas"]["Reaction"];
-            /** Count */
-            count: number;
-            /**
-             * Mine
-             * @default null
-             */
-            mine: boolean | null;
-            /**
-             * Peer
-             * @default null
-             */
-            peer: boolean | null;
-        };
-        /**
-         * ReactionView
-         * @description One message's displayed chips; reading it starts no native work.
-         */
-        ReactionView: {
-            /** Chips */
-            chips: components["schemas"]["ReactionChipView"][];
-            /** Own Known */
-            own_known: boolean;
-        };
-        /** ReadingView */
-        ReadingView: {
-            /**
-             * Reading View
-             * @enum {string}
-             */
-            reading_view: "ai" | "originals";
-        };
-        /** ReceivedAssetPreparation */
-        ReceivedAssetPreparation: {
-            /** Revision */
-            revision: number;
-            /**
-             * Version
-             * @default null
-             */
-            version: number | null;
-        };
-        /** ReceivedAssetView */
-        ReceivedAssetView: {
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "missing" | "ready" | "unsupported";
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "thumbnail" | "gif" | "sticker";
-            /**
-             * Format
-             * @default null
-             */
-            format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
-            /**
-             * Mime
-             * @default null
-             */
-            mime: ("image/jpeg" | "image/png" | "image/webp" | "image/gif" | "video/mp4" | "video/webm" | "application/x-tgsticker") | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Fps
-             * @default null
-             */
-            fps: number | null;
-            /**
-             * Frames
-             * @default null
-             */
-            frames: number | null;
-            /**
-             * Renderer Supported
-             * @default false
-             */
-            renderer_supported: boolean;
-            /**
-             * Features
-             * @default []
-             */
-            features: string[];
-            /** Revision */
-            revision: number;
-            /**
-             * Version
-             * @default null
-             */
-            version: number | null;
-        };
-        /**
-         * Remembering
-         * @description A private chat's Remember this chat (ADR 55 Q7): on unless the chat
-         *     chose otherwise.
-         */
-        Remembering: {
-            /** Enabled */
-            enabled: boolean;
-        };
-        /** Removed */
-        Removed: {
-            /** Confirmed */
-            confirmed: boolean;
-        };
-        /**
-         * ReplyElsewhere
-         * @description What a reply header supplies about a message in another chat (ADR 41).
-         */
-        ReplyElsewhere: {
-            /**
-             * Peer
-             * @default null
-             */
-            peer: string | null;
-            /**
-             * Sender Peer
-             * @default null
-             */
-            sender_peer: string | null;
-            /**
-             * Sender
-             * @default null
-             */
-            sender: string | null;
-            /**
-             * Date
-             * @default null
-             */
-            date: number | null;
-        };
-        /**
-         * ScaleEdit
-         * @description The owner's own value for a trait, or None to clear it.
-         */
-        ScaleEdit: {
-            /** Revision */
-            revision: number;
-            /**
-             * Value
-             * @default null
-             */
-            value: string | null;
-        };
-        /** SelectMedia */
-        SelectMedia: {
-            /** Revision */
-            revision: number;
-            /** Token */
-            token: string;
-            /** Catalog Revision */
-            catalog_revision: string;
-        };
-        /** SelectedMediaAction */
-        SelectedMediaAction: {
-            /** Revision */
-            revision: number;
-            /** Id */
-            id: string;
-        };
-        /** SelectedMediaView */
-        SelectedMediaView: {
-            /** Id */
-            id: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "gif" | "sticker";
-            /**
-             * Format
-             * @enum {string}
-             */
-            format: "gif" | "mp4" | "webp" | "tgs" | "webm" | "unsupported";
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "preparing" | "ready" | "failed";
-            /**
-             * Mime
-             * @default null
-             */
-            mime: string | null;
-            /**
-             * Size
-             * @default null
-             */
-            size: number | null;
-            /**
-             * Width
-             * @default null
-             */
-            width: number | null;
-            /**
-             * Height
-             * @default null
-             */
-            height: number | null;
-            /**
-             * Duration
-             * @default null
-             */
-            duration: number | null;
-            /**
-             * Sticker
-             * @default null
-             */
-            sticker: ("static" | "animated" | "video") | null;
-            /**
-             * Emoji
-             * @default null
-             */
-            emoji: string | null;
-            /**
-             * Requires Premium
-             * @default false
-             */
-            requires_premium: boolean;
-            /**
-             * Error
-             * @default null
-             */
-            error: string | null;
-            /**
-             * Retryable
-             * @default false
-             */
-            retryable: boolean;
-            /**
-             * Renderer Supported
-             * @default false
-             */
-            renderer_supported: boolean;
-            /**
-             * Features
-             * @default []
-             */
-            features: string[];
-            /**
-             * Content Url
-             * @default null
-             */
-            content_url: string | null;
-            /**
-             * Animation Url
-             * @default null
-             */
-            animation_url: string | null;
-        };
-        /** Settings */
-        Settings: {
-            budget: components["schemas"]["BudgetState"];
-            group_budget: components["schemas"]["BudgetState"];
-            /** Concurrency */
-            concurrency: number;
-            /** Processing Threshold */
-            processing_threshold: number;
-            /** Memory */
-            memory: boolean;
-            /** Suggestions */
-            suggestions: boolean;
-            /** @default null */
-            guidance: components["schemas"]["GuidanceState"] | null;
-            /** @default null */
-            decision_model: components["schemas"]["DecisionModelState"] | null;
-        };
-        /** SignInPairingState */
-        SignInPairingState: {
-            /** Id */
-            id: string;
-            /**
-             * Proof
-             * @default
-             */
-            proof: string;
-            login: components["schemas"]["LoginState"];
-            /**
-             * Token
-             * @default
-             */
-            token: string;
-            /**
-             * Authenticated
-             * @default false
-             */
-            authenticated: boolean;
-            /** @default null */
-            agreement: components["schemas"]["Agreement"] | null;
-            /**
-             * Waiting
-             * @default false
-             */
-            waiting: boolean;
-        };
-        /** SignInStart */
-        SignInStart: {
-            /** Phone */
-            phone: string;
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /**
-             * Browser
-             * @default false
-             */
-            browser: boolean;
-        };
-        /**
-         * SuggestionChoice
-         * @description A private chat's Suggestions choice (ADR 56 Q12 A), On unless the
-         *     chat chose otherwise, and whether Idioms can be chosen yet.
-         */
-        SuggestionChoice: {
-            /**
-             * Choice
-             * @enum {string}
-             */
-            choice: "off" | "on" | "idioms";
-            /** Idioms */
-            idioms: boolean;
-        };
-        /** SuggestionOption */
-        SuggestionOption: {
-            /**
-             * Purpose
-             * @enum {string}
-             */
-            purpose: "acknowledge" | "support" | "clarify" | "celebrate" | "accept" | "decline" | "later";
-            /** Text */
-            text: string;
-        };
-        /**
-         * SuggestionsView
-         * @description What a browser may show for one chat; reading it starts no work.
-         */
-        SuggestionsView: {
-            /**
-             * State
-             * @default none
-             * @enum {string}
-             */
-            state: "none" | "preparing" | "waiting" | "ready" | "failed";
-            /**
-             * Reason
-             * @default null
-             */
-            reason: ("off" | "unavailable" | "replaced" | "answered" | "expired" | "changed" | "not_qualifying" | "empty" | "cancelled" | "suspended" | "queued" | "running" | "budget" | "paused" | "retrying" | "format" | "provider" | "refused" | "interrupted" | "too_large") | null;
-            /**
-             * Attempt
-             * @default null
-             */
-            attempt: string | null;
-            /** Options */
-            options?: components["schemas"]["SuggestionOption"][];
-            /**
-             * Folded
-             * @default false
-             */
-            folded: boolean;
-            /**
-             * Source Time
-             * @default null
-             */
-            source_time: number | null;
-            /**
-             * Expires At
-             * @default null
-             */
-            expires_at: number | null;
-        };
-        /**
-         * TextLink
-         * @description Native UTF-16 offsets, as used by Telegram and browser strings.
-         */
-        TextLink: {
-            /** Offset */
-            offset: number;
-            /** Length */
-            length: number;
-            /** Url */
-            url: string;
-        };
-        /** Tone */
-        Tone: {
-            /**
-             * Tone
-             * @enum {string}
-             */
-            tone: "neutral" | "professional" | "friendly";
-        };
-        /** TraitNote */
-        TraitNote: {
-            /** Id */
-            id: string;
-            /** Text */
-            text: string;
-            /** Confidence */
-            confidence: number | null;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "model" | "owner";
-            /** Created */
-            created: number;
-            /** Citations */
-            citations: number[];
-        };
-        /** TraitOption */
-        TraitOption: {
-            /** Value */
-            value: string;
-            /** Label */
-            label: string;
-        };
-        /**
-         * TraitScale
-         * @description One trait of the starter list: its value, the decision model's or the
-         *     owner's, and whether the latest judgment still found its evidence.
-         */
-        TraitScale: {
-            /** Trait */
-            trait: string;
-            /** Title */
-            title: string;
-            /** Value */
-            value: string | null;
-            /** Label */
-            label: string | null;
-            /** Probability */
-            probability: number | null;
-            /** Judged */
-            judged: number | null;
-            /** Source */
-            source: ("model" | "owner") | null;
-            /** Current */
-            current: boolean;
-            /** Options */
-            options: components["schemas"]["TraitOption"][];
-        };
-        /** TraitsView */
-        TraitsView: {
-            /** Revision */
-            revision: number;
-            /** Enabled */
-            enabled: boolean;
-            /** Scales */
-            scales: components["schemas"]["TraitScale"][];
-            /** Notes */
-            notes: components["schemas"]["TraitNote"][];
-            habits: components["schemas"]["Habits"] | null;
-            /** Error */
-            error: string | null;
-        };
-        /** TrustedBrowser */
-        TrustedBrowser: {
-            /** Id */
-            id: string;
-            /** Label */
-            label: string;
-            /** Approved At */
-            approved_at: number;
-            /** Last Access */
-            last_access: number;
-            /** Current */
-            current: boolean;
-            /**
-             * Kind
-             * @default browser
-             * @enum {string}
-             */
-            kind: "browser" | "device";
-        };
-        /** VideoPreparation */
-        VideoPreparation: {
-            /** Revision */
-            revision: number;
-            /**
-             * Version
-             * @default null
-             */
-            version: number | null;
-        };
-        /** ViewedContent */
-        ViewedContent: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "original" | "rewrite" | "reaction";
-            /** Identity */
-            identity: string;
-            /** Token */
-            token: string;
-        };
-        /** ViewedSources */
-        ViewedSources: {
-            /** Content */
-            content: components["schemas"]["ViewedContent"][];
-        };
+  schemas: {
+    /** AccountMemoryEntry */
+    AccountMemoryEntry: {
+      /** Id */
+      id: string;
+      /** Text */
+      text: string;
+      /** Citations */
+      citations: number[];
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model" | "owner";
+      /** Outdated */
+      outdated: {
+        [key: string]: unknown;
+      } | null;
+      /** Created */
+      created: number;
+      /** Guidance */
+      guidance: number | null;
+      /**
+       * Defaults
+       * @default null
+       */
+      defaults: number | null;
+      /** Sources */
+      sources: components["schemas"]["AccountMemorySource"][];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * AccountMemorySource
+     * @description An Account Memory citation names the peer of the chat it came from.
+     */
+    AccountMemorySource: {
+      /** Id */
+      id: number;
+      /**
+       * Availability
+       * @enum {string}
+       */
+      availability: "cached" | "not_cached" | "deleted";
+      /** Chat */
+      chat: string;
+    };
+    /**
+     * AccountMemoryView
+     * @description The account's Account Memory: what its holder cares about.
+     */
+    AccountMemoryView: {
+      /** Entries */
+      entries: components["schemas"]["AccountMemoryEntry"][];
+      /** Revision */
+      revision: number;
+      /** Enabled */
+      enabled: boolean;
+    };
+    /** AccountProcessing */
+    AccountProcessing: {
+      /** Ai Enabled */
+      ai_enabled: boolean;
+      /** Account Id */
+      account_id: number;
+    };
+    /** AccountSummary */
+    AccountSummary: {
+      /** Account Id */
+      account_id: number;
+      /** Name */
+      name: string;
+      /** Username */
+      username: string;
+      /** Phone */
+      phone: string;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "authorized" | "logged_out" | "requires_login" | "logout_pending";
+      /** Connected */
+      connected: boolean;
+      /** Status */
+      status: string;
+      /** Ai Enabled */
+      ai_enabled: boolean;
+      /** Photo Id */
+      photo_id: string | null;
+    };
+    /** Accounts */
+    Accounts: {
+      /** Mode */
+      mode: string;
+      /** Timezone */
+      timezone: string;
+      /** Accounts */
+      accounts: components["schemas"]["AccountSummary"][];
+      /** Budget */
+      budget: components["schemas"]["BudgetSummary"][];
+      /** Login Available */
+      login_available: boolean;
+    };
+    /**
+     * Agreement
+     * @description The Member Agreement an unknown account reads (ADR 48 Q3).
+     */
+    Agreement: {
+      /** Version */
+      version: string;
+      /** Title */
+      title: string;
+      /** Paragraphs */
+      paragraphs: string[];
+    };
+    /** AgreementAcceptance */
+    AgreementAcceptance: {
+      /** Version */
+      version: string;
+    };
+    /** AssetRepresentation */
+    AssetRepresentation: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "missing" | "ready" | "unsupported";
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "thumbnail" | "gif" | "sticker";
+      /**
+       * Format
+       * @default null
+       */
+      format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
+      /**
+       * Mime
+       * @default null
+       */
+      mime:
+        | (
+            | "image/jpeg"
+            | "image/png"
+            | "image/webp"
+            | "image/gif"
+            | "video/mp4"
+            | "video/webm"
+            | "application/x-tgsticker"
+          )
+        | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Fps
+       * @default null
+       */
+      fps: number | null;
+      /**
+       * Frames
+       * @default null
+       */
+      frames: number | null;
+      /**
+       * Renderer Supported
+       * @default false
+       */
+      renderer_supported: boolean;
+      /**
+       * Features
+       * @default []
+       */
+      features: string[];
+    };
+    /** BlockRetry */
+    BlockRetry: {
+      /** Revision */
+      revision: string;
+    };
+    /** BrowserStatus */
+    BrowserStatus: {
+      /** Authenticated */
+      authenticated: boolean;
+      /**
+       * Waiting
+       * @default false
+       */
+      waiting: boolean;
+    };
+    /** BudgetState */
+    BudgetState: {
+      /** Day */
+      day: string;
+      /** Limit */
+      limit: number;
+      /** Spent */
+      spent: number;
+      /** Calls */
+      calls: number;
+      /** Unknown */
+      unknown: number;
+      /** Flat Unknown */
+      flat_unknown: number;
+      /** Reached */
+      reached: boolean;
+      /** Resets At */
+      resets_at: number;
+      /** Changes */
+      changes: {
+        [key: string]: unknown;
+      }[];
+    };
+    /** BudgetSummary */
+    BudgetSummary: {
+      /** Engine */
+      engine: string;
+      /** Calls */
+      calls: number;
+      /** Reserved */
+      reserved: number;
+      /** Actual */
+      actual: number | null;
+      /** Unknown */
+      unknown: number;
+    };
+    /** CachedOriginalsRead */
+    CachedOriginalsRead: {
+      /** Identities */
+      identities: number[];
+    };
+    /**
+     * Calming
+     * @description A private chat's calming (ADR 53): on unless the chat chose otherwise.
+     */
+    Calming: {
+      /** Enabled */
+      enabled: boolean;
+    };
+    /** CalmingEdit */
+    CalmingEdit: {
+      /** Enabled */
+      enabled: boolean;
+    };
+    /** CatalogAssetPreparation */
+    CatalogAssetPreparation: {
+      /** Revision */
+      revision: string;
+      /**
+       * Variant
+       * @default thumbnail
+       * @enum {string}
+       */
+      variant: "thumbnail" | "media";
+    };
+    /** CatalogAssetView */
+    CatalogAssetView: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "missing" | "ready" | "unsupported";
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "thumbnail" | "gif" | "sticker";
+      /**
+       * Format
+       * @default null
+       */
+      format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
+      /**
+       * Mime
+       * @default null
+       */
+      mime:
+        | (
+            | "image/jpeg"
+            | "image/png"
+            | "image/webp"
+            | "image/gif"
+            | "video/mp4"
+            | "video/webm"
+            | "application/x-tgsticker"
+          )
+        | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Fps
+       * @default null
+       */
+      fps: number | null;
+      /**
+       * Frames
+       * @default null
+       */
+      frames: number | null;
+      /**
+       * Renderer Supported
+       * @default false
+       */
+      renderer_supported: boolean;
+      /**
+       * Features
+       * @default []
+       */
+      features: string[];
+      /** Token */
+      token: string;
+      /** Revision */
+      revision: string;
+      /**
+       * Variant
+       * @enum {string}
+       */
+      variant: "thumbnail" | "media";
+    };
+    /** CatalogItem */
+    CatalogItem: {
+      /** Token */
+      token: string;
+      /** Revision */
+      revision: string;
+      metadata: components["schemas"]["CatalogMetadata"];
+      /** Selectable */
+      selectable: boolean;
+      /**
+       * Unavailable
+       * @default null
+       */
+      unavailable: string | null;
+      preview: components["schemas"]["CatalogPreview"];
+    };
+    /** CatalogMetadata */
+    CatalogMetadata: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "gif" | "sticker";
+      /**
+       * Format
+       * @enum {string}
+       */
+      format: "gif" | "mp4" | "static" | "animated" | "video" | "unsupported";
+      /**
+       * Mime
+       * @default null
+       */
+      mime: string | null;
+      /**
+       * Name
+       * @default null
+       */
+      name: string | null;
+      /**
+       * Size
+       * @default null
+       */
+      size: number | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Emoji
+       * @default null
+       */
+      emoji: string | null;
+      /**
+       * Keywords
+       * @default []
+       */
+      keywords: string[];
+      /**
+       * Requires Premium
+       * @default false
+       */
+      requires_premium: boolean;
+      /**
+       * Unavailable
+       * @default null
+       */
+      unavailable: string | null;
+    };
+    /**
+     * CatalogOpen
+     * @description Explicit JSON picker-open action; no persisted browser query state.
+     */
+    CatalogOpen: Record<string, never>;
+    /** CatalogPack */
+    CatalogPack: {
+      /** Id */
+      id: string;
+      /** Revision */
+      revision: string;
+      /** Title */
+      title: string;
+      /** Short Name */
+      short_name: string;
+      /** Count */
+      count: number;
+      /** Cached */
+      cached: boolean;
+      /** Stale */
+      stale: boolean;
+    };
+    /** CatalogPackView */
+    CatalogPackView: {
+      pack: components["schemas"]["CatalogPack"];
+      /** Items */
+      items: components["schemas"]["CatalogItem"][];
+      /** Updated At */
+      updated_at: number | null;
+      /** Truncated */
+      truncated: boolean;
+      /**
+       * Error
+       * @default null
+       */
+      error: string | null;
+    };
+    /** CatalogPreview */
+    CatalogPreview: {
+      /** Token */
+      token: string;
+      /** Revision */
+      revision: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "thumbnail" | "media" | "unavailable";
+      /**
+       * Format
+       * @enum {string}
+       */
+      format: "gif" | "mp4" | "static" | "animated" | "video" | "unsupported";
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+    };
+    /** CatalogRefresh */
+    CatalogRefresh: {
+      /** Revision */
+      revision: string;
+    };
+    /** CatalogView */
+    CatalogView: {
+      /** Revision */
+      revision: string;
+      /** Updated At */
+      updated_at: number | null;
+      /** Stale */
+      stale: boolean;
+      /** Premium */
+      premium: boolean | null;
+      /** Gifs */
+      gifs: components["schemas"]["CatalogItem"][];
+      /** Recent */
+      recent: components["schemas"]["CatalogItem"][];
+      /** Favorites */
+      favorites: components["schemas"]["CatalogItem"][];
+      /** Packs */
+      packs: components["schemas"]["CatalogPack"][];
+      /** Truncated */
+      truncated: boolean;
+      /**
+       * Error
+       * @default null
+       */
+      error: string | null;
+    };
+    /** Chat */
+    Chat: {
+      /** Account Id */
+      account_id: number;
+      /** Peer */
+      peer: string;
+      /** Title */
+      title: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind:
+        | "private"
+        | "group"
+        | "bot"
+        | "service"
+        | "saved"
+        | "broadcast"
+        | "secret";
+      /**
+       * Muted
+       * @default false
+       */
+      muted: boolean;
+      /**
+       * Archived
+       * @default false
+       */
+      archived: boolean;
+      /**
+       * Ai Eligible
+       * @default true
+       */
+      ai_eligible: boolean;
+      /**
+       * Eligibility Source
+       * @default default
+       * @enum {string}
+       */
+      eligibility_source: "default" | "explicit";
+      /**
+       * Context Revision
+       * @default 0
+       */
+      context_revision: number;
+      /**
+       * Read Through
+       * @default 0
+       */
+      read_through: number;
+      /**
+       * Read Outbox
+       * @default 0
+       */
+      read_outbox: number;
+      /**
+       * Latest Message Id
+       * @default null
+       */
+      latest_message_id: number | null;
+      /**
+       * Photo Id
+       * @default null
+       */
+      photo_id: string | null;
+    };
+    /** ClientDecision */
+    ClientDecision: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: "approve" | "cancel";
+      /**
+       * Code
+       * @default
+       */
+      code: string;
+    };
+    /** CodeAttempt */
+    CodeAttempt: {
+      /** Id */
+      id: string;
+      /**
+       * Proof
+       * @default
+       */
+      proof: string;
+      /** Expires At */
+      expires_at: number;
+    };
+    /** CodeEntry */
+    CodeEntry: {
+      /** Code */
+      code: string;
+    };
+    /** CodeStart */
+    CodeStart: {
+      /**
+       * Name
+       * @default
+       */
+      name: string;
+      /**
+       * Browser
+       * @default false
+       */
+      browser: boolean;
+    };
+    /** Confirmation */
+    Confirmation: {
+      /** Confirm */
+      confirm: boolean;
+    };
+    /** ConversationPreview */
+    ConversationPreview: {
+      /**
+       * Message Id
+       * @default null
+       */
+      message_id: number | null;
+      /**
+       * Date
+       * @default null
+       */
+      date: number | null;
+      /**
+       * Original
+       * @default
+       */
+      original: string;
+      /**
+       * Ai
+       * @default
+       */
+      ai: string;
+      /**
+       * Deleted
+       * @default false
+       */
+      deleted: boolean;
+    };
+    /** ConversationRow */
+    ConversationRow: {
+      /** Account Id */
+      account_id: number;
+      /** Peer */
+      peer: string;
+      /** Title */
+      title: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind:
+        | "private"
+        | "group"
+        | "bot"
+        | "service"
+        | "saved"
+        | "broadcast"
+        | "secret";
+      /**
+       * Muted
+       * @default false
+       */
+      muted: boolean;
+      /**
+       * Archived
+       * @default false
+       */
+      archived: boolean;
+      /**
+       * Ai Eligible
+       * @default true
+       */
+      ai_eligible: boolean;
+      /**
+       * Eligibility Source
+       * @default default
+       * @enum {string}
+       */
+      eligibility_source: "default" | "explicit";
+      /**
+       * Context Revision
+       * @default 0
+       */
+      context_revision: number;
+      /**
+       * Read Through
+       * @default 0
+       */
+      read_through: number;
+      /**
+       * Read Outbox
+       * @default 0
+       */
+      read_outbox: number;
+      /**
+       * Latest Message Id
+       * @default null
+       */
+      latest_message_id: number | null;
+      /**
+       * Photo Id
+       * @default null
+       */
+      photo_id: string | null;
+      /** Activity */
+      activity: number;
+      /**
+       * Processing
+       * @default 0
+       */
+      processing: number;
+      /** Unseen */
+      unseen: boolean;
+      /**
+       * Opening Source
+       * @default null
+       */
+      opening_source: number | null;
+      preview?: components["schemas"]["ConversationPreview"];
+      /** Key */
+      readonly key: string;
+    };
+    /**
+     * CorrespondentProfile
+     * @description What a profile shows beyond the cached chat (ADR 46 Q11).
+     */
+    CorrespondentProfile: {
+      /** Name */
+      name: string;
+      /**
+       * Username
+       * @default null
+       */
+      username: string | null;
+      /**
+       * Phone
+       * @default null
+       */
+      phone: string | null;
+      /**
+       * Bio
+       * @default null
+       */
+      bio: string | null;
+    };
+    /**
+     * DecisionModelState
+     * @description Whether the decision model's route answers (ADR 49 Q14), and since when
+     *     it has not.
+     */
+    DecisionModelState: {
+      /** Available */
+      available: boolean;
+      /**
+       * Since
+       * @default null
+       */
+      since: number | null;
+    };
+    /** DeletionSubmit */
+    DeletionSubmit: {
+      /** Id */
+      id: string;
+      /** Targets */
+      targets: components["schemas"]["DeletionTarget"][];
+      /**
+       * Retry Of
+       * @default null
+       */
+      retry_of: string | null;
+    };
+    /** DeletionTarget */
+    DeletionTarget: {
+      /** Message Id */
+      message_id: number;
+      /** Revision */
+      revision: number;
+      /**
+       * Source Fingerprint
+       * @default null
+       */
+      source_fingerprint: string | null;
+    };
+    /** DeviceClaim */
+    DeviceClaim: {
+      /**
+       * Name
+       * @default
+       */
+      name: string;
+    };
+    /** DeviceClaimStatus */
+    DeviceClaimStatus: {
+      /** Id */
+      id: string;
+      /** Expires At */
+      expires_at: number;
+      /**
+       * State
+       * @enum {string}
+       */
+      state:
+        | "waiting"
+        | "pending"
+        | "approved"
+        | "cancelled"
+        | "complete"
+        | "expired"
+        | "already_trusted";
+      /** Code */
+      code: string;
+      /** Label */
+      label: string;
+      /**
+       * Kind
+       * @default
+       * @enum {string}
+       */
+      kind: "" | "browser" | "device";
+      /**
+       * Approver
+       * @default server
+       * @enum {string}
+       */
+      approver: "server" | "browser";
+      /** Proof */
+      proof: string;
+    };
+    /** DeviceCredential */
+    DeviceCredential: {
+      /** Token */
+      token: string;
+    };
+    /**
+     * DeviceNotificationStatus
+     * @description A phone's own push state (ADR 38 Q5), beside the browser destination.
+     */
+    DeviceNotificationStatus: {
+      /** Push */
+      push: boolean;
+      /** Sound */
+      sound: boolean;
+      /** Available */
+      available: boolean;
+      /** Failure */
+      failure: string | null;
+    };
+    /** DevicePreferences */
+    DevicePreferences: {
+      /**
+       * Push
+       * @default null
+       */
+      push: false | null;
+      /**
+       * Sound
+       * @default null
+       */
+      sound: boolean | null;
+    };
+    /**
+     * DeviceToken
+     * @description The phone's FCM registration token (ADR 38).
+     */
+    DeviceToken: {
+      /** Token */
+      token: string;
+    };
+    /** EmotionView */
+    EmotionView: {
+      /**
+       * Code
+       * @default null
+       */
+      code:
+        | (
+            | "neutral"
+            | "positive"
+            | "excited"
+            | "sad"
+            | "worried"
+            | "frustrated"
+            | "angry"
+            | "confused"
+            | "unknown"
+          )
+        | null;
+      /**
+       * Reason
+       * @default unavailable
+       * @enum {string}
+       */
+      reason:
+        | "available"
+        | "uncertain"
+        | "pending"
+        | "expired"
+        | "changed"
+        | "invalid"
+        | "unavailable";
+      /**
+       * Source Time
+       * @default null
+       */
+      source_time: number | null;
+      /**
+       * Expires At
+       * @default null
+       */
+      expires_at: number | null;
+      /**
+       * Source
+       * @default incoming
+       * @enum {string}
+       */
+      source: "incoming" | "reaction";
+      /**
+       * Reaction
+       * @default null
+       */
+      reaction: string | null;
+      /**
+       * Target Id
+       * @default null
+       */
+      target_id: number | null;
+    };
+    /** GifSearch */
+    GifSearch: {
+      /** Query */
+      query: string;
+      /** Epoch */
+      epoch: string;
+      /** Request */
+      request: number;
+      /**
+       * Offset
+       * @default
+       */
+      offset: string;
+    };
+    /** GifSearchScope */
+    GifSearchScope: {
+      /** Epoch */
+      epoch: string;
+    };
+    /** GifSearchView */
+    GifSearchView: {
+      /** Epoch */
+      epoch: string;
+      /** Request */
+      request: number;
+      /** Items */
+      items: components["schemas"]["CatalogItem"][];
+      /** Next Offset */
+      next_offset: string | null;
+      /** Truncated */
+      truncated: boolean;
+    };
+    /** GroupProcessing */
+    GroupProcessing: {
+      /** Processing Enabled */
+      processing_enabled: boolean;
+      /** Account Processing Enabled */
+      account_processing_enabled: boolean;
+      /** Effective */
+      effective: boolean;
+      /**
+       * Access
+       * @enum {string}
+       */
+      access: "unknown" | "available" | "lost";
+      /** Supported */
+      supported: boolean;
+      /** Reason */
+      reason: string;
+    };
+    /** GroupProcessingEdit */
+    GroupProcessingEdit: {
+      /** Enabled */
+      enabled: boolean;
+    };
+    /**
+     * GroupProfile
+     * @description What a Group Profile shows beyond the cached chat (ADR 47 Q7).
+     */
+    GroupProfile: {
+      /** Title */
+      title: string;
+      /**
+       * Username
+       * @default null
+       */
+      username: string | null;
+      /**
+       * Members
+       * @default null
+       */
+      members: number | null;
+      /**
+       * Description
+       * @default null
+       */
+      description: string | null;
+    };
+    /** GuidanceState */
+    GuidanceState: {
+      /** Version */
+      version: number;
+      /** Defaults Revision */
+      defaults_revision: number;
+      /** Fields */
+      fields: {
+        [key: string]: string;
+      };
+      /** Defaults */
+      defaults: {
+        [key: string]: string;
+      };
+      /** Paused */
+      paused: string[];
+    };
+    /**
+     * Habits
+     * @description Counted from the cached month without a model.
+     */
+    Habits: {
+      /** Messages */
+      messages: number;
+      /** Reply Seconds */
+      reply_seconds: number | null;
+      /** Active From */
+      active_from: number;
+      /** Active To */
+      active_to: number;
+      /** Voice Share */
+      voice_share: number;
+      /** Starts Share */
+      starts_share: number | null;
+    };
+    /** HideBots */
+    HideBots: {
+      /** Hide Bots */
+      hide_bots: boolean;
+    };
+    /** JoinRequest */
+    JoinRequest: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Username */
+      username: string;
+      /** Phone */
+      phone: string;
+      /** Requested At */
+      requested_at: number;
+    };
+    /** LoginState */
+    LoginState: {
+      /** Id */
+      id: string;
+      /**
+       * Method
+       * @enum {string}
+       */
+      method: "qr" | "phone";
+      /**
+       * Stage
+       * @enum {string}
+       */
+      stage:
+        | "connecting"
+        | "qr"
+        | "code"
+        | "password"
+        | "agreement"
+        | "complete"
+        | "cancelled"
+        | "expired"
+        | "error";
+      /** Message */
+      message: string;
+      /** Expires At */
+      expires_at: number;
+      /** Delivery */
+      delivery: string | null;
+      /** Next Delivery */
+      next_delivery: string | null;
+      /** Retry At */
+      retry_at: number | null;
+      /** Can Resend */
+      can_resend: boolean;
+      /** Account Id */
+      account_id: number | null;
+      /** Qr Revision */
+      qr_revision: number;
+      /**
+       * Code Length
+       * @default null
+       */
+      code_length: number | null;
+    };
+    /** Me */
+    Me: {
+      /** Id */
+      id: string;
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: "owner" | "member";
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "active" | "waiting";
+      /** Name */
+      name: string;
+      /** @default null */
+      agreement: components["schemas"]["Agreement"] | null;
+    };
+    /**
+     * MediaInfo
+     * @description Safe display/placeholder metadata: never phones, vCards or coordinates.
+     */
+    MediaInfo: {
+      /**
+       * File Name
+       * @default null
+       */
+      file_name: string | null;
+      /**
+       * Mime
+       * @default null
+       */
+      mime: string | null;
+      /**
+       * Size
+       * @default null
+       */
+      size: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Voice
+       * @default false
+       */
+      voice: boolean;
+      /**
+       * Sticker
+       * @default null
+       */
+      sticker: ("static" | "animated" | "video") | null;
+      /**
+       * Emoji
+       * @default null
+       */
+      emoji: string | null;
+      /**
+       * Title
+       * @default null
+       */
+      title: string | null;
+      /**
+       * Site
+       * @default null
+       */
+      site: string | null;
+      /**
+       * Question
+       * @default null
+       */
+      question: string | null;
+      /** Options */
+      options?: string[];
+      /**
+       * Live
+       * @default false
+       */
+      live: boolean;
+      /**
+       * Waveform
+       * @default null
+       */
+      waveform: number[] | null;
+      /**
+       * Performer
+       * @default null
+       */
+      performer: string | null;
+    };
+    /** MemberBudgetEdit */
+    MemberBudgetEdit: {
+      /**
+       * Family
+       * @enum {string}
+       */
+      family: "daily" | "group_briefing";
+      /** Limit Usd */
+      limit_usd: number | string;
+    };
+    /** MemberBudgets */
+    MemberBudgets: {
+      /** Member */
+      member: string;
+      budget: components["schemas"]["BudgetState"];
+      group_budget: components["schemas"]["BudgetState"];
+    };
+    /**
+     * MemberProfile
+     * @description A group member's profile (ADR 51 Q14), with their current photo.
+     */
+    MemberProfile: {
+      /** Name */
+      name: string;
+      /**
+       * Username
+       * @default null
+       */
+      username: string | null;
+      /**
+       * Phone
+       * @default null
+       */
+      phone: string | null;
+      /**
+       * Bio
+       * @default null
+       */
+      bio: string | null;
+      /**
+       * Photo Id
+       * @default null
+       */
+      photo_id: string | null;
+    };
+    /** MemoryEntry */
+    MemoryEntry: {
+      /** Id */
+      id: string;
+      /** Chat Key */
+      chat_key: string;
+      /** Text */
+      text: string;
+      /** Citations */
+      citations: number[];
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model" | "owner";
+      outdated: components["schemas"]["OutdatedMemory"] | null;
+      /** Created */
+      created: number;
+      /** Guidance */
+      guidance: number | null;
+      /**
+       * Defaults
+       * @default null
+       */
+      defaults: number | null;
+      /** Sources */
+      sources: components["schemas"]["MemorySource"][];
+    };
+    /** MemorySource */
+    MemorySource: {
+      /** Id */
+      id: number;
+      /**
+       * Availability
+       * @enum {string}
+       */
+      availability: "cached" | "not_cached" | "deleted";
+    };
+    /**
+     * MemoryView
+     * @description One chat's Person Memory: what the other person cares about.
+     */
+    MemoryView: {
+      /** Entries */
+      entries: components["schemas"]["MemoryEntry"][];
+      /** Revision */
+      revision: number;
+      /** Coverage */
+      coverage: number;
+      /** Error */
+      error: string | null;
+      /** Enabled */
+      enabled: boolean;
+      /** Waiting */
+      waiting: number;
+      /** Updating */
+      updating: boolean;
+    };
+    /** Message */
+    Message: {
+      /** Account Id */
+      account_id: number;
+      /** Peer */
+      peer: string;
+      /** Message Id */
+      message_id: number;
+      /** Revision */
+      revision: number;
+      /**
+       * Native Revision
+       * @default null
+       */
+      native_revision: number | null;
+      /**
+       * Native Edited
+       * @default false
+       */
+      native_edited: boolean;
+      /**
+       * Forwarded
+       * @default null
+       */
+      forwarded: boolean | null;
+      /**
+       * Forwarded From
+       * @default null
+       */
+      forwarded_from: string | null;
+      /**
+       * Forward Date
+       * @default null
+       */
+      forward_date: number | null;
+      /**
+       * Forward Signature
+       * @default null
+       */
+      forward_signature: string | null;
+      /**
+       * Imported
+       * @default null
+       */
+      imported: boolean | null;
+      /**
+       * Forward Read
+       * @default false
+       */
+      forward_read: boolean;
+      /**
+       * Attachment Id
+       * @default null
+       */
+      attachment_id: string | null;
+      /** Date */
+      date: number;
+      /**
+       * Text
+       * @default
+       */
+      text: string;
+      /** Links */
+      links?: components["schemas"]["TextLink"][];
+      /**
+       * Outgoing
+       * @default false
+       */
+      outgoing: boolean;
+      /**
+       * Service
+       * @default false
+       */
+      service: boolean;
+      /**
+       * Mentioned
+       * @default false
+       */
+      mentioned: boolean;
+      /**
+       * Reply To Self
+       * @default false
+       */
+      reply_to_self: boolean;
+      /**
+       * Reply To
+       * @default null
+       */
+      reply_to: number | null;
+      /**
+       * Reply Quote
+       * @default null
+       */
+      reply_quote: string | null;
+      /** @default null */
+      reply_elsewhere: components["schemas"]["ReplyElsewhere"] | null;
+      /**
+       * Reply Story
+       * @default false
+       */
+      reply_story: boolean;
+      /**
+       * Reply Read
+       * @default false
+       */
+      reply_read: boolean;
+      /**
+       * Topic Id
+       * @default null
+       */
+      topic_id: number | null;
+      /**
+       * Media
+       * @default null
+       */
+      media:
+        | (
+            | "image"
+            | "audio"
+            | "video_note"
+            | "video"
+            | "gif"
+            | "sticker"
+            | "document"
+            | "poll"
+            | "location"
+            | "contact"
+            | "link"
+            | "other"
+            | "unsupported"
+          )
+        | null;
+      /** @default null */
+      media_info: components["schemas"]["MediaInfo"] | null;
+      /**
+       * Deleted
+       * @default false
+       */
+      deleted: boolean;
+      /**
+       * Author
+       * @default
+       */
+      author: string;
+      /**
+       * Author Peer
+       * @default null
+       */
+      author_peer: string | null;
+      /**
+       * Sender Is Bot
+       * @default null
+       */
+      sender_is_bot: boolean | null;
+      /**
+       * Author Signature
+       * @default null
+       */
+      author_signature: string | null;
+      /**
+       * Reply Status
+       * @default none
+       * @enum {string}
+       */
+      reply_status: "none" | "available" | "missing" | "unknown";
+    };
+    /** NotificationAttentionStatus */
+    NotificationAttentionStatus: {
+      /** Events */
+      events: string[];
+      /** Sound */
+      sound: boolean;
+      /**
+       * Sound Preset
+       * @default harp
+       * @enum {string}
+       */
+      sound_preset: "harp" | "bell" | "chime" | "pop" | "digital" | "custom";
+      /**
+       * Sound File Name
+       * @default null
+       */
+      sound_file_name: string | null;
+      /**
+       * Sound Revision
+       * @default null
+       */
+      sound_revision: string | null;
+    };
+    /** NotificationPreferences */
+    NotificationPreferences: {
+      /**
+       * Sound
+       * @default null
+       */
+      sound: boolean | null;
+      /**
+       * Push
+       * @default null
+       */
+      push: false | null;
+      /**
+       * Sound Preset
+       * @default null
+       */
+      sound_preset:
+        ("harp" | "bell" | "chime" | "pop" | "digital" | "custom") | null;
+    };
+    /** NotificationSoundUpload */
+    NotificationSoundUpload: {
+      /** Name */
+      name: string;
+      /** Data */
+      data: string;
+    };
+    /** NotificationStatus */
+    NotificationStatus: {
+      /** Browser */
+      browser: string;
+      /** Sound */
+      sound: boolean;
+      /** Push */
+      push: boolean;
+      /** Destination */
+      destination: string | null;
+      /** Failure */
+      failure: string | null;
+      /** Public Key */
+      public_key: string;
+      /**
+       * Sound Preset
+       * @default harp
+       * @enum {string}
+       */
+      sound_preset: "harp" | "bell" | "chime" | "pop" | "digital" | "custom";
+      /**
+       * Sound File Name
+       * @default null
+       */
+      sound_file_name: string | null;
+      /**
+       * Sound Revision
+       * @default null
+       */
+      sound_revision: string | null;
+    };
+    /**
+     * NotificationTarget
+     * @description What a clicked notification opens for the browser it was delivered to.
+     */
+    NotificationTarget: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "conversation" | "test" | "people" | "ai" | "unavailable";
+      /**
+       * Account Id
+       * @default null
+       */
+      account_id: number | null;
+      /**
+       * Peer
+       * @default null
+       */
+      peer: string | null;
+    };
+    /** OutdatedMemory */
+    OutdatedMemory: {
+      /** Citations */
+      citations: number[];
+    };
+    /** PairingStatus */
+    PairingStatus: {
+      /** Id */
+      id: string;
+      /** Expires At */
+      expires_at: number;
+      /**
+       * State
+       * @enum {string}
+       */
+      state:
+        | "waiting"
+        | "pending"
+        | "approved"
+        | "cancelled"
+        | "complete"
+        | "expired"
+        | "already_trusted";
+      /** Code */
+      code: string;
+      /** Label */
+      label: string;
+      /**
+       * Kind
+       * @default
+       * @enum {string}
+       */
+      kind: "" | "browser" | "device";
+      /**
+       * Approver
+       * @default server
+       * @enum {string}
+       */
+      approver: "server" | "browser";
+    };
+    /** People */
+    People: {
+      /** Requests */
+      requests: components["schemas"]["JoinRequest"][];
+      /** Members */
+      members: components["schemas"]["Person"][];
+    };
+    /** Person */
+    Person: {
+      /** Member */
+      member: string;
+      budget: components["schemas"]["BudgetState"];
+      group_budget: components["schemas"]["BudgetState"];
+      /** Name */
+      name: string;
+      /** Username */
+      username: string;
+      /** Phone */
+      phone: string;
+      /** Approved At */
+      approved_at: number | null;
+      /** Accounts */
+      accounts: number;
+      /** Last Active */
+      last_active: number | null;
+    };
+    /** PreparedVideo */
+    PreparedVideo: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "ready" | "unsupported";
+      /** Revision */
+      revision: number;
+      /**
+       * Version
+       * @default null
+       */
+      version: number | null;
+      /** Mime */
+      mime: ("video/mp4" | "video/webm") | null;
+    };
+    /**
+     * Reaction
+     * @description Exactly one native reaction kind: an ordinary emoji, a custom emoji
+     *     (its document ID; never rendered here) or a paid reaction.
+     */
+    Reaction: {
+      /**
+       * Emoji
+       * @default null
+       */
+      emoji: string | null;
+      /**
+       * Custom
+       * @default null
+       */
+      custom: string | null;
+      /**
+       * Paid
+       * @default false
+       */
+      paid: boolean;
+    };
+    /** ReactionChipView */
+    ReactionChipView: {
+      reaction: components["schemas"]["Reaction"];
+      /** Count */
+      count: number;
+      /**
+       * Mine
+       * @default null
+       */
+      mine: boolean | null;
+      /**
+       * Peer
+       * @default null
+       */
+      peer: boolean | null;
+    };
+    /**
+     * ReactionView
+     * @description One message's displayed chips; reading it starts no native work.
+     */
+    ReactionView: {
+      /** Chips */
+      chips: components["schemas"]["ReactionChipView"][];
+      /** Own Known */
+      own_known: boolean;
+    };
+    /** ReadingView */
+    ReadingView: {
+      /**
+       * Reading View
+       * @enum {string}
+       */
+      reading_view: "ai" | "originals";
+    };
+    /** ReceivedAssetPreparation */
+    ReceivedAssetPreparation: {
+      /** Revision */
+      revision: number;
+      /**
+       * Version
+       * @default null
+       */
+      version: number | null;
+    };
+    /** ReceivedAssetView */
+    ReceivedAssetView: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "missing" | "ready" | "unsupported";
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "thumbnail" | "gif" | "sticker";
+      /**
+       * Format
+       * @default null
+       */
+      format: ("jpeg" | "png" | "webp" | "gif" | "mp4" | "tgs" | "webm") | null;
+      /**
+       * Mime
+       * @default null
+       */
+      mime:
+        | (
+            | "image/jpeg"
+            | "image/png"
+            | "image/webp"
+            | "image/gif"
+            | "video/mp4"
+            | "video/webm"
+            | "application/x-tgsticker"
+          )
+        | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Fps
+       * @default null
+       */
+      fps: number | null;
+      /**
+       * Frames
+       * @default null
+       */
+      frames: number | null;
+      /**
+       * Renderer Supported
+       * @default false
+       */
+      renderer_supported: boolean;
+      /**
+       * Features
+       * @default []
+       */
+      features: string[];
+      /** Revision */
+      revision: number;
+      /**
+       * Version
+       * @default null
+       */
+      version: number | null;
+    };
+    /**
+     * Remembering
+     * @description A private chat's Remember this chat (ADR 55 Q7): on unless the chat
+     *     chose otherwise.
+     */
+    Remembering: {
+      /** Enabled */
+      enabled: boolean;
+    };
+    /** Removed */
+    Removed: {
+      /** Confirmed */
+      confirmed: boolean;
+    };
+    /**
+     * ReplyElsewhere
+     * @description What a reply header supplies about a message in another chat (ADR 41).
+     */
+    ReplyElsewhere: {
+      /**
+       * Peer
+       * @default null
+       */
+      peer: string | null;
+      /**
+       * Sender Peer
+       * @default null
+       */
+      sender_peer: string | null;
+      /**
+       * Sender
+       * @default null
+       */
+      sender: string | null;
+      /**
+       * Date
+       * @default null
+       */
+      date: number | null;
+    };
+    /**
+     * ScaleEdit
+     * @description The owner's own value for a trait, or None to clear it.
+     */
+    ScaleEdit: {
+      /** Revision */
+      revision: number;
+      /**
+       * Value
+       * @default null
+       */
+      value: string | null;
+    };
+    /** SelectMedia */
+    SelectMedia: {
+      /** Revision */
+      revision: number;
+      /** Token */
+      token: string;
+      /** Catalog Revision */
+      catalog_revision: string;
+    };
+    /** SelectedMediaAction */
+    SelectedMediaAction: {
+      /** Revision */
+      revision: number;
+      /** Id */
+      id: string;
+    };
+    /** SelectedMediaView */
+    SelectedMediaView: {
+      /** Id */
+      id: string;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "gif" | "sticker";
+      /**
+       * Format
+       * @enum {string}
+       */
+      format: "gif" | "mp4" | "webp" | "tgs" | "webm" | "unsupported";
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "preparing" | "ready" | "failed";
+      /**
+       * Mime
+       * @default null
+       */
+      mime: string | null;
+      /**
+       * Size
+       * @default null
+       */
+      size: number | null;
+      /**
+       * Width
+       * @default null
+       */
+      width: number | null;
+      /**
+       * Height
+       * @default null
+       */
+      height: number | null;
+      /**
+       * Duration
+       * @default null
+       */
+      duration: number | null;
+      /**
+       * Sticker
+       * @default null
+       */
+      sticker: ("static" | "animated" | "video") | null;
+      /**
+       * Emoji
+       * @default null
+       */
+      emoji: string | null;
+      /**
+       * Requires Premium
+       * @default false
+       */
+      requires_premium: boolean;
+      /**
+       * Error
+       * @default null
+       */
+      error: string | null;
+      /**
+       * Retryable
+       * @default false
+       */
+      retryable: boolean;
+      /**
+       * Renderer Supported
+       * @default false
+       */
+      renderer_supported: boolean;
+      /**
+       * Features
+       * @default []
+       */
+      features: string[];
+      /**
+       * Content Url
+       * @default null
+       */
+      content_url: string | null;
+      /**
+       * Animation Url
+       * @default null
+       */
+      animation_url: string | null;
+    };
+    /** Settings */
+    Settings: {
+      budget: components["schemas"]["BudgetState"];
+      group_budget: components["schemas"]["BudgetState"];
+      /** Concurrency */
+      concurrency: number;
+      /** Processing Threshold */
+      processing_threshold: number;
+      /** Memory */
+      memory: boolean;
+      /** Suggestions */
+      suggestions: boolean;
+      /** @default null */
+      guidance: components["schemas"]["GuidanceState"] | null;
+      /** @default null */
+      decision_model: components["schemas"]["DecisionModelState"] | null;
+    };
+    /** SignInPairingState */
+    SignInPairingState: {
+      /** Id */
+      id: string;
+      /**
+       * Proof
+       * @default
+       */
+      proof: string;
+      login: components["schemas"]["LoginState"];
+      /**
+       * Token
+       * @default
+       */
+      token: string;
+      /**
+       * Authenticated
+       * @default false
+       */
+      authenticated: boolean;
+      /** @default null */
+      agreement: components["schemas"]["Agreement"] | null;
+      /**
+       * Waiting
+       * @default false
+       */
+      waiting: boolean;
+    };
+    /** SignInStart */
+    SignInStart: {
+      /** Phone */
+      phone: string;
+      /**
+       * Name
+       * @default
+       */
+      name: string;
+      /**
+       * Browser
+       * @default false
+       */
+      browser: boolean;
+    };
+    /** SuggestionOption */
+    SuggestionOption: {
+      /**
+       * Purpose
+       * @enum {string}
+       */
+      purpose:
+        | "acknowledge"
+        | "support"
+        | "clarify"
+        | "celebrate"
+        | "accept"
+        | "decline"
+        | "later";
+      /** Text */
+      text: string;
+    };
+    /** SuggestionSettings */
+    SuggestionSettings: {
+      /** Automatic */
+      automatic: boolean;
+      /**
+       * Style
+       * @enum {string}
+       */
+      style: "friendly" | "professional" | "idioms";
+    };
+    /**
+     * SuggestionsView
+     * @description What a browser may show for one chat; reading it starts no work.
+     */
+    SuggestionsView: {
+      /**
+       * State
+       * @default none
+       * @enum {string}
+       */
+      state: "none" | "preparing" | "waiting" | "ready" | "failed";
+      /**
+       * Reason
+       * @default null
+       */
+      reason:
+        | (
+            | "off"
+            | "unavailable"
+            | "replaced"
+            | "answered"
+            | "expired"
+            | "changed"
+            | "not_qualifying"
+            | "empty"
+            | "cancelled"
+            | "suspended"
+            | "queued"
+            | "running"
+            | "budget"
+            | "paused"
+            | "retrying"
+            | "format"
+            | "provider"
+            | "refused"
+            | "interrupted"
+            | "too_large"
+          )
+        | null;
+      /**
+       * Attempt
+       * @default null
+       */
+      attempt: string | null;
+      /**
+       * Kind
+       * @default automatic
+       * @enum {string}
+       */
+      kind: "automatic" | "manual";
+      /**
+       * Style
+       * @default friendly
+       * @enum {string}
+       */
+      style: "friendly" | "professional" | "idioms";
+      /** Options */
+      options?: components["schemas"]["SuggestionOption"][];
+      /**
+       * Folded
+       * @default false
+       */
+      folded: boolean;
+      /**
+       * Source Time
+       * @default null
+       */
+      source_time: number | null;
+      /**
+       * Expires At
+       * @default null
+       */
+      expires_at: number | null;
+    };
+    /**
+     * TextLink
+     * @description Native UTF-16 offsets, as used by Telegram and browser strings.
+     */
+    TextLink: {
+      /** Offset */
+      offset: number;
+      /** Length */
+      length: number;
+      /** Url */
+      url: string;
+    };
+    /** TraitNote */
+    TraitNote: {
+      /** Id */
+      id: string;
+      /** Text */
+      text: string;
+      /** Confidence */
+      confidence: number | null;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model" | "owner";
+      /** Created */
+      created: number;
+      /** Citations */
+      citations: number[];
+    };
+    /** TraitOption */
+    TraitOption: {
+      /** Value */
+      value: string;
+      /** Label */
+      label: string;
+    };
+    /**
+     * TraitScale
+     * @description One trait of the starter list: its value, the decision model's or the
+     *     owner's, and whether the latest judgment still found its evidence.
+     */
+    TraitScale: {
+      /** Trait */
+      trait: string;
+      /** Title */
+      title: string;
+      /** Value */
+      value: string | null;
+      /** Label */
+      label: string | null;
+      /** Probability */
+      probability: number | null;
+      /** Judged */
+      judged: number | null;
+      /** Source */
+      source: ("model" | "owner") | null;
+      /** Current */
+      current: boolean;
+      /** Options */
+      options: components["schemas"]["TraitOption"][];
+    };
+    /** TraitsView */
+    TraitsView: {
+      /** Revision */
+      revision: number;
+      /** Enabled */
+      enabled: boolean;
+      /** Scales */
+      scales: components["schemas"]["TraitScale"][];
+      /** Notes */
+      notes: components["schemas"]["TraitNote"][];
+      habits: components["schemas"]["Habits"] | null;
+      /** Error */
+      error: string | null;
+    };
+    /** TrustedBrowser */
+    TrustedBrowser: {
+      /** Id */
+      id: string;
+      /** Label */
+      label: string;
+      /** Approved At */
+      approved_at: number;
+      /** Last Access */
+      last_access: number;
+      /** Current */
+      current: boolean;
+      /**
+       * Kind
+       * @default browser
+       * @enum {string}
+       */
+      kind: "browser" | "device";
+    };
+    /** VideoPreparation */
+    VideoPreparation: {
+      /** Revision */
+      revision: number;
+      /**
+       * Version
+       * @default null
+       */
+      version: number | null;
+    };
+    /** ViewedContent */
+    ViewedContent: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "original" | "rewrite" | "reaction";
+      /** Identity */
+      identity: string;
+      /** Token */
+      token: string;
+    };
+    /** ViewedSources */
+    ViewedSources: {
+      /** Content */
+      content: components["schemas"]["ViewedContent"][];
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

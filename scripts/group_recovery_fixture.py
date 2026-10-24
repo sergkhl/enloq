@@ -50,7 +50,7 @@ def register(server):
         ]
         return {
             "peer": peer,
-            "draft": app.rewriting.outgoing_work.view(key),
+            "draft": app.store.draft(key),
             "operations": operations,
             "sources": [
                 {

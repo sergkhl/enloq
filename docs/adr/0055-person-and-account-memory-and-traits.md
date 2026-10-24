@@ -10,7 +10,7 @@ Chat Memory ([ADR 15](0015-owner-controlled-processing-memory-and-prompts.md),
 [ADR 21](0021-chat-memory-takeaways-and-idle-processing.md)) held cited
 takeaways about both people in a chat, mixing the other person's facts with
 the owner's, and since [ADR 54](0054-incoming-text-combined-not-rewritten.md)
-only media and calmed rewrites read it. The requirement: "memories should be
+only media and softened rewrites read it. The requirement: "memories should be
 collected per private chat to understand what recipient care about and per
 account to understand what owner cares".
 
@@ -20,9 +20,10 @@ account to understand what owner cares".
 
 **Who reads them (Q1).** The owner reads both. Response Suggestions read the
 cares-about entries of both memories (Q15-Q17), reversing ADR 25's exclusion
-of memory. Media and calmed rewrites keep reading Person Memory as reference.
-Nothing else reads them: not outgoing Rewrite, group briefings,
-notifications or the mood decision.
+of memory. Media and softened rewrites keep reading Person Memory as reference.
+Nothing else reads them: not group briefings, notifications or the mood
+decision. Manual suggestions may read enabled memory under the same rules;
+an unfinished draft is not a memory-learning source.
 
 **Person Memory holds the other person's side (Q2).** It belongs to one
 private chat and holds only what the other person cares about: their

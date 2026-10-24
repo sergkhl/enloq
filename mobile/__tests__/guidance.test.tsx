@@ -64,7 +64,7 @@ beforeEach(() => {
   guidance = {
     version: 7,
     defaults_revision: 5,
-    fields: { ...DEFAULTS, outgoing: "My own outgoing rules." },
+    fields: { ...DEFAULTS, tone_professional: "My own style rules." },
     defaults: DEFAULTS,
     paused: [],
   };
@@ -134,10 +134,10 @@ test("the fields are grouped, each saying whether it was edited", async () => {
   await mount(<Guidance />);
   expect(await screen.findByText(/^Version 7\. Changes apply/)).toBeTruthy();
   expect(screen.getByText("Rewriting")).toBeTruthy();
-  expect(screen.getByText("Tones")).toBeTruthy();
+  expect(screen.getByText("Suggestion styles")).toBeTruthy();
   expect(screen.getByText("Other work")).toBeTruthy();
   expect(
-    screen.getByRole("button", { name: "Outgoing rewriting, Edited" }),
+    screen.getByRole("button", { name: "Professional, Edited" }),
   ).toBeTruthy();
   // Each memory has its own field (ADR 55 Q24).
   expect(
@@ -200,36 +200,37 @@ test("a paused role is kept or reset from its notice", async () => {
 });
 
 test("a field saves its text, then resets after a confirmation", async () => {
-  mockParams.field = "outgoing";
+  mockParams.field = "tone_professional";
   await mount(<GuidanceField />);
-  const box = await screen.findByLabelText("Outgoing rewriting");
-  expect(box.props.value).toBe("My own outgoing rules.");
-  expect(screen.getByText("22/4000")).toBeTruthy();
+  const box = await screen.findByLabelText("Professional");
+  expect(box.props.value).toBe("My own style rules.");
+  expect(screen.getByText("19/4000")).toBeTruthy();
   const save = () => screen.getByRole("button", { name: "Save" });
   expect(save().props.accessibilityState).toMatchObject({ disabled: true });
   await fireEvent.changeText(box, "Shorter.");
   await fireEvent.press(save());
   await waitFor(() =>
     expect(posts).toEqual([
-      { path: "settings/guidance", body: { fields: { outgoing: "Shorter." } } },
+      {
+        path: "settings/guidance",
+        body: { fields: { tone_professional: "Shorter." } },
+      },
     ]),
   );
   await fireEvent.press(
     screen.getByRole("button", { name: "Reset to default" }),
   );
-  expect(
-    screen.getByText(/^Reset Outgoing rewriting to its default\?/),
-  ).toBeTruthy();
+  expect(screen.getByText(/^Reset Professional to its default\?/)).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Confirm reset" }));
   await waitFor(() =>
     expect(posts.at(-1)).toEqual({
       path: "settings/guidance",
-      body: { fields: { outgoing: null } },
+      body: { fields: { tone_professional: null } },
     }),
   );
   await waitFor(() =>
-    expect(screen.getByLabelText("Outgoing rewriting").props.value).toBe(
-      "Polish the draft.",
+    expect(screen.getByLabelText("Professional").props.value).toBe(
+      "Professional.",
     ),
   );
   expect(

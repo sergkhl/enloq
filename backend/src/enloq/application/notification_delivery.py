@@ -302,6 +302,8 @@ class NotificationDelivery:
                 if not self.attention.reading(event, member):
                     self.devices.fan_out(event, member)
                 selected = self.attention.choose(event, member)
+                if selected and selected[0] == "chime" and event.get("silent"):
+                    selected = ("silent", selected[1], selected[2])
                 prior = self.registry.rows(
                     "SELECT * FROM notification_deliveries WHERE id=?", (event["id"],)
                 )
@@ -353,7 +355,7 @@ class NotificationDelivery:
         payload = {
             "id": event["id"],
             "expires": event["expires"],
-            "silent": not bool(browser["sound"]),
+            "silent": bool(event.get("silent")) or not bool(browser["sound"]),
         }
         # Persist claim before network I/O: a second tab/channel cannot also alert.
         with self.registry.transaction() as db:
@@ -395,7 +397,11 @@ class NotificationDelivery:
         event = self.event(rows[0]) if rows else None
         if not event or self.active(self.member_of(identity)) != identity:
             raise Refused("Notification is no longer available")
-        return {**event, "silent": not bool(self.browser(identity)["sound"])}
+        return {
+            **event,
+            "silent": bool(event.get("silent"))
+            or not bool(self.browser(identity)["sound"]),
+        }
 
     def target(self, identity, event_id):
         self.browser(identity)

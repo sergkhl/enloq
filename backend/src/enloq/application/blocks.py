@@ -87,7 +87,7 @@ def automatic(job):
     return not (
         payload.get("explicit_retry")
         or payload.get("class") == "older"
-        or "calm" in payload
+        or payload.get("calm") is True
     )
 
 
@@ -103,7 +103,7 @@ def defer(db, scope, revision, due, payload):
         "AND state IN ('queued','claimed') "
         "AND NOT coalesce(json_extract(payload,'$.explicit_retry'),0) "
         "AND coalesce(json_extract(payload,'$.class'),'new')!='older' "
-        "AND json_type(payload,'$.calm') IS NULL",
+        "AND coalesce(json_type(payload,'$.calm'),'null')!='true'",
         (scope, revision),
     )
     db.execute(

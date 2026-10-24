@@ -40,14 +40,11 @@ PROVIDER = "xiaomi"
 # asks it not to. Every adapter sends this; the proxy's pass-through routes do
 # not honour it.
 PRIVATE = {"x-litellm-enable-message-redaction": "true"}
-# Reasoning is only on or off. Outgoing Rewrite is waited for, so it runs
-# without; background roles reason hidden, behind their quiet periods.
-OUTGOING_OUTPUT_TOKENS = 4096
+# Text generation roles use hidden reasoning.
 BACKGROUND_OUTPUT_TOKENS = 16384
 # Attempt deadlines fit a cap-length response: 4,096 tokens take 105 seconds at
 # the listed 39 tokens per second; 16,384 take 512 seconds at a 32-per-second
 # floor, plus first-token latency.
-OUTGOING_SECONDS = 120
 BACKGROUND_SECONDS = 540
 # The per-token rates listed when the owner adopted the route (2026-10-09), the
 # same as Xiaomi's own. Finite checks refuse higher rates, so their recorded
@@ -62,17 +59,6 @@ MUSE_LISTED = "meta/muse-spark-1.3-contributor"
 MUSE_PROVIDER = "meta"
 MUSE_ADOPTED_RATES = {"prompt": "0.0000001", "completion": "0.0000002"}
 LISTING = "https://openrouter.ai/api/v1"
-
-
-class Rewrite(Model):
-    text: str = Field(min_length=1, max_length=65536)
-
-    @field_validator("text")
-    @classmethod
-    def meaningful(cls, value):
-        if not value.strip():
-            raise ValueError("Empty rewrite")
-        return value
 
 
 class ImageContext(Model):
@@ -270,7 +256,6 @@ class TraitNotes(Model):
 
 SCHEMAS = {
     "incoming_rewrite": IncomingRewrite,
-    "outgoing_rewrite": Rewrite,
     "chat_memory": MemoryUpdate,
     "trait_notes": TraitNotes,
     "response_suggestions": ResponseSuggestions,
@@ -278,7 +263,7 @@ SCHEMAS = {
     "group_briefing_chunk": BriefingOutput,
     "group_briefing": BriefingOutput,
 }
-STREAMED_ROLES = frozenset({"incoming_rewrite", "outgoing_rewrite", "group_briefing"})
+STREAMED_ROLES = frozenset({"incoming_rewrite", "group_briefing"})
 
 
 def has_target_text(packet):
@@ -515,17 +500,13 @@ def retry_after(value):
 
 
 def output_tokens(role):
-    return (
-        OUTGOING_OUTPUT_TOKENS
-        if role == "outgoing_rewrite"
-        else BACKGROUND_OUTPUT_TOKENS
-    )
+    return BACKGROUND_OUTPUT_TOKENS
 
 
 def thinking(role):
     """Xiaomi's own reasoning switch. Its reasoning text comes back beside the
     content and is never read or retained."""
-    return {"type": "disabled" if role == "outgoing_rewrite" else "enabled"}
+    return {"type": "enabled"}
 
 
 class OpenRouterEngine:
@@ -546,7 +527,7 @@ class OpenRouterEngine:
         )
 
     def attempt_seconds(self, role):
-        return OUTGOING_SECONDS if role == "outgoing_rewrite" else BACKGROUND_SECONDS
+        return BACKGROUND_SECONDS
 
     async def verify(self):
         return await route_rates(self.client, self.endpoint, self.key)

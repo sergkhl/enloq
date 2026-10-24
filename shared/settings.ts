@@ -84,13 +84,13 @@ export const BUDGETS: Record<
 // The processing controls' explanations, in place of Help (ADR 45 Q7).
 export const EXPLAIN = {
   minimum:
-    "Group briefings start once a day's messages reach this many characters. Images, voice notes and videos don't need it. 0 turns it off. Private chats show text as it was sent, calming only angry or frustrated messages.",
-  calls: "For all accounts. Outgoing rewrites go first.",
+    "Group briefings start once a day's messages reach this many characters. Images, voice notes and videos don't need it. 0 turns it off. Private text stays as sent unless hostile wording is softened.",
+  calls: "The shared limit for all accounts and model requests.",
   memory:
     "Notes what each person and you care about, and their traits, to shape reply suggestions. Off stops using and updating them; nothing is deleted.",
   // Either signal since ADR 56.
   suggestions:
-    "Up to three short replies when a message shows a clear emotion or calls for a reply.",
+    "Prepare suggestions when a message shows a clear emotion or calls for a reply. Manual generation stays available when Off.",
   guidance:
     "Changes apply from the next model call. A protected core keeps messages as data and enforces the output format.",
 };

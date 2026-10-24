@@ -251,3 +251,69 @@ def current(store, packet, *, db=None):
         if text != current:
             return False
     return True
+
+
+def cached_recent(store, key, *, before=None, reply_id=None, db=None):
+    """At most 20 recent cached messages and one cached direct reply.
+
+    Explicit suggestions and arrival screening use this snapshot without
+    fetching history or preparing media. The entire supporting input, including
+    cached media meanings, fits the usual conservative 6,000-byte bound.
+    Dependencies let callers discard a result if any used input changes.
+    """
+    import json
+
+    def read(sql, args):
+        return list(db.execute(sql, args)) if db else store.rows(sql, args)
+
+    rows = read(
+        "SELECT body FROM messages WHERE chat_key=? AND deleted=0 AND date>=? "
+        "AND (? IS NULL OR message_id<?) ORDER BY message_id DESC LIMIT 20",
+        (key, store.clock() - WINDOW, before, before),
+    )
+    recent = [Message.model_validate_json(r["body"]) for r in rows]
+    if reply_id:
+        parent = read(
+            "SELECT body FROM messages WHERE chat_key=? AND message_id=? AND deleted=0",
+            (key, reply_id),
+        )
+        if parent:
+            recent.insert(0, Message.model_validate_json(parent[0]["body"]))
+    selected, used, seen = [], 0, set()
+    for source in recent:
+        if source.key in seen:
+            continue
+        seen.add(source.key)
+        item = projection(source)
+        cached = read(
+            "SELECT body FROM derivatives WHERE source=? AND revision=?",
+            (source.key, source.revision),
+        )
+        derivative = json.loads(cached[0]["body"]) if cached else {}
+        if item["media"] == "image" and derivative.get("image_context"):
+            item["image_context"] = derivative["image_context"]
+        if item["media"] in SPOKEN_MEDIA and derivative.get("transcript"):
+            item["transcript"] = derivative["transcript"]
+        size = len(json.dumps(item, ensure_ascii=False).encode())
+        if used + size > CONTEXT_TOKENS:
+            continue
+        selected.append((source, item))
+        used += size
+    selected.sort(key=lambda pair: pair[0].message_id)
+    return {
+        "messages": [item for _, item in selected],
+        "inputs": {source.key: source.revision for source, _ in selected},
+        "attribution_inputs": {
+            source.key: attribution(source) for source, _ in selected
+        },
+        "transcript_inputs": {
+            source.key: transcript_fingerprint(item["transcript"])
+            for source, item in selected
+            if item.get("transcript")
+        },
+        "image_inputs": {
+            source.key: item["image_context"]
+            for source, item in selected
+            if item.get("image_context")
+        },
+    }

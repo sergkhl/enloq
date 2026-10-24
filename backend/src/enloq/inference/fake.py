@@ -59,8 +59,6 @@ class FakeEngine:
                 "outcome": "briefing" if topics else "no_substance",
                 "topics": topics,
             }
-        if role == "outgoing_rewrite":
-            return {"text": packet["draft"]["text"]}
         if role == "trait_notes":
             # One authored tendency cited from the subject's first three own
             # messages; the service checks the pattern rule.
@@ -134,6 +132,7 @@ class FakeDecider:
         self.assessment = {"emotion": "unknown", "suggestions_useful": False}
         # ADR 53: the latest block's authored sarcasm probability.
         self.sarcasm = 0.0
+        self.hostility = 0.0
         self.group_probability = 0.0
         # ADR 49 Q19: each suggestion's label, in order; None labels them all
         # acknowledge, the authored engine's only purpose.
@@ -145,6 +144,8 @@ class FakeDecider:
     async def generate(self, role, packet):
         self.calls.append((role, packet))
         await asyncio.sleep(0.01)
+        if role == "hostility_screen":
+            return {"hostility": {"type": "noul", "noul": self.hostility}}
         if role in FILTER_ROLES:
             return {
                 name: {"type": "noul", "noul": self.group_probability}
@@ -198,6 +199,7 @@ class FakeDecider:
             "emotion": choice(self.emotion, self.probability),
             "suggestions_useful": {"type": "noul", "noul": self.useful},
             "sarcasm": {"type": "noul", "noul": self.sarcasm},
+            "hostility": {"type": "noul", "noul": self.hostility},
         }
 
 

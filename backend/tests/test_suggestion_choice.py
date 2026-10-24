@@ -68,38 +68,41 @@ async def test_either_a_non_neutral_emotion_or_a_clear_yes_on_usefulness_suggest
 
 async def test_each_private_chat_chooses_off_or_on(tmp_path, monkeypatch):
     app, _ = rig(tmp_path)
-    assert app.suggestions.choice_view(KEY) == {"choice": "on", "idioms": True}
-    # Before its launch (Q20 A), Idioms couldn't be chosen.
-    monkeypatch.setattr(domain, "IDIOMS_LIVE", False)
-    assert app.suggestions.choice_view(KEY) == {"choice": "on", "idioms": False}
-    with pytest.raises(Refused, match="can't be chosen"):
-        app.suggestions.set_choice(KEY, "idioms")
+    assert app.suggestions.settings(KEY) == {"automatic": True, "style": "friendly"}
+    with pytest.raises(Refused, match="Unknown"):
+        app.suggestions.set_settings(KEY, True, "unknown")
     app.sync.ingest(message(app, text="I had an awful day."))
     await drain(app)
     shown = app.suggestions.view(KEY)
     assert shown.state == "ready"
     # Off shows nothing and inserts nothing...
-    assert app.suggestions.set_choice(KEY, "off") == {"choice": "off", "idioms": False}
+    assert app.suggestions.set_settings(KEY, False, "friendly") == {
+        "automatic": False,
+        "style": "friendly",
+    }
     assert app.suggestions.view(KEY).reason == "off"
     current = app.store.draft(KEY)
     with pytest.raises(Conflict, match="Off"):
         app.suggestions.insert(KEY, current["revision"], shown.attempt, 0)
     # ...and a set prepared before shows again on switching back.
-    app.suggestions.set_choice(KEY, "on")
+    app.suggestions.set_settings(KEY, True, "friendly")
     assert app.suggestions.view(KEY).attempt == shown.attempt
     # Off, a new block gets no request; On again regenerates nothing.
-    app.suggestions.set_choice(KEY, "off")
+    app.suggestions.set_settings(KEY, False, "friendly")
     app.sync.ingest(message(app, 2, text="It keeps getting worse."))
     await drain(app)
-    app.suggestions.set_choice(KEY, "on")
+    app.suggestions.set_settings(KEY, True, "friendly")
     await drain(app)
     assert app.engine.count() == 1 and len(jobs(app)) == 1
     assert app.suggestions.view(KEY).state == "none"
     # The choice is the chat's own, kept once made.
     restarted, _ = rig(tmp_path)
-    assert restarted.suggestions.choice(KEY) == "on"
-    assert restarted.store.rows("SELECT choice FROM suggestion_choice") == [
-        {"choice": "on"}
+    assert restarted.suggestions.settings(KEY) == {
+        "automatic": True,
+        "style": "friendly",
+    }
+    assert restarted.store.rows("SELECT automatic,style FROM suggestion_settings") == [
+        {"automatic": 1, "style": "friendly"}
     ]
 
 
@@ -108,10 +111,10 @@ async def test_off_cancels_the_chats_queued_work(tmp_path):
     app.sync.ingest(message(app, text="I had an awful day."))
     await incoming_only(app)
     [queued] = jobs(app, state="queued")
-    app.suggestions.set_choice(KEY, "off")
+    app.suggestions.set_settings(KEY, False, "friendly")
     assert [j["state"] for j in jobs(app)] == ["cancelled"]
     assert app.suggestions.record(KEY)["state"] == "cancelled"
-    app.suggestions.set_choice(KEY, "on")
+    app.suggestions.set_settings(KEY, True, "friendly")
     await drain(app)
     assert app.engine.count() == 0
     assert not app.store.rows("SELECT * FROM reservations WHERE id=?", (queued["id"],))
@@ -123,8 +126,8 @@ async def test_groups_have_no_suggestions_choice(tmp_path):
         Chat(account_id=1, peer="chat:7", title="Authored group", kind="group")
     )
     for call in (
-        lambda: app.suggestions.choice_view("1/chat:7"),
-        lambda: app.suggestions.set_choice("1/chat:7", "off"),
+        lambda: app.suggestions.settings("1/chat:7"),
+        lambda: app.suggestions.set_settings("1/chat:7", False, "friendly"),
     ):
         with pytest.raises(Refused, match="private chats only"):
             call()
@@ -139,9 +142,9 @@ async def test_an_idiom_chat_writes_idiom_sets_from_its_next_block(
     app.sync.ingest(message(app, text="I had an awful day."))
     await drain(app)
     first = app.suggestions.view(KEY)
-    assert app.suggestions.set_choice(KEY, "idioms") == {
-        "choice": "idioms",
-        "idioms": True,
+    assert app.suggestions.set_settings(KEY, True, "idioms") == {
+        "automatic": True,
+        "style": "idioms",
     }
     # Q5 A: the set already written stays as it is; nothing is regenerated.
     await drain(app)
@@ -153,19 +156,16 @@ async def test_an_idiom_chat_writes_idiom_sets_from_its_next_block(
     assert "idioms" not in written[0] and written[1]["idioms"] is True
     assert app.suggestions.record(KEY)["idioms"] is True
     assert app.suggestions.view(KEY).state == "ready"
-    # Idioms counts only while it can be chosen.
-    monkeypatch.setattr(domain, "IDIOMS_LIVE", False)
-    assert app.suggestions.choice_view(KEY) == {"choice": "on", "idioms": False}
+    assert app.suggestions.settings(KEY) == {"automatic": True, "style": "idioms"}
 
 
 async def test_a_choice_changed_while_a_set_waits_applies_to_the_next_block(
     tmp_path, monkeypatch
 ):
-    monkeypatch.setattr(domain, "IDIOMS_LIVE", True)
     app, _ = rig(tmp_path)
     app.sync.ingest(message(app, text="I had an awful day."))
     await incoming_only(app)
-    app.suggestions.set_choice(KEY, "idioms")
+    app.suggestions.set_settings(KEY, True, "idioms")
     await drain(app)
     written = [p for r, p in app.engine.calls if r == "response_suggestions"]
     assert len(written) == 1 and "idioms" not in written[0]
@@ -175,14 +175,13 @@ async def test_a_choice_changed_while_a_set_waits_applies_to_the_next_block(
 async def test_the_gates_winner_writes_idiom_sets_and_plain_sets_stay_on_mimo(
     tmp_path, monkeypatch, writer
 ):
-    monkeypatch.setattr(domain, "IDIOMS_LIVE", True)
     monkeypatch.setattr(domain, "IDIOMS_WRITER", writer)
     app, _ = rig(tmp_path)
     app.calmer = Muse()
     app.sync.ingest(message(app, text="I had an awful day."))
     await drain(app)
     assert (app.engine.count(), app.calmer.count()) == (1, 0)
-    app.suggestions.set_choice(KEY, "idioms")
+    app.suggestions.set_settings(KEY, True, "idioms")
     app.sync.ingest(message(app, 2, text="It keeps getting worse."))
     await drain(app)
     idiom_set = (1, 1) if writer == "muse" else (2, 0)
@@ -196,7 +195,7 @@ async def test_the_gates_winner_writes_idiom_sets_and_plain_sets_stay_on_mimo(
 
 
 def test_the_idioms_frame_and_field_reach_only_idiom_sets():
-    assert DEFAULTS_REVISION == 15
+    assert DEFAULTS_REVISION == 16
     plain = instructions("response_suggestions", {})
     idioms = instructions("response_suggestions", {"idioms": True})
     assert IDIOMS_FRAME not in plain and "[Owner guidance: idioms]" not in plain
@@ -230,18 +229,18 @@ async def test_a_folded_set_stays_folded_everywhere_until_the_next_set(tmp_path)
 
 async def test_choice_and_fold_routes(served, monkeypatch):  # noqa: F811
     client, manager, conversation = served
-    assert client.get(f"{BASE}/suggestions/choice").json() == {
-        "choice": "on",
-        "idioms": True,
+    assert client.get(f"{BASE}/suggestions/settings").json() == {
+        "automatic": True,
+        "style": "friendly",
     }
-    chosen = client.post(f"{BASE}/suggestions/choice", json={"choice": "idioms"})
-    assert chosen.json() == {"choice": "idioms", "idioms": True}
-    monkeypatch.setattr(domain, "IDIOMS_LIVE", False)
-    refused = client.post(f"{BASE}/suggestions/choice", json={"choice": "idioms"})
-    assert refused.status_code >= 400
+    chosen = client.post(
+        f"{BASE}/suggestions/settings", json={"automatic": True, "style": "idioms"}
+    )
+    assert chosen.json() == {"automatic": True, "style": "idioms"}
     assert (
         client.post(
-            f"{BASE}/suggestions/choice", json={"choice": "sometimes"}
+            f"{BASE}/suggestions/settings",
+            json={"automatic": True, "style": "sometimes"},
         ).status_code
         == 422
     )
@@ -257,8 +256,10 @@ async def test_choice_and_fold_routes(served, monkeypatch):  # noqa: F811
         f"{BASE}/suggestions/fold", json={"attempt": "c" * 32, "folded": False}
     )
     assert stale.status_code == 409
-    off = client.post(f"{BASE}/suggestions/choice", json={"choice": "off"})
-    assert off.json() == {"choice": "off", "idioms": False}
+    off = client.post(
+        f"{BASE}/suggestions/settings", json={"automatic": False, "style": "friendly"}
+    )
+    assert off.json() == {"automatic": False, "style": "friendly"}
     assert client.get(BASE).json()["suggestions"]["reason"] == "off"
     current = draft(client)
     inserted = client.post(

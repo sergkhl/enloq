@@ -291,7 +291,7 @@ export function AiScreen({
             write={write}
           />
           <SettingSwitch
-            label="Suggestions"
+            label="Automatic suggestions"
             explanation={EXPLAIN.suggestions}
             route="suggestions"
             value={settings.suggestions}

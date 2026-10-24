@@ -92,6 +92,7 @@ async def run(tmp_path, *, mode="receipted", threshold=None):
         answers = {
             "emotion": choice(code, 0.8),
             "suggestions_useful": {"type": "noul", "noul": 0.1 if quiet else 0.9},
+            "hostility": {"type": "noul", "noul": 0.0},
         }
         return httpx.Response(
             200,
@@ -197,7 +198,12 @@ async def test_each_case_decides_once_and_emotional_or_useful_blocks_get_one_set
     assert paths["en_long_worried_request"] == "rewritten"
     assert paths["mixed_long_invitation"] == "rewritten"
     for payload in incoming:
-        assert set(payload["questions"]) == {"emotion", "suggestions_useful", "sarcasm"}
+        assert set(payload["questions"]) == {
+            "emotion",
+            "suggestions_useful",
+            "hostility",
+            "sarcasm",
+        }
         assert "data:" not in json.dumps(payload)
     for payload in labels:
         assert set(payload["questions"]) == {"purpose_1", "purpose_2"}

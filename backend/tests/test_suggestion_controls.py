@@ -1,7 +1,6 @@
 """S3: owner controls, the conversation projection and revision-safe insertion."""
 
 import base64
-import time
 
 import pytest
 from enloq.api.server import create_app
@@ -108,6 +107,8 @@ async def test_settings_switch_and_guidance_are_shared_and_versioned(served):
     assert off["suggestions"] is False
     assert client.get(BASE).json()["suggestions"] == {
         "state": "none",
+        "kind": "automatic",
+        "style": "friendly",
         "reason": "off",
         "attempt": None,
         "options": [],
@@ -269,17 +270,27 @@ async def test_stale_tabs_cannot_insert_elsewhere_or_overwrite_newer_text(served
     no_work(conversation)
 
 
-async def test_rewriting_lock_refuses_and_rewrite_runs_normally_after_insert(served):
+async def test_generate_after_insert_preserves_the_selected_draft_and_rewrite_is_removed(
+    served,
+):
     client, manager, conversation = served
     await ready(conversation)
     inserted = insert(client, draft(client)).json()["draft"]
     assert inserted["text"] == OPTIONS[0].text
-    started = client.post(f"{BASE}/rewrite", json={"revision": inserted["revision"]})
-    assert started.status_code == 200 and started.json()["state"] == "rewriting"
-    assert insert(client, started.json()).status_code == 409
-    deadline = time.monotonic() + 5
-    while client.get(BASE).json()["draft"]["state"] == "rewriting":
-        assert time.monotonic() < deadline
-        time.sleep(0.05)
-    finished = client.get(BASE).json()["draft"]
-    assert finished["state"] == "rewritten" and finished["undo"] == OPTIONS[0].text
+    started = client.post(
+        f"{BASE}/suggestions/generate", json={"revision": inserted["revision"]}
+    )
+    assert started.status_code == 200 and started.json()["kind"] == "manual"
+    assert client.get(BASE).json()["draft"] == inserted
+    assert (
+        client.post(
+            f"{BASE}/rewrite", json={"revision": inserted["revision"]}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"{BASE}/rewrite/stop", json={"revision": inserted["revision"]}
+        ).status_code
+        == 404
+    )

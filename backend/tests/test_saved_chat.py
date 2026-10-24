@@ -158,8 +158,8 @@ async def test_saved_messages_send_and_reply_but_never_rewrite_or_react(tmp_path
         draft["revision"],
         lambda d: d.update(text="A note to myself", reply_to=1, undo=None),
     )
-    with pytest.raises(Refused, match="not eligible for provider processing"):
-        await app.rewriting.outgoing(KEY, draft["revision"])
+    with pytest.raises(Refused, match="private chats"):
+        app.suggestions.generate(KEY, draft["revision"])
     operation = await app.delivery.submit(KEY, draft["revision"])
     sent = await app.delivery.drain(operation["id"])
     assert sent["state"] == "confirmed"

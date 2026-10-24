@@ -3,8 +3,33 @@
 This is the single list of what remains open: proposals awaiting an interview,
 decisions awaiting the owner, follow-ups an agent can take up and the owner's
 own gates. Each item names its owning ADR. Remove an item when it is done;
-decisions go into the ADR, not here. No plan is active
+decisions go into the ADR, not here. Active work is listed in the
 ([plan index](README.md)).
+
+## Adopted design awaiting implementation
+
+Implementation is authorized and active in the
+[notification and suggestion plan](2026-10-24-notifications-and-suggestions.md).
+Its owning ADRs below are adopted; delivery remains pending until the plan's
+checks, VPS deployment and Saved Build are complete.
+
+- **Prompt notifications and hostile-only softening**
+  ([ADR 20](../adr/0020-minimal-reading-and-ready-notifications.md),
+  [ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md),
+  [ADR 54](../adr/0054-incoming-text-combined-not-rewritten.md)): implement the
+  independent arrival screen, original fallback, silent burst updates and
+  renamed Soften hostile messages feature. Existing mood-triggered checks
+  establish no hostile-only behavior. Keep this separate from Unseen
+  readiness and preserve the existing full-block quiet period.
+- **Manual suggestions, automation controls, Style and diagnostics**
+  ([ADR 25](../adr/0025-emotion-response-suggestions.md),
+  [ADR 49](../adr/0049-useful-response-suggestions.md),
+  [ADR 56](../adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)):
+  remove outgoing Rewrite and tones, add draft-aware manual generation,
+  split per-chat Automatic suggestions from shared manual/automatic Style,
+  convert existing settings and add content-free generation/skip diagnostics.
+  Build the app and matching web design under their normal checks and
+  deployment/Saved Build requirements when implementation is instructed.
 
 ## Proposals awaiting an interview
 
@@ -132,8 +157,9 @@ Act only if they recur or grow.
 - **The first member** ([ADR 48](../adr/0048-members-on-the-shared-service.md)):
   forward the APK to a friend; their sign-in and Join Request, the push on the
   owner's devices and approval in People.
-- **Calming** ([ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)):
-  read the tenth gate run's pairs.
+- **Soften hostile messages** ([ADR 53](../adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)):
+  the owner's reading of authored pairs remains open. The existing tenth
+  mood-triggered gate's pairs do not establish the adopted hostile-only rule.
 - **Memory and Idioms** ([ADR 56](../adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md),
   [ADR 55](../adr/0055-person-and-account-memory-and-traits.md)): switch
   Remember this chat on where wanted; Retry the one failed first memory update
@@ -178,4 +204,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 1,777 are used. Add each check's requests here.
+total; 1,778 are used. Add each check's requests here.

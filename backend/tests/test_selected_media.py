@@ -23,7 +23,6 @@ from fastapi import HTTPException
 from PIL import Image
 
 from backend.tests.test_catalog import load
-from backend.tests.test_outgoing_stream import HeldEngine
 from backend.tests.test_rebuild import attach, edit, fixture, message
 
 KEY = "1/user:42"
@@ -271,8 +270,8 @@ async def test_photo_mixing_and_sticker_text_actions_refuse_without_mutation(tmp
     with pytest.raises(Refused, match="Remove the selected"):
         attach(app)
     assert set(app.attachments.root.iterdir()) == before_files
-    with pytest.raises(Refused, match="Remove the sticker"):
-        app.rewriting.outgoing_work.start(KEY, selected["revision"])
+    with pytest.raises(Conflict, match="composer is busy"):
+        app.suggestions.generate(KEY, selected["revision"])
     with pytest.raises(Refused, match="Remove the sticker"):
         app.rewriting.undo(KEY, selected["revision"])
     assert app.store.draft(KEY) == selected and not app.engine.calls
@@ -684,129 +683,6 @@ async def test_retired_picker_result_cannot_start_new_durable_selection(tmp_path
     assert (
         not app.store.rows("SELECT * FROM selected_media")
         and not app.transport.catalog_downloads
-    )
-
-
-async def test_gif_rewrite_sends_only_the_authored_caption_to_inference(tmp_path):
-    app = selected_app(tmp_path)
-    edit(app, "My authored caption")
-    selected = await stage(app)
-    rewritten = await app.rewriting.outgoing(KEY, selected["revision"])
-    [packet] = [
-        packet for role, packet in app.engine.calls if role == "outgoing_rewrite"
-    ]
-    assert packet["draft"] == {"text": "My authored caption"} and packet["images"] == []
-    serialized = json.dumps(packet)
-    assert "document_id" not in serialized and "file_reference" not in serialized
-    assert selected["selected_media"]["id"] not in serialized
-    assert rewritten["selected_media"] == selected["selected_media"]
-
-
-async def test_delayed_gif_preparation_refuses_rewrite_without_stranding_composer(
-    tmp_path,
-):
-    app = selected_app(tmp_path)
-    edit(app, "My authored caption")
-    value = await item(app)
-    entered, release = asyncio.Event(), asyncio.Event()
-    original = app.transport.catalog_download
-
-    async def delayed(*args, **kwargs):
-        entered.set()
-        await release.wait()
-        return await original(*args, **kwargs)
-
-    app.transport.catalog_download = delayed
-    task = asyncio.create_task(
-        app.selected_media.select(
-            KEY, app.store.draft(KEY)["revision"], BROWSER, value.token, value.revision
-        )
-    )
-    await entered.wait()
-    preparing = app.store.draft(KEY)
-    assert preparing["selected_media"]["status"] == "preparing"
-    try:
-        with pytest.raises(Refused, match="preparation"):
-            app.rewriting.outgoing_work.start(KEY, preparing["revision"])
-        assert app.store.draft(KEY) == preparing
-        assert not app.store.rows("SELECT * FROM jobs")
-        assert not app.store.rows("SELECT * FROM rewrite_streams")
-        assert not app.engine.calls
-    finally:
-        release.set()
-    ready = await task
-    rewritten = await app.rewriting.outgoing(KEY, ready["revision"])
-    assert rewritten["state"] == "rewritten"
-    assert rewritten["selected_media"] == ready["selected_media"]
-    assert not app.store.rows("SELECT * FROM rewrite_streams")
-    assert (
-        app.selected_media.selected_file(KEY, ready["selected_media"]["id"])[
-            1
-        ].read_bytes()
-        == media_bytes()
-    )
-
-
-@pytest.mark.parametrize("action", ["discard", "retry"])
-@pytest.mark.parametrize("direct_storage", [False, True])
-async def test_active_gif_caption_rewrite_locks_selection_actions_until_completion(
-    tmp_path, action, direct_storage
-):
-    app = selected_app(tmp_path)
-    edit(app, "My authored caption")
-    original = app.transport.catalog_download
-    if action == "retry":
-
-        async def failed(*args, **kwargs):
-            raise Unavailable("Authored interrupted GIF download")
-
-        app.transport.catalog_download = failed
-    selected = await stage(app)
-    identity = selected["selected_media"]["id"]
-    assert selected["selected_media"]["status"] == (
-        "failed" if action == "retry" else "ready"
-    )
-    app.transport.catalog_download = original
-    app.engine = HeldEngine()
-    owner = app.rewriting.outgoing_work
-    pending = owner.start(KEY, selected["revision"])
-    task = owner.tasks[pending["attempt"]]
-    await app.engine.started.wait()
-    locked = app.store.draft(KEY)
-    private = app.store.selected_media.get(KEY, identity)
-    downloads = list(app.transport.catalog_downloads)
-    try:
-        with pytest.raises(Refused, match="Stop or undo"):
-            if action == "discard":
-                service = (
-                    app.store.selected_media if direct_storage else app.selected_media
-                )
-                service.discard(KEY, locked["revision"], identity)
-            elif direct_storage:
-                app.store.selected_media.preparing(KEY, locked["revision"], identity)
-            else:
-                await app.selected_media.retry(KEY, locked["revision"], identity)
-        assert app.store.draft(KEY) == locked
-        assert app.store.selected_media.get(KEY, identity) == private
-        assert app.transport.catalog_downloads == downloads
-        assert owner.view(KEY)["text"] == "Partial rewrite"
-    finally:
-        app.engine.finish.set()
-    await task
-    completed = app.store.draft(KEY)
-    assert completed["state"] == "rewritten" and completed["text"] == "Final rewrite"
-    assert completed["selected_media"] == selected["selected_media"]
-    assert not app.store.rows("SELECT * FROM rewrite_streams")
-    if action == "discard":
-        changed = app.selected_media.discard(KEY, completed["revision"], identity)
-        assert changed["selected_media"] is None
-    else:
-        changed = await app.selected_media.retry(KEY, completed["revision"], identity)
-        assert changed["selected_media"]["status"] == "ready"
-        assert changed["selected_media"]["id"] == identity
-        assert app.transport.catalog_downloads == [("73", False)]
-    assert (
-        changed["text"] == "Final rewrite" and changed["undo"] == "My authored caption"
     )
 
 

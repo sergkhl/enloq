@@ -197,6 +197,7 @@ class AccountManager:
         assistant.media.authorized = assistant.authorized
         assistant.notifications.unavailable = lambda: (
             not self.registry.processing(identity)["ai_enabled"]
+            or self.registry.decision_route() is not None
             or self.registry.budget(
                 clock=store.clock, timezone=store.timezone, member=member
             )["reached"]

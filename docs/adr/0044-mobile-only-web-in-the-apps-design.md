@@ -40,7 +40,7 @@ wide, centered on the page background, so a desktop shows what a large phone
 shows. Sheets and dialogs open inside it.
 
 **Enter adds a new line (Q4).** As in the app, Enter adds a new line and
-Rewrite and Send act only from their buttons; ADR 22's Enter, Cmd+Enter and
+Generate suggestions and Send act only from their buttons; ADR 22's Enter, Cmd+Enter and
 Shift+Enter shortcuts are gone. Right-click and the menu key still open a
 message's sheet, since an Android long-press reaches the web as the same
 event.
@@ -92,7 +92,7 @@ The rebuild's units, which code comments cite:
 - **MW2:** reading in the app's design, private and group, the message sheet,
   and tappable links in both clients
   ([ADR 46](0046-the-apps-catch-up-units.md) Q9).
-- **MW3:** composing: the app's composer with the tone sheet, Enter's new line
+- **MW3:** composing: the app's composer with manual suggestions, Enter's new line
   (Q4), Pending Sends and Reply Quotes.
 - **MW4:** connecting with the code (Q10), notifications and Settings in the
   app's design.

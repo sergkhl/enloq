@@ -10,12 +10,23 @@ import json
 from ..domain.suggestions import EXPIRY
 
 DDL = "CREATE TABLE IF NOT EXISTS suggestion_state (chat_key TEXT PRIMARY KEY REFERENCES chats(key), source_time REAL NOT NULL, body TEXT NOT NULL)"
-# ADR 56 Q12 A: a private chat's own Suggestions choice, kept once made
-# (without one, it is On).
-CHOICE_DDL = (
-    "CREATE TABLE IF NOT EXISTS suggestion_choice (chat_key TEXT PRIMARY KEY, "
-    "choice TEXT NOT NULL, changed REAL NOT NULL)"
+SETTINGS_DDL = (
+    "CREATE TABLE IF NOT EXISTS suggestion_settings (chat_key TEXT PRIMARY KEY, "
+    "automatic INTEGER NOT NULL, style TEXT NOT NULL, changed REAL NOT NULL)"
 )
+
+
+def migrate_settings(db):
+    db.execute(SETTINGS_DDL)
+    if db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='suggestion_choice'"
+    ).fetchone():
+        db.execute(
+            "INSERT OR IGNORE INTO suggestion_settings SELECT chat_key, choice!='off', "
+            "CASE WHEN choice='idioms' THEN 'idioms' ELSE 'friendly' END,changed "
+            "FROM suggestion_choice"
+        )
+        db.execute("DROP TABLE suggestion_choice")
 
 
 def settle(db, chat_key, body, state, reason=None):

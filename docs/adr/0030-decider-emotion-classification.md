@@ -64,25 +64,29 @@ million input tokens with free output.
   AI-content boundary in the source reuse note.
 
 The roles on this route are Emotion Classification and Reaction Assessment,
-the usefulness question and suggestion labels (ADR 49), sarcasm (ADR 53),
+the usefulness question and suggestion labels (ADR 49), hostility and sarcasm
+(ADR 53),
 group ad and bot filtering ([ADR 34](0034-group-chats-and-daily-briefings.md))
 and trait scales ([ADR 55](0055-person-and-account-memory-and-traits.md)).
 Generation roles keep their own routes
 ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)).
 
 **What one incoming request asks.** The emotion code, whether suggestions
-would be useful (ADR 49 Q2) and whether the latest block is sarcastic, a fixed
-question with no owner field (ADR 53).
+would be useful (ADR 49 Q2) and whether the latest block is sarcastic. An
+explicit hostile-wording question, independent of emotion, governs softening
+(ADR 53); its immediate
+notification screen follows ADR 20. Both use the same pinned decision route,
+not a writing model.
 
-**Timing (Q5).** A request runs only for a private chat's block that can
+**Timing (Q5).** An emotion request runs only for a private chat's block that can
 become the current source under ADR 22, after its 30 quiet seconds:
 
 - **Text only.** A block of text is decided from its originals
   ([ADR 54](0054-incoming-text-combined-not-rewritten.md)).
-- **With media, calming on.** In a chat with calming on, the default, every
+- **With media, softening On.** In a chat with softening On, the default, every
   block is decided from its originals before any rewrite, and image meanings
   don't feed the decision (ADR 53 Q7).
-- **With media, calming off.** The decision runs right after the rewrite
+- **With media, softening Off.** The decision runs right after the rewrite
   validates and publishes, using its freshly generated image meanings. A
   failed or withheld rewrite leaves emotion unavailable.
 
@@ -91,8 +95,10 @@ has them, quote and forward attribution and bounded Supporting Context. Raw
 images, Person Memory and Account Memory are never sent, and nothing is
 inferred from faces. The header shows no emoji until the decision publishes,
 and the Correspondent Profile says it is waiting. Suggestions follow the
-decision. In a chat with calming on, readiness and notifications wait for the
-decision; otherwise they don't wait for emotion.
+decision automatically. With softening On, the block's readiness waits for
+its current hostility decision and required rewrite. Notifications instead
+use immediate screening with a five-second arrival deadline and the original
+fallback (ADR 20), not this quiet period or emotion's availability.
 
 **Uncertainty (Q6).** `unknown` is an explicit option. When the selected
 option's probability is below 0.35, the stored code is `unknown`.
@@ -160,7 +166,7 @@ until they expire; nothing is reprocessed.
   retention, and makes one decision request per qualifying block. Decided from
   originals, an image-heavy block is judged without its image meaning.
 - Not adopted: classifying in parallel with the rewrite in a chat with
-  calming off (it would miss new image meanings), and sending raw images
+  softening Off (it would miss new image meanings), and sending raw images
   (which would allow facial inference).
 - Known limits, kept in [inference](../inference.md#retained-acceptance-limits)
   for the owner's quality review: the decision model judged authored

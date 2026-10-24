@@ -331,10 +331,14 @@ work; it joins the Private list once a message is sent or received there.
 
 ## Composing
 
-The composer follows the web's rules: Rewrite with the remembered tone
-(Neutral, Professional or Friendly casual), Stop while it streams, Undo, and a
-separate Send. Return inserts a newline. A long press on a message offers
-Reply and Copy; in AI reading, Reply answers the block's latest source.
+A private composer has separate **Generate suggestions** and **Send** buttons.
+A blank draft requests messages to continue the conversation; a nonblank draft
+requests additions at the captured cursor. Generation keeps the draft editable
+and sends nothing. Selecting an option inserts it, preserving attachments and
+the reply target; **Undo suggestion** restores the prior text. The per-chat
+Style applies to manual and automatic sets. Groups and Saved Messages have no
+generation button. Return inserts a newline. A long press offers Reply and
+Copy; in AI reading, Reply answers the block's latest source.
 Swiping a message from right to left past a threshold shows a reply arrow with
 a light vibration and replies the same way, wherever the sheet offers Reply;
 it is off during selection and on pending sends. Every reply shows a Reply
@@ -428,8 +432,8 @@ from the latest message, Scroll to latest brings it back.
 A private chat's header ends with the Reading View's robot, pressed for AI
 reading. In AI reading, a block that is text only shows its originals
 together in one bubble headed "N messages · time", without "AI ·" or a status
-([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)); a calmed block's
-head ends with "Calmed"
+([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)); a softened block's
+head ends with "Softened"
 ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)); a
 block with an image, a voice note or a video circle shows its rewrite. A block
 without AI text that failed or stopped shows Retry beside its status and in
@@ -447,10 +451,10 @@ The header shows the emotion's emoji right after the name, which gives way
 first. Tapping the photo, name or emoji opens the **Correspondent Profile**:
 the person's photo, name, @username, phone number when Telegram shares it and
 bio, which the service reads from Telegram on each opening and never stores;
-the emotion with its reason, source and time; **Calm this chat**, on by
-default, which rewrites the person's frustrated or angry messages calmly; the
-chat's **Suggestions** choice, Off · On · Idioms (Idioms once the server
-offers it), On by default
+the emotion with its reason, source and time; **Soften hostile messages**, On
+by default, for hostile wording independently of anger or frustration;
+**Automatic suggestions**, On by default; and **Style**, Friendly by default,
+with Friendly, Professional and Idioms choices for both generation kinds
 ([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md));
 **Remember this chat**, off by default; **Cares about**, the chat's Person
 Memory; **Traits**; and Copy chat link
@@ -503,7 +507,7 @@ says why, such as Telegram Premium. A tile stages its GIF or sticker above
 the composer while the service prepares it, with Retry if that fails and a
 button to remove it; the staging survives restarts. Send sends a GIF with the
 text as its caption. A sticker sends on its own: the text field steps aside,
-Rewrite, Undo and suggestions wait, and the text stays as Draft kept. Video
+Generation, Undo and suggestion insertion wait, and the text stays as Draft kept. Video
 stickers show still on the phones.
 
 ## Groups
@@ -610,7 +614,7 @@ icon and what it holds on the right, and opens a page of its own:
 - **AI** (a chip; **Paused** while a role is paused): **Minimum characters**
   (the Processing Character Threshold, 0 to 10,000, which governs group
   briefings), **Model calls at once** (1 to 8), the **Memory** and
-  **Suggestions** switches, and **Guidance** (Processing Guidance), which
+  **Automatic suggestions** switches, and **Guidance** (Processing Guidance), which
   names its version. While the decision model is unavailable, a notice above
   them says since when.
 - **Privacy** (a lock; the trusted count): **Pair a phone**
@@ -653,8 +657,8 @@ The app has no Help screen; this is what a Help screen would explain.
 
 - **Reading.** The robot in a chat's header switches between AI and Originals
   reading for every chat. In AI reading, text arrives as it was sent, grouped
-  into one bubble per block; a frustrated or angry block is calmed while Calm
-  this chat is on, and marked Calmed. A block with an image, a voice note or
+  into one bubble per block; hostile wording is softened while Soften hostile messages is On and is marked
+  Softened. Anger or frustration alone is left as sent. A block with an image, a voice note or
   a video message is rewritten as readable text. The originals keep the exact
   messages and order. The Unread messages line marks where unseen messages begin when a
   chat opens; it is Enloq's own marker and doesn't change what Telegram shows
@@ -674,26 +678,21 @@ The app has no Help screen; this is what a Help screen would explain.
 - **The header emoji** estimates the emotion in the latest incoming block; 😐
   also stands in while that is uncertain, pending, changed or older than 12
   hours.
-- **Suggestions**: when the latest incoming block shows a clear emotion or
-  calls for a reply, up to three short replies appear above the message
-  field. A tap inserts one at the cursor without sending, and Undo restores
-  your text. Folding them holds on every client until the next set; each
-  chat's profile can turn them off or ask for idioms. They go when new
-  messages arrive, after your next message or after 12 hours.
-- **Memory**: with Remember this chat on in a person's profile, Enloq notes
-  what they care about and their traits, and what you care about in About
-  you; suggestions read what each of you cares about.
-- **Writing.** Rewrite changes your draft in the selected tone and Send sends
-  the message; choosing a tone does neither, and the last tone is remembered
-  across accounts. Enter adds a new line. Stop keeps the partial rewrite as an
-  editable draft; Undo restores the original until you edit again; a draft
-  can't be sent while it is rewriting. Swipe a message to the left to reply,
-  and use the pencil on Private to write to someone new.
+- **Suggestions**: automatic sets appear for a current emotional or useful
+  incoming block; reactions still need both signals. **Generate suggestions**
+  works with automation Off and after your own message or an ended exchange.
+  A current manual set stays until replaced or withdrawn by a draft/source
+  change or its 12-hour request-time expiry. Style changes apply to the next
+  generation, without starting work. Selection inserts, Undo restores, and
+  Send remains separate.
+- **Writing.** Write, attach or reply, then press Send. Manual generation
+  offers optional wording and never replaces or sends the draft. Outgoing
+  Rewrite and its tone controls are removed.
 - **Groups** list basic groups and supergroups active in the last seven days.
   Group AI processing starts Off; turn it on in the group's ⋮. Groups offer
   Neutral, Professional and Friendly casual, and send no sound or push.
 - **Budgets.** The Daily Budget pays private-chat processing and every
-  Rewrite; the Group Briefing Budget pays briefings and their Retry. Each is
+  suggestions and arrival screening; the Group Briefing Budget pays briefings and their Retry. Each is
   shared by all your accounts and never changes by itself. Counted spending
   is the provider's receipts plus a flat estimate for each unknown cost. New
   calls wait at the limit, and started calls may finish slightly past it.
@@ -732,7 +731,7 @@ The Maestro flows in `mobile/maestro/` (`journeys.yaml` runs
 `mobile/maestro/flows/` in order) walk the app on the booted simulator (Enloq)
 or the connected phone (Enloq Dev) against that fixture only: pairing by
 pasted link, with the notification ask that follows it dismissed on Android;
-both reading views; a Reply with Rewrite, Undo and Send whose quote shows in
+both reading views; a Reply with generation, insertion, Undo and Send whose quote shows in
 the composer and after sending; a group with its Group Profile, Group AI
 processing, Update briefing through the fixture's fake engine, a citation and
 Return to briefing, a Reply and today's new-messages spoiler; Saved; Settings

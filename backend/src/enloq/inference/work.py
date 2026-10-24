@@ -23,7 +23,6 @@ from .openrouter import (
     STREAMED_ROLES,
     IncomingRewrite,
     MemoryUpdate,
-    Rewrite,
     TraitNotes,
     has_target_text,
 )
@@ -43,12 +42,12 @@ ROLES = (
     frozenset(
         {
             "incoming_rewrite",
-            "outgoing_rewrite",
             "chat_memory",
             "response_suggestions",
             "suggestion_labels",
             "reaction_assessment",
             "emotion_classification",
+            "hostility_screen",
             "trait_scales",
             "trait_notes",
         }
@@ -66,6 +65,7 @@ BACKGROUND = (
             "suggestion_labels",
             "reaction_assessment",
             "emotion_classification",
+            "hostility_screen",
             "trait_scales",
             "trait_notes",
         }
@@ -79,6 +79,7 @@ DECIDED = (
     frozenset(
         {
             "emotion_classification",
+            "hostility_screen",
             "reaction_assessment",
             "suggestion_labels",
             "trait_scales",
@@ -95,7 +96,7 @@ ROUTES = {
 # Roles whose repeated format failures pause automatic dispatch. Suggestions
 # never pause: each normal changed source stays eligible for one attempt and
 # cannot touch another role's count (ADR 25).
-FORMAT_PAUSED = frozenset({"incoming_rewrite", "outgoing_rewrite", "chat_memory"})
+FORMAT_PAUSED = frozenset({"incoming_rewrite", "chat_memory"})
 # Muse wrote an emoji beyond U+FFFF as \u0001F973, five hex digits after
 # \u000, where JSON needs a surrogate pair (ADR 56's idioms gate): read it as
 # the emoji it names rather than as a control character and four letters.
@@ -143,7 +144,6 @@ def validate_output(role, response, packet):
         content = normalize_suggestions(content, packet)
     model = {
         "incoming_rewrite": IncomingRewrite,
-        "outgoing_rewrite": Rewrite,
         "chat_memory": MemoryUpdate,
         "response_suggestions": ResponseSuggestions,
         "trait_notes": TraitNotes,

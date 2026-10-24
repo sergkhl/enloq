@@ -30,7 +30,11 @@ def register(app):
             value = await generate(role, packet)
             state_ = json.dumps(packet.get("state", {}), ensure_ascii=False)
             if role == "emotion_classification" and MARK in state_ and value:
-                value = {**value, "emotion": choice("angry", 0.9)}
+                value = {
+                    **value,
+                    "emotion": choice("angry", 0.9),
+                    "hostility": {"type": "noul", "noul": 0.9},
+                }
             return value
 
         decider.generate = answer

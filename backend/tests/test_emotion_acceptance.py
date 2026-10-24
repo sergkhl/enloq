@@ -62,6 +62,8 @@ async def run(tmp_path, *, mode="receipted", budget=None, rates=None):
             answers = {"emotion": choice("elated", 0.8)}
         if "suggestions_useful" in payload["questions"]:
             answers["suggestions_useful"] = {"type": "noul", "noul": 0.7}
+        if "hostility" in payload["questions"]:
+            answers["hostility"] = {"type": "noul", "noul": 0.0}
         if all(name.startswith("ad_") for name in payload["questions"]):
             chance = 1.5 if mode == "format" else 0.95
             answers = {

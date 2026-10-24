@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { chooseView, seedGroups, trust } from "./fixture";
 
-// MW3: composing in the app's design. The fixture's rewrite returns the
-// draft unchanged, so a journey waits for Undo to become available.
+// Composing in the app's design: generation preserves the draft until selection.
 test.beforeEach(async ({ page }) => {
   await trust(page);
 });
@@ -15,11 +14,16 @@ async function replyTo(page: Page, text: string) {
     .tap();
 }
 
-async function rewriteUndoSend(page: Page, note: string) {
+async function suggestUndoSend(page: Page, note: string) {
   const field = page.getByRole("textbox", { name: "Message" });
   await field.fill(note);
-  await page.getByRole("button", { name: "Rewrite", exact: true }).tap();
-  const undo = page.getByRole("button", { name: "Undo rewrite" });
+  await page.getByRole("button", { name: "Generate suggestions" }).tap();
+  await expect(field).toHaveValue(note);
+  await page
+    .getByRole("region", { name: "Response suggestions" })
+    .getByRole("button", { name: /^Acknowledge/ })
+    .tap();
+  const undo = page.getByRole("button", { name: "Undo suggestion" });
   await expect(undo).toBeEnabled({ timeout: 20000 });
   await undo.tap();
   await expect(field).toHaveValue(note);
@@ -29,7 +33,7 @@ async function rewriteUndoSend(page: Page, note: string) {
   ).toBeVisible({ timeout: 20000 });
 }
 
-test("a private chat rewrites, undoes and sends a reply; Enter adds a line", async ({
+test("a private chat generates, inserts, undoes and sends a reply; Enter adds a line", async ({
   page,
 }) => {
   await page.getByRole("button", { name: /^Alex · weekend plans/ }).tap();
@@ -40,8 +44,7 @@ test("a private chat rewrites, undoes and sends a reply; Enter adds a line", asy
   await field.pressSequentially("line two");
   await expect(field).toHaveValue("line one\nline two");
   await expect(page.getByText("Processing…")).toHaveCount(0);
-  // The paperclip offers Photos, GIFs and Stickers (CU5); the tone opens
-  // a sheet.
+  // The paperclip offers Photos, GIFs and Stickers (CU5).
   await page.getByRole("button", { name: "Attach" }).tap();
   const attach = page.getByRole("menu", { name: "Attach" });
   await expect(attach.getByRole("menuitem")).toHaveText([
@@ -51,18 +54,16 @@ test("a private chat rewrites, undoes and sends a reply; Enter adds a line", asy
   ]);
   await page.keyboard.press("Escape");
   await expect(attach).toBeHidden();
-  // A private chat offers the same three tones as a group (ADR 53 Q1).
-  await page.getByRole("button", { name: "Rewrite tone" }).tap();
-  const tones = page.getByRole("radiogroup", { name: "Rewrite tone" });
-  await expect(tones.getByRole("radio")).toHaveCount(3);
-  await tones.getByRole("radio", { name: "Neutral" }).tap();
+  await expect(page.getByRole("button", { name: "Rewrite tone" })).toHaveCount(
+    0,
+  );
 
   await replyTo(page, "Can you bring the board game on Saturday?");
   await expect(
     page.getByText(/^Reply to Alex · weekend plans/).first(),
   ).toBeVisible();
   const note = `Bringing the board game ${Date.now()}`;
-  await rewriteUndoSend(page, note);
+  await suggestUndoSend(page, note);
   await expect(
     page
       .locator("article.app-bubble")
@@ -71,20 +72,26 @@ test("a private chat rewrites, undoes and sends a reply; Enter adds a line", asy
   ).toBeVisible();
 });
 
-test("a group rewrites, undoes and sends a reply in its own tones", async ({
+test("a group sends a reply without suggestion or outgoing rewrite controls", async ({
   page,
 }) => {
   await seedGroups(page);
   await page.getByRole("tab", { name: "Groups" }).tap();
   await page.getByRole("button", { name: /^Basic discussion/ }).tap();
   await chooseView(page, "originals");
-  await page.getByRole("button", { name: "Rewrite tone" }).tap();
-  const tones = page.getByRole("radiogroup", { name: "Rewrite tone" });
-  await expect(tones.getByRole("radio")).toHaveCount(3);
-  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Rewrite tone" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "Generate suggestions" }),
+  ).toHaveCount(0);
   await replyTo(page, "I will bring the printed agenda.");
   const note = `Group note ${Date.now()}`;
-  await rewriteUndoSend(page, note);
+  await page.getByRole("textbox", { name: "Message" }).fill(note);
+  await page.getByRole("button", { name: "Send", exact: true }).tap();
+  await expect(
+    page.locator("article.app-bubble").filter({ hasText: note }),
+  ).toBeVisible();
 });
 
 test("a send that isn't sent looks sent, and its sheet cancels it", async ({

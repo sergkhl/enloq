@@ -4,26 +4,23 @@ Enloq's model work runs in fixed roles, each on one exact Model Route with no
 selector and no fallback to another model or provider; speech's hosted
 fallback is the one adopted exception.
 
-- **Text roles**, written by MiMo: `incoming_rewrite`, `outgoing_rewrite`,
+- **Text roles**, written by MiMo: `incoming_rewrite`,
   `chat_memory` (Person and Account Memory), `trait_notes`,
   `response_suggestions` and the group roles `group_briefing_image`,
   `group_briefing_chunk` and `group_briefing`. Muse writes calmed incoming
-  rewrites ([Calming](#calming)) and idiom suggestion sets
+  rewrites ([Soften hostile messages](#soften-hostile-messages)) and idiom suggestion sets
   ([Response suggestions](#response-suggestions)) instead.
 - **Decision roles**, answered by Perplexity's decision model, which writes no
-  text: `emotion_classification`, `reaction_assessment`, `suggestion_labels`,
+  text: `hostility_screen`, `emotion_classification`, `reaction_assessment`, `suggestion_labels`,
   `trait_scales`, `group_ad_classification` and `group_bot_classification`
   ([Emotion Classification](#emotion-classification)).
 - **Speech**, the `transcript` role ([Speech transcripts](#speech-transcripts)).
 
 Incoming output contains combined wording plus image context keyed to target
-native IDs; image understanding is hidden in the ordinary UI. Outgoing output
-rewrites authored text in the selected tone (Neutral, Professional or Friendly
-casual), preserving language, facts, conditions, uncertainty and refusals. It
-sends nothing, invents no answer and reads no emotion: Outgoing Rewrite sends
-only the authored draft, its images and the chosen tone. Only
-`response_suggestions` may propose new wording, under the narrow
-[response-suggestion contract](#response-suggestions).
+native IDs; image understanding is hidden in the ordinary UI. Only
+`response_suggestions` proposes new wording, through manual generation or
+automatic eligibility. A nonblank manual draft supplies intent and the captured
+cursor; generation leaves the draft intact until an option is selected.
 
 ## Model routes and the proxy
 
@@ -68,13 +65,11 @@ only on or off, through Xiaomi's `extra_body.thinking`, which replaces the
 proxy route's own (thinking off). Muse requests carry the same pseudonym,
 schema and limits but no `extra_body`, which would replace its route's.
 
-- **Outgoing Rewrite** runs with thinking disabled, 4,096 output tokens and a
-  120-second attempt. A cap-length response takes about 105 seconds at the
-  listed 39 tokens per second.
-- **Every background role** runs with thinking enabled, 16,384 output tokens
-  and a 540-second attempt, which fits a cap-length response at a
-  32-tokens-per-second floor. Hidden reasoning shares the output cap, so
-  incoming text starts streaming later and readiness waits correspondingly.
+Text generation uses hidden reasoning, 16,384 output tokens and a 540-second
+attempt. Manual and automatic suggestions share those limits. Incoming text
+starts streaming after hidden reasoning, and readiness waits for validation.
+Arrival screening has its own five-second deadline, including queue and route
+preparation, and never streams a preview.
 
 The response must name the route as its `model`. Reasoning arrives beside the
 content and is discarded unread; content keeps a 1 MiB capture limit, and a
@@ -92,9 +87,8 @@ characters generated once from a cryptographic source and kept in the shared
 registry's member settings (`provider_user`). It is never logged or derived
 from account, Telegram or key material, and it reaches Xiaomi as sent.
 Xiaomi's listed terms are no prompt training, 30-day retention and processing
-in Singapore and the Netherlands; they are not zero retention. Xiaomi lists no
-stream cancellation: outgoing Stop and Undo still restore the draft at once and
-detach late output, but the provider may finish and bill.
+in Singapore and the Netherlands; they are not zero retention. Cancelling local work does not promise provider cancellation or a refund;
+observed receipts and unknown outcomes still count.
 
 The proxy keeps request and response bodies in its spend log. Every adapter
 sends `x-litellm-enable-message-redaction: true`, which keeps MiMo prompts and
@@ -112,9 +106,9 @@ updateable once. Finite checks neither read nor write these counts.
 
 Instructions are a fixed core per role plus owner-editable Processing Guidance
 ([ADR 15](adr/0015-owner-controlled-processing-memory-and-prompts.md)). The
-fields are the Faithfulness Rules, Incoming, Outgoing, Calming, Emotion
-extraction, the three tone definitions, Person memory, Account memory, Response
-suggestions, Idioms, When to suggest and Group briefings. Each holds at most
+fields are Faithfulness rules, Incoming rewriting, Soften hostile messages,
+Emotion extraction, Friendly, Professional, Person memory, Account memory,
+Response suggestions, Idioms, When to suggest and Group briefings. Each holds at most
 4,000 characters, is global across accounts and members, and is edited only by
 the owner through the authenticated Settings endpoint. Traits and the sarcasm
 question have fixed questions and no field.
@@ -149,7 +143,7 @@ Private incoming text is combined, not rewritten
 Video Circle and, while the registry's `text_rewriting` switch is off, no text
 at any length. The switch is off by default and not in Settings;
 `text_rewriting(store, db)` reads it. Every text block is held, decided and
-shown as its originals together, and [Calming](#calming) is its one rewrite.
+shown as its originals together, and [Soften hostile messages](#soften-hostile-messages) is its one rewrite.
 
 - **A text block in the rewrite path.** If a text block without analysed media
   still reaches `Rewriting.incoming` (a Retry) and its decision first doesn't
@@ -232,9 +226,6 @@ most 80. No JSON string needs a line break.
   tab inside a string, while any other raw control character stays
   `invalid_json`.
 
-Outgoing guidance has no structure rule, so Outgoing Rewrite keeps the authored
-message's shape.
-
 ## Concurrency, refusals and budgets
 
 Model calls share one global Concurrency Limit, 1 to 8 and 4 by default, set by
@@ -242,14 +233,13 @@ the owner in Settings and applied without a restart. Check provider request
 limits before raising it; Meta's Contributor route behind Muse may limit
 requests to 100 a minute. Waiting calls are served by class:
 
-1. outgoing Rewrite;
-2. new incoming work, including a per-block Retry;
-3. unread catch-up;
-4. Reaction Assessment;
-5. the chat-level run over older messages;
-6. response suggestions and their labels;
-7. group briefings and their filtering;
-8. memory updates and traits.
+1. new incoming work, including arrival screens and a per-block Retry;
+2. unread catch-up;
+3. Reaction Assessment;
+4. the chat-level run over older messages;
+5. manual or automatic response suggestions and their labels;
+6. group briefings and their filtering;
+7. memory updates and traits.
 
 An Emotion Classification takes the class of the incoming work it follows.
 Within a class the least recently served member goes first, then the least
@@ -263,7 +253,7 @@ most limit + 1 jobs prepare or call at once, and one job's unexpected error
 fails only that job. Blocks in one chat may run together, while a shared voice
 note is transcribed once.
 
-For background jobs (every role except Outgoing Rewrite), a missing or non-OK
+For generation jobs, a missing or non-OK
 exact route at preparation is a no-work refusal: the job is refused before any
 reservation or receipt exists. Preparation re-reads the route only when the
 running engine has no verification or it is over 24 hours old, so this catches
@@ -279,8 +269,9 @@ nothing and re-queue as a new attempt after the provider's requested backoff, or
 Account AI Off and budget waits still prevent dispatch; an explicit memory Retry
 keeps its permission through no-work backoff even when automatic work is
 format-paused. Missing required output parameters or unbounded rates fail
-immediately as a changed route contract. Outgoing Rewrite keeps its immediate
-failure and original draft/Undo restoration, without an automatic retry.
+immediately as a changed route contract. Arrival screens use the original
+notification fallback immediately on refusal, failure or deadline; they never
+retry or resample.
 
 Each member has two budgets ([ADR 15](adr/0015-owner-controlled-processing-memory-and-prompts.md),
 [ADR 34](adr/0034-group-chats-and-daily-briefings.md),
@@ -613,151 +604,97 @@ establishes broad semantic quality or the owner's adoption decision.
 
 ## Response suggestions
 
-[ADR 25](adr/0025-emotion-response-suggestions.md) adds `response_suggestions`
-under the same receipts, unknown-cost accounting, Daily Budget, Concurrency
-Limit and Account AI rules; it has no second budget or fallback. Plain sets are
-written by MiMo and idiom sets by Muse.
+[ADR 25](adr/0025-emotion-response-suggestions.md) and
+[ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)
+own automatic and manual `response_suggestions`. Both share the account
+member's Daily Budget, receipts, unknown-cost accounting, concurrency, Account
+AI switch and enabled memory. MiMo writes Friendly and Professional; Muse
+writes Idioms. There is no provider fallback.
 
-An incoming block qualifies with a usable non-neutral emotion (positive,
-excited, sad, worried, frustrated, angry or confused) *or* usefulness of
-`CALM_USEFULNESS` (0.7) or more
-([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
-`Suggestions.qualifies` decides this for scheduling, the projection and
-insertion; usefulness counts while the block's decision is current, even with
-unknown emotion. A reaction's set needs both a yes on usefulness and a usable
-non-neutral emotion.
+Each private chat has independent **Automatic suggestions** (On by default)
+and **Style** (Friendly by default; Friendly, Professional or Idioms).
+`GET` and `POST /chats/{peer}/suggestions/settings` share the controls across
+the member's clients. `suggestion_settings` replaces `suggestion_choice`:
+Off becomes false/Friendly, On true/Friendly and Idioms true/Idioms. The
+server-wide Automatic suggestions switch is preserved. Removed Rewrite tones
+seed no style. A style change starts no work; queued and shown sets retain
+their captured style. Either automation switch Off hides automatic sets and
+cancels queued automatic generation only; manual sets stay usable.
 
-- **Scheduling.** Only a normal new or changed incoming job (class `new` or
-  `catchup`) whose following Emotion Classification qualifies queues one
-  request; the classification job is its attempt identity. Deliberate Retry
-  clicks, older-message runs, reads, restarts, tone or guidance changes and
-  switching Suggestions On never do.
-- **Failure isolation.** Scheduling happens in the classification's
-  publication transaction inside a savepoint, so a failure there leaves the
-  published emotion, the rewrite's readiness and notifications intact and logs
-  only `suggestion_schedule_unavailable`.
+**Automatic generation.** New or changed incoming work, after 30 quiet
+seconds, qualifies through a current usable non-neutral emotion or usefulness
+at least 0.7. A correspondent's reaction still needs both a non-neutral emotion
+and usefulness at least 0.5. An unchanged source reuses its pending, ready,
+empty or failed outcome. Reading, restarting, changing guidance or style and
+switching automation On never backfill or resample. Later own messages or
+reactions answer incoming sets; source changes, replacement and the 12-hour
+source-time lifetime withdraw them. The shared projection checks validity for
+reading, dispatch and insertion.
 
-One `suggestion_state` row per account chat holds the current record. Its
-source identity hashes the block revision, the latest-incoming barrier and
-every native, transient, transcript, image, attribution and derived dependency
-of the incoming input. An unchanged identity reuses pending, ready, empty and
-failed outcomes; only a no-work cancellation can be replaced. While pending,
-the row holds the prepared provider input: original targets, the bounded
-Supporting Context and direct reply, transcript text and validated image
-meaning. It never holds memory, raw images or guidance, and generation reads
-neither Telegram nor media. The input is capped at the 32,000-byte request
-bound plus four image meanings; a larger input fails as `too_large` with no
-call. Outcomes, and 12 hours past the source time, drop that copy; the record
-follows 30-day retention.
+**Manual generation.** `POST /chats/{peer}/suggestions/generate` names the
+exact saved draft revision and an optional UTF-16 cursor. It bypasses incoming,
+unanswered, emotion and usefulness gates, including after an own message or an
+ended exchange. A draft alone suffices. A blank draft with no usable cached
+conversation is refused. Input captures at most 20 same-chat messages from the
+last seven days and one cached direct reply, prioritising the newest context
+within 6,000 UTF-8 bytes including cached transcripts and image meanings.
+There is no history fetch, media preparation or reply chain. Draft text has a
+24,000-byte bound; the complete prepared packet has the existing 56,000-byte
+bound. No draft, attachment, reply target or send changes during generation.
 
-At dispatch the request gains `memory`
-([ADR 55](adr/0055-person-and-account-memory-and-traits.md)): `today`, the
-person's notes and the account holder's, each account note marked `may_say`
-only when every citation is in that chat. Dispatch rechecks Suggestions On, the
-chat's choice, Account AI, eligibility, freshness and budget. Budget and
-Account AI waits keep the undispatched attempt. An unavailable exact route or
-HTTP 429 or 402 is a no-work refusal: a new attempt after the provider's
-backoff or 30, 60 and 120 seconds, at most three times, then `refused`.
+A blank draft requests complete messages. A nonblank draft requests additions
+at its captured cursor, using the whole draft as intent, without repeating or
+replacing it. Each explicit press requests fresh alternatives; duplicate taps
+while the current manual request is pending reuse it. A current manual set
+owns the suggestion area, so finishing automatic work cannot overwrite it.
+Manual sets expire 12 hours after the request and withdraw on a draft revision,
+new message or used source, attribution or derivative change. Nothing
+regenerates on withdrawal. Settings changed during a call apply next time.
 
-The contract is zero to three distinct options, each at most 280 nonblank
-characters within the background output cap, with a purpose: `acknowledge`,
-`support`, `clarify`, `celebrate`, or the answer stances `accept`, `decline` and
-`later`. The writer writes each option, then names its stance; the schema puts
-the text first. The writer's purposes are not trusted:
+**Output and selection.** The writer returns zero to three distinct nonblank
+options, each at most 280 characters. One decision-model `suggestion_labels`
+call labels a nonempty set as acknowledge, support, clarify, celebrate,
+accept, decline or later. A yes or no needs a contrasting stance, while later
+may stand alone. A nonblank manual draft already supplies intent, so its
+additions may follow that stance alone; all factual constraints persist. With
+no supplied intent, options invent no facts, feelings, fault or commitments.
+Idioms retain ADR 56's adopted advice and common-expression exceptions.
 
-- **Labels.** Each written set gets one `suggestion_labels` request on the
-  decision route: a `purpose_N` choice question per reply, over the seven
-  purposes with fixed criteria. Its state is the same conversation (or
-  reaction) plus the replies' text only, never the writer's labels. Its
-  answers replace them.
-- **Shown while it runs.** The set shows as preparing (`running`).
-- **One-sided sets.** A set whose labels hold a yes (`accept`) or a no
-  (`decline`) must hold another stance beside it; deferrals (`later`) may
-  stand alone. A one-sided labelled set is a `format` failure, never
-  resampled.
-- **Failures.** A refused label request (including 401 or 403) fails the set
-  as `refused`, an invalid one as `format` and an unknown one as `provider`.
-  The written set is never resampled, a withdrawn set is cancelled instead,
-  and an interrupted label request is cancelled at restart.
+An empty set is a completed outcome. Format and provider failures, unknown
+outcomes and interrupted calls fail visibly; processed output is never
+resampled. No-work generation refusals retain the bounded three retries after
+provider backoff. Stale results keep their costs and never publish. Pending
+records keep only the bounded input, removing it on completion or expiry;
+content otherwise follows 30-day retention. Memory is read at dispatch under
+Remember this chat and is never part of the source identity.
 
-An empty list is a completed outcome and needs no labels. The fixed core
-permits grounded acknowledgement, sympathy and gentle questions, and answers
-only as contrasting stances when the latest communication asks for an answer,
-a decision or an action. It forbids facts the supplied conversation does not
-contain, the owner's feelings, admitted fault and pressure, and any other
-promise or commitment, and follows the incoming language (mixed: the owner's
-established recent language). From memory an option may ask about, wish luck
-with or acknowledge what the person cares about, judged against `today` and
-never claimed as still true; an account note is stated only where `may_say`
-allows. A reaction is never agreement.
+Selection posts attempt, option index and draft revision to
+`/suggestions/insert`. Manual additions use the captured cursor; automatic
+options use the selection's caret. Insertion preserves every existing draft
+character, adds separating spaces where words would join, retains attachments
+and reply target and stores the previous text for **Undo suggestion**. It
+never sends. Later expiry cannot remove inserted text. Folding remains shared
+through `/suggestions/fold` until the next set arrives.
 
-Format failures (`format`), unknown outcomes (`provider`) and
-restart-interrupted calls (`interrupted`) fail visibly without Retry or
-automatic resampling. An incoming block is also answered by the owner's own
-reaction, from any client, on one of its messages, first observed after its
-latest one (`own_reactions` keeps that first observation after removal, so
-nothing revives); reaction-derived options keep ignoring the owner's reactions.
-Output that arrives after its source was replaced, answered, changed or
-expired, or after authorization ended, keeps its receipt and never publishes.
-Suggestions Off cancels queued work; started calls may finish into cache and
-stay hidden until On. The switch and Account AI reads use the shared registry,
-so they are taken before, never inside, a store write transaction: the store
-transaction already holds the attached registry's lock, and a nested registry
-transaction would wait out SQLite's ten-second timeout.
+Typography normalization applies only to new generated options: typographic
+sentence dashes, quotes and apostrophes become keyboard forms while supplied
+literals and uncertain values stay intact. Emoji escapes of the form
+`\u0001XXXX` are decoded before parsing; other control characters fail. Limits
+and duplicate checks apply after normalization. Drafts and cached reads remain
+verbatim.
 
-Typography normalization runs only on a new suggestion result, after provider
-JSON parsing and before final schema validation. It maps em and en sentence
-separators to a keyboard `-`, curly and angled quotation marks to straight
-forms and punctuation apostrophes to `'`, preserving spacing, meaningful
-punctuation and exact or uncertain source literals. Incoming-derived and
-reaction-derived options share this boundary. The nonblank, 280-character and
-duplicate checks run on the resulting wording; a collision fails the outcome
-without filtering options or asking again. Cache reads and authored drafts stay
-verbatim. Literal recognition uses bounded source evidence and explicit syntax,
-including URLs and paths, numeric values, quoted or labelled values, supplied
-names and Non-AI media metadata; ambiguous lexical punctuation is kept. This is
-a typography rule, not a style or naturalness assessment. Authored checks are
-in `backend/tests/test_suggestion_typography.py`.
+**Diagnostics.** DEBUG `enloq.suggestions` events use the fixed
+`suggestion_decision` code. The privacy formatter allows only generated opaque
+attempt IDs, manual/automatic trigger, fixed generate/skip/outcome reasons,
+style, emotion code, bounded probabilities, thresholds and option count.
+It rejects every other field. No native account/chat IDs, names, source text,
+drafts, prompts or model reasoning enter logs. Scheduling savepoints isolate
+suggestion failures from the already-published decision.
 
-Settings holds the global **Suggestions** switch (initially On, the owner's),
-the Response suggestions and Idioms guidance fields and the When to suggest
-field for the usefulness questions; guidance changes reach future normal work
-only. Conversation reads add a projection with a state (`none`, `preparing`,
-`waiting`, `ready`, `failed`), a fixed reason, and the attempt and options only
-while ready. Reads start no work and are scoped to their account and chat;
-cached options stay readable while Account AI is Off.
-
-Selection posts the attempt, option index, draft revision and caret (UTF-16
-code units, or none for the end) to `/suggestions/insert`. One transaction
-rechecks the chat's own current attempt, validity and draft revision, refuses
-an active rewrite, and inserts the stored option text with one separating
-space where words would join. The draft keeps its attachments and reply
-target, records the previous text for Undo and becomes `inserted`; nothing is
-rewritten or sent. Later withdrawal or expiry never removes inserted text.
-Authored checks are in `backend/tests/test_suggestion_state.py`,
-`backend/tests/test_suggestion_generation.py` and
-`backend/tests/test_suggestion_controls.py`.
-
-- **The choice.** A private chat that chooses gets a `suggestion_choice` row:
-  `off`, `on` (the default) or `idioms`, read and set at
-  `/chats/{peer}/suggestions/choice`. Off projects `off`, schedules nothing
-  and cancels the chat's queued attempt; a ready set shows again on switching
-  back. A record takes the choice when it is scheduled (`idioms`); dispatch
-  rechecks only Off.
-- **Idiom sets.** Their request adds `IDIOMS_FRAME` and the owner's Idioms
-  field to the instructions; the flag never reaches the untrusted content. The
-  frame sets aside "Avoid cliches" and lets a proverb carry gentle advice and
-  a common idiom voice the owner's pleasure or sympathy; every other core rule
-  stays. `IDIOMS_LIVE` in `domain/suggestions.py` is true; while false the
-  service refuses `idioms` and both clients hide it. `IDIOMS_WRITER` is `muse`
-  (`app.calmer`). A suggestion answer's `\u0001XXXX`, Muse's way of writing an
-  emoji beyond U+FFFF, is read as that emoji before parsing, and an option
-  with any other control character fails as `invalid_text`.
-- **Folding.** `/suggestions/fold` with the shown attempt sets the current
-  record's `folded`, which the projection carries to every client; the next
-  record starts unfolded.
-
-Authored checks are in `backend/tests/test_suggestion_choice.py`.
+Coverage includes `test_manual_suggestions.py`, `test_suggestion_choice.py`,
+the generation/state/control tests, both composers' tests and phone-size web
+journeys. Cached sets remain readable while Account AI is Off; new manual
+requests still require AI and budget admission.
 
 ## Reaction Assessment
 
@@ -875,11 +812,14 @@ names the permitted sources and attribution, forbids facial and acoustic
 inference and carries the code descriptions; the Emotion extraction field
 follows it as owner guidance.
 
-The incoming request also asks two yes/no questions, each read at 0.5 or more:
+The incoming request also asks three yes/no questions, each read at 0.5 or more:
+
+- **`hostility`**, fixed and independent of emotion. Only hostile wording
+  permits softening. A missing or malformed answer fails the decision.
 
 - **`sarcasm`**, fixed with no owner field
   ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)).
-  Only a calmed rewrite is told, and a missing answer means no hint.
+  Only a softened rewrite is told, and a missing answer means no hint.
 - **`suggestions_useful`** ([ADR 49](adr/0049-useful-response-suggestions.md)
   Q2): whether short optional reply wording would help the owner with the
   latest block now. Its fixed core is followed by the owner's When to suggest
@@ -895,7 +835,7 @@ In a chat with calming off, the rewrite's ready transaction queues one
 source (the deletion-inclusive barrier is unchanged and the latest live
 incoming message is among its sources) and is still inside its 12-hour
 lifetime, so no paid call produces a result that could never show. With
-calming on, the decision comes first ([Calming](#calming)). The job takes the
+calming on, the decision comes first ([Soften hostile messages](#soften-hostile-messages)). The job takes the
 followed work's class and carries a deliberate Retry flag.
 
 Its pending record holds the prepared originals, transcripts, fresh image
@@ -946,73 +886,74 @@ above.
 
 Coverage is `backend/tests/test_held_decisions.py`.
 
-## Calming
+## Soften hostile messages
 
 [ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)
-rewrites a private chat's frustrated or angry incoming blocks calmly. The
-account store's `calming` table keeps a chat's own choice; without a row,
-calming is on (`Calming.default`). `GET` and `POST
-/api/accounts/{account}/chats/{peer}/calming` read and set it with a strict
-boolean `enabled`, for private chats only, and the conversation snapshot
-carries `calming`. The finite checks of other roles and the tests that predate
-calming turn it off for their app (`app.calming.default = False`, the
-`calming_off` fixture).
+uses an explicit decision-model `hostility` probability, at least 0.5,
+independently of mood. Insults, aggressive blame, intimidation and hostile
+sarcasm toward anyone qualify in context. Anger, frustration, emphatic
+profanity, friendly teasing and neutral reporting of an insult do not qualify
+alone. A missing or malformed answer authorizes no softening.
 
-- **The decision first (Q7).** In a chat with calming on,
-  `Rewriting.incoming` prepares the block, transcripts included, then
-  `Emotion.decide_first` runs the block's decision inline: a claimed
-  `emotion_classification` job (payload `first`) from the prepared originals,
-  transcripts and cached image meanings only. The rewrite's character gate is
-  checked again at that dispatch. The result publishes in the rewrite's ready
-  transaction, after its image derivatives (`publish_first`), with the usual
-  barrier, lifetime and Response Suggestions; an older block's decision only
-  decides its calming, and no decision follows the rewrite. When no decision
-  can be made (a refusal, a failure, a pause), the rewrite runs uncalmed and
-  the ordinary decision follows it; a dispatched failure logs
-  `calming_decision_unavailable`.
-- **The calmed rewrite (Q3, Q8).** A `frustrated` or `angry` code adds `calm`
-  to the packet, and the rewrite runs on the app's `calmer`, Muse. The flag
-  never reaches the model's content; `instructions` add a fixed frame and the
-  owner's Calming field after the incoming guidance. The frame overrides the
-  sender's voice: the block becomes a calm third-person account in the
-  sender's language that begins with the feeling in a few neutral words, keeps
-  every fact, request, condition, amount, date, deadline and threat (each
-  threat as its condition and consequence), and leaves out insults, mockery,
-  sarcasm, taunts, shouting and blame. It never guesses the sender's gender
-  (in Russian the sender is «собеседник», or «собеседница» when their own
-  words are feminine) and adds no currency or unit. The decision's `sarcasm`
-  answer adds `sarcastic`, kept out of the content too, and a hint that the
-  block is sarcastic; the frame says to render sarcasm by what it means. The
-  publication sets `blocks.calmed`, which stays with that rendering through
-  unchanged rebuilds and clears with a changed source; both clients show
-  **Calmed**.
-- **Any length (Q6).** A held block's decision that comes back frustrated or
-  angry in a chat with calming on releases one rewrite job with payload `calm`
-  (the code), in the held block's class. The character gate, admission
-  reconciliation and `defer` leave that job alone. It makes no second
-  decision, and its publication keeps the held decision and its suggestions
-  current over the image meanings it adds (`keep_current`). A held block that
-  is no longer the current source, or is past the 12-hour lifetime, gets a
-  `calming` decision job instead, which publishes nothing and only releases
-  that rewrite (`Calming.decide`). A refused release re-queues with its `calm`
-  and `sarcastic` (`Rewriting.refused`), so it retries calmly without another
-  decision and, after three refusals, fails with Retry like any refused
-  rewrite.
-- **Text.** A text block reaches the calmed rewrite only through its held
-  decision: a frustrated or angry one is calmed, any other ends held and shown
-  as its originals.
-- **Readiness (Q7).** Until a held block's decision is made, `stages()` marks
-  it `deciding`, and readiness and notifications wait for it unless AI is
-  unavailable (`content_kind`).
+The profile switch is **Soften hostile messages**, On by default. Its existing
+internal `calming` table, endpoint and snapshot key preserve per-chat choices;
+`blocks.calmed` preserves the flag belonging to each validated rendering.
+Both clients display **Softened**. Off starts no arrival screen and no new
+softening; existing renderings stay. Groups and Saved Messages have neither.
 
-Every other rewrite stays on MiMo. Coverage is `backend/tests/test_calming.py`,
-`web/journeys/calming.spec.ts` and `mobile/__tests__/aiControls.test.tsx`.
-Calming's quality gate, `scripts/check-calming.py` (see
-[operations](operations.md)), compares 24 authored blocks' calmed text with
-their originals through the real routes, by text matching and, for sarcasm read
-literally, a judge model (`chatgpt/gpt-6.1-sol` through the proxy); the owner
-reads every pair. It is rerun whenever the Calming guidance changes. Its
-offline coverage is `backend/tests/test_calming_check.py`.
+Combined-block decisions retain 30 quiet seconds. Text is held and decided
+from originals; a hostile decision releases one Muse rewrite at any length.
+Media is prepared normally, then its decision comes before its one rewrite.
+The hostility flag, with an optional sarcasm hint, adds the fixed softening
+frame and owner guidance to incoming instructions, never to source content.
+Every fact, request, question, condition, amount, date, deadline and threat
+must survive; expressed feeling is named only when supported, never inferred
+from hostility. Hostile sarcasm is rendered by its meaning.
+
+A decision already made for a held block is not repeated by its rewrite.
+Other blocks use their own current decision; no screening answer is reused
+across changed or combined inputs. A held block's non-hostile result leaves
+originals combined. A failed or unavailable decision leaves originals or the
+ordinary media rewrite. Unseen readiness still waits for the block's decision
+and validated full output, independently of notification timing.
+
+The finite `scripts/check-calming.py` keeps its established filename and
+private evidence layout. It covers 30 authored blocks, including third-party
+hostility, non-hostile anger and frustration, teasing and reported insults.
+It uses text checks and the authorized sarcasm judge, within 32 rewrite,
+32 decision and 30 judge requests, 2,400 seconds and $0.20 counted. Low semantic
+quality is recorded separately from transport and format results.
+
+## Arrival notifications
+
+[ADR 20](adr/0020-minimal-reading-and-ready-notifications.md) screens original
+text or captions immediately through `hostility_screen` on the pinned decision
+route, with bounded cached same-chat context and one cached direct reply.
+It reads or teaches no memory, prepares no media and triggers no suggestions.
+The five-second deadline starts at service arrival and includes queueing,
+capacity and route preparation. Clean results expose the original preview
+without waiting for quiet, mood, media or suggestions. Textless media uses a
+typed label immediately.
+
+Hostile sources wait for a current validated softened block. Account AI Off,
+softening Off, unavailable budget/route/capacity, malformed answers, failures
+or deadline use originals immediately when known. Required softening that
+cannot proceed also falls back; a later non-hostile full-block decision may
+release the original. There is no extra screen or unchanged resampling.
+
+`incoming_notices` groups arrivals within 30 seconds of quiet; `notice_sources`
+keeps only native source revision, deadline, state and opaque attempt. The
+first eligible preview alerts. Each later update uses a fresh opaque event ID,
+the same notification group and a silent flag. A later clean arrival can alert
+while an earlier hostile source waits. Its later completion joins silently and
+cannot replace a newer preview. Web notification tags and Android chat notice
+identifiers replace the displayed notification. Per-destination Sound Off and
+foreground/mute/authorization/target guards still apply. Expiry and revalidation
+happen before dispatch; no source text is stored in opaque push payloads.
+
+Authored coverage is in `test_arrival_notifications.py`, delivery/push tests,
+`test_notifications.py` and `mobile/__tests__/pushTask.test.ts`. These checks
+prove deterministic policy, not provider quality or native delivery.
 
 ## Memory and traits
 
@@ -1052,7 +993,7 @@ traits; what memory already holds stays visible, editable and clearable.
   seven days, under their own allowance: memory is dropped rather than cutting
   the target when the request would exceed 35,000 bytes. Suggestions get both
   memories at dispatch ([Response suggestions](#response-suggestions)).
-  Emotion Classification, outgoing Rewrite and group briefings get none.
+  Emotion Classification, arrival screening and group briefings get none.
 
 A fold reads the local store only (text, cached transcripts and image context),
 never Telegram history, and returns changes only. Missing originals are
@@ -1103,10 +1044,9 @@ guidance changes ([operations](operations.md)).
 
 ## Provisional streaming
 
-Incoming and outgoing rewrites and the group final synthesis use bounded SSE on
+Incoming rewrites and the group final synthesis use bounded SSE on
 their exact route. The incremental parser holds incomplete escapes and
-surrogate pairs and exposes only visible wording: rendered incoming parts, the
-outgoing text or the final topic text. It never exposes JSON framing,
+surrogate pairs and exposes only visible wording: rendered incoming parts or final topic text. It never exposes JSON framing,
 reasoning, image context or citation metadata. Strict final validation still
 owns publication. Receipts seen before an interruption count; otherwise the
 normal unknown estimate remains. Provider comments, empty usage choices and
@@ -1125,19 +1065,10 @@ partial immediately. Failure or service interruption clears partials and restore
 prior completed rendering only when its revision still matches, otherwise
 originals.
 
-Outgoing attempts belong to the service and lock the persisted draft until a
-validated result or restoration. Every client sees the same attempt; duplicate
-start requests reattach. The composer keeps Send and Rewrite visible, with
-text, tone, attachment and reply edits disabled during rewriting. Undo restores
-the pre-attempt text and unlocks; Stop keeps exactly the prefix that client
-displayed as an editable, incomplete draft, and its Undo remains until another
-edit. Both keep the image selection and reply target, detach late output and
-request best-effort cancellation. Observed receipts still count; cancellation
-never promises a provider refund. Completion between the last snapshot and a
-click can cross only the final revision of the same attempt, never an owner
-edit. Failures and service interruption restore the original and require a
-deliberate new Rewrite. Stopped drafts persist through restart. No incoming
-Stop is offered.
+Manual suggestions publish complete validated options and never stream into
+the draft. A restart restores the authored base of an interrupted legacy
+outgoing attempt and cancels its removed job, retaining spending evidence.
+Incoming rewrites have no Stop.
 
 ## Speech transcripts
 

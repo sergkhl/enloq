@@ -21,7 +21,6 @@ import ConversationRoute from "../app/chat/[account]/[peer]";
 import { ConnectionProvider } from "../src/connection";
 import type { Draft, Operation } from "../src/drafts";
 
-const ATTEMPT = "a".repeat(32);
 const SUGGESTED = "s".repeat(32);
 const SAVED = JSON.stringify({
   origin: "https://enloq.example.com",
@@ -69,7 +68,6 @@ let draft: Draft;
 let operations: Operation[];
 let suggestions: unknown;
 let messages: unknown[];
-let tone = "neutral";
 let online = true;
 // The service confirms and stores a send before the phone's next read.
 let confirmAtOnce = false;
@@ -99,10 +97,6 @@ function service() {
     if (url.endsWith("/api/accounts")) return { status: 200, body: ACCOUNTS };
     if (url.endsWith("/preferences/reading-view"))
       return { status: 200, body: { reading_view: "ai" } };
-    if (url.endsWith("/api/preferences")) {
-      if (init.method === "POST") tone = body.tone;
-      return { status: 200, body: { tone, revision: 1 } };
-    }
     if (url.endsWith("/chats/user%3A101"))
       return {
         status: 200,
@@ -144,15 +138,17 @@ function service() {
         state: "idle",
         attempt: null,
       });
-    if (url.endsWith("/rewrite"))
-      return next({ state: "rewriting", attempt: ATTEMPT, undo: draft.text });
-    if (url.endsWith("/rewrite/stop"))
-      return next({
-        text: body.text ?? draft.undo!,
-        state: "stopped",
-        attempt: null,
-        partial: undefined,
-      });
+    if (url.endsWith("/suggestions/generate")) {
+      suggestions = {
+        state: "ready",
+        kind: "manual",
+        style: "friendly",
+        attempt: SUGGESTED,
+        options: [{ purpose: "acknowledge", text: "Sounds good!" }],
+        folded: false,
+      };
+      return { status: 200, body: suggestions };
+    }
     if (url.endsWith("/undo"))
       return next({
         text: draft.undo!,
@@ -250,7 +246,6 @@ beforeEach(() => {
   online = true;
   confirmAtOnce = false;
   attention = [];
-  tone = "neutral";
   draft = {
     chat_key: "1/user:101",
     revision: 0,
@@ -301,32 +296,21 @@ test("a draft typed offline stays on the phone and is saved when the server answ
   expect(keptDraft()).toBeUndefined();
 });
 
-test("Rewrite streams into a read-only field; Stop keeps what was shown; Undo restores", async () => {
+test("manual generation keeps the draft editable; selection inserts and Undo restores", async () => {
   draft = { ...draft, revision: 3, text: "can u come" };
   await mount();
   await screen.findByDisplayValue("can u come");
-  await fireEvent.press(screen.getByLabelText("Rewrite"));
-  await waitFor(() => expect(posts("/rewrite")).toEqual([{ revision: 3 }]));
-  draft = { ...draft, text: "Could you", partial: true };
-  await act(async () =>
-    mockEventSources[0]!.emit("change", {
-      data: '{"chats":{"1":["1/user:101"]}}',
-    }),
+  await fireEvent.press(screen.getByLabelText("Generate suggestions"));
+  await waitFor(() => expect(posts("/suggestions/generate")).toHaveLength(1));
+  expect(posts("/suggestions/generate")[0]).toMatchObject({ revision: 3 });
+  expect(screen.getByLabelText("Message").props.value).toBe("can u come");
+  expect(screen.getByLabelText("Message").props.editable).toBe(true);
+  expect(posts("/send")).toHaveLength(0);
+  await fireEvent.press(
+    await screen.findByRole("button", { name: /Sounds good!/ }),
   );
-  expect(await screen.findByDisplayValue("Could you")).toBeTruthy();
-  expect(screen.getByText("Processing…")).toBeTruthy();
-  expect(screen.getByLabelText("Message").props.editable).toBe(false);
-  await fireEvent.press(screen.getByLabelText("Stop rewrite"));
-  await waitFor(() =>
-    expect(posts("/rewrite/stop")).toEqual([
-      { revision: 4, attempt: ATTEMPT, text: "Could you" },
-    ]),
-  );
-  expect(await screen.findByText("Stopped · incomplete draft")).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText("Undo rewrite"));
-  await waitFor(() =>
-    expect(posts("/undo")).toEqual([{ revision: 5, attempt: null }]),
-  );
+  await waitFor(() => expect(draft.text).toContain("Sounds good!"));
+  await fireEvent.press(screen.getByLabelText("Undo suggestion"));
   expect(await screen.findByDisplayValue("can u come")).toBeTruthy();
 });
 
@@ -545,13 +529,15 @@ test("Reply from a long press sets the target; Remove clears it", async () => {
   expect(screen.queryByText(/^Reply to Anna/)).toBeNull();
 });
 
-test("the tone is the remembered global choice", async () => {
+test("generation is available with an empty draft, with no outgoing rewrite controls", async () => {
   await mount();
-  expect(await screen.findByText("Rewrite · Neutral")).toBeTruthy();
-  await fireEvent.press(screen.getByLabelText("Rewrite tone"));
-  await fireEvent.press(screen.getByRole("radio", { name: "Professional" }));
-  await waitFor(() => expect(tone).toBe("professional"));
-  expect(await screen.findByText("Rewrite · Professional")).toBeTruthy();
+  const generate = await screen.findByLabelText("Generate suggestions");
+  expect(generate.props.accessibilityState.disabled).toBe(false);
+  expect(screen.queryByLabelText("Rewrite tone")).toBeNull();
+  expect(screen.queryByLabelText("Rewrite")).toBeNull();
+  await fireEvent.press(generate);
+  await waitFor(() => expect(posts("/suggestions/generate")).toHaveLength(1));
+  expect(draft.text).toBe("");
 });
 
 test("unknown delivery offers Check delivery, which resends nothing", async () => {

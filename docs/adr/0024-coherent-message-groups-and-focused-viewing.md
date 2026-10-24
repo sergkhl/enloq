@@ -26,10 +26,10 @@ phones. A device's own timezone neither regroups sources nor causes model
 work, and there is no timezone preference.
 
 **One coherent result.** A block that is rewritten (one with an image, a voice
-note or a video circle, or a calmed block,
+note or a video circle, or a softened hostile block,
 [ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)) is
 rewritten from its original sources into one coherent text. Text that is not
-calmed shows as its originals together in one bubble
+softened shows as its originals together in one bubble
 ([ADR 54](0054-incoming-text-combined-not-rewritten.md)). Concatenating
 earlier AI outputs never counts as a result, and a result for one set of
 sources is never shown as the validated result for another. New or changed

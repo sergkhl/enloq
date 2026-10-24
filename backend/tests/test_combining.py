@@ -113,6 +113,7 @@ async def test_rewrite_earlier_messages_offers_only_media(rig):
 async def test_a_retried_text_block_that_is_not_hostile_ends_combined(rig):
     app, now, _ = rig
     app.decider.emotion = "angry"
+    app.decider.hostility = 1.0
 
     async def unavailable(role, packet):
         raise ConnectionError("Authored outage")
@@ -125,6 +126,7 @@ async def test_a_retried_text_block_that_is_not_hostile_ends_combined(rig):
     assert block(app)["state"] == "failed"
     del app.engine.generate
     app.decider.emotion = "neutral"
+    app.decider.hostility = 0.0
     app.rewriting.retry(block(app)["id"])
     await settle(app)
     assert block(app)["state"] == "original" and not rewrites(app)

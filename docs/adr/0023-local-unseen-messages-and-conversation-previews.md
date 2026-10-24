@@ -48,15 +48,16 @@ Telegram says. Loading older history creates no candidates and widens no
 fetch.
 
 **Readiness, independent of alerts.** A candidate becomes ready after its 30
-quiet seconds, under the same content decision that notifications use:
+quiet seconds, independently of notification screening and delivery:
 
 - when its validated result publishes: a rewrite of a block with media, or a
-  calmed rewrite ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md));
+  softened rewrite ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md));
 - when the original fallback is known: text that stays combined
   ([ADR 54](0054-incoming-text-combined-not-rewritten.md)), AI Off, the
-  budget, a failure or nothing to rewrite. In a chat with calming on, a block
-  still waiting for its mood decision is not yet known, so it waits for that
-  decision.
+  budget, a failure or nothing to rewrite. With softening On, a block still
+  waiting for its hostile-wording decision is not yet settled, so readiness
+  waits. Notifications instead use ADR 20's immediate bounded screen and
+  original fallback.
 
 Native arrival and partial streaming are never enough. Readiness applies in
 muted chats, with notifications off or denied, while the owner reads history

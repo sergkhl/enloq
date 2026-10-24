@@ -105,24 +105,20 @@ class Conversations:
 
     def group_access_changed(self, state):
         self.delivery.revalidate_group(state.key)
-        self.rewriting.outgoing_work.revalidate()
         self.briefings.reconcile(state.key)
 
     def changed(self, message, *, target=True, arrival=True):
         kind = self.store.chat(f"{message.account_id}/{message.peer}").kind
         if kind == "group":
-            self.rewriting.outgoing_work.revalidate()
             self.group_changed(message, arrival=arrival)
             return
         if kind == "saved":
             # Saved Messages takes no AI work for now (ADR 50 Q3): no blocks,
             # memory or Reaction Assessment, only the drafts' revalidation.
-            self.rewriting.outgoing_work.revalidate()
             return
         # Older bytes belong only to reading history. Current derivatives and
         # cited memory still invalidate, and history cannot trigger downloads.
         self.memory.forget(message)
-        self.rewriting.outgoing_work.revalidate()
         self.assessment.evidence_changed(message)
         rebuild(
             self.store,
@@ -208,7 +204,7 @@ class Conversations:
             messages=self.briefings.annotate(messages)
             if group
             else self.store.history.annotate(messages),
-            draft=self.rewriting.outgoing_work.view(key),
+            draft=self.store.draft(key),
             operations=[
                 operation_view(o, self.store.clock())
                 for o in self.store.send_operations.recent(key)
@@ -239,7 +235,7 @@ class Conversations:
             group_processing=None,
             retained=False,
             messages=self.store.history.annotate(self.store.messages(key)),
-            draft=self.rewriting.outgoing_work.view(key),
+            draft=self.store.draft(key),
             operations=[
                 operation_view(o, self.store.clock())
                 for o in self.store.send_operations.recent(key)

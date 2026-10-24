@@ -1943,20 +1943,6 @@ export interface components {
              */
             browser: boolean;
         };
-        /**
-         * SuggestionChoice
-         * @description A private chat's Suggestions choice (ADR 56 Q12 A), On unless the
-         *     chat chose otherwise, and whether Idioms can be chosen yet.
-         */
-        SuggestionChoice: {
-            /**
-             * Choice
-             * @enum {string}
-             */
-            choice: "off" | "on" | "idioms";
-            /** Idioms */
-            idioms: boolean;
-        };
         /** SuggestionOption */
         SuggestionOption: {
             /**
@@ -1966,6 +1952,16 @@ export interface components {
             purpose: "acknowledge" | "support" | "clarify" | "celebrate" | "accept" | "decline" | "later";
             /** Text */
             text: string;
+        };
+        /** SuggestionSettings */
+        SuggestionSettings: {
+            /** Automatic */
+            automatic: boolean;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "friendly" | "professional" | "idioms";
         };
         /**
          * SuggestionsView
@@ -1988,6 +1984,18 @@ export interface components {
              * @default null
              */
             attempt: string | null;
+            /**
+             * Kind
+             * @default automatic
+             * @enum {string}
+             */
+            kind: "automatic" | "manual";
+            /**
+             * Style
+             * @default friendly
+             * @enum {string}
+             */
+            style: "friendly" | "professional" | "idioms";
             /** Options */
             options?: components["schemas"]["SuggestionOption"][];
             /**
@@ -2017,14 +2025,6 @@ export interface components {
             length: number;
             /** Url */
             url: string;
-        };
-        /** Tone */
-        Tone: {
-            /**
-             * Tone
-             * @enum {string}
-             */
-            tone: "neutral" | "professional" | "friendly";
         };
         /** TraitNote */
         TraitNote: {

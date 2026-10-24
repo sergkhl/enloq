@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await trust(page);
 });
 
-test("an angry message shows Calmed, and its profile turns calming off", async ({
+test("a hostile message shows Softened, and its profile turns softening off", async ({
   page,
 }) => {
   const seeded = await page.request.post("/api/test/calming", {
@@ -23,20 +23,20 @@ test("an angry message shows Calmed, and its profile turns calming off", async (
     .locator("article.app-bubble")
     .filter({ hasText: "WHERE IS MY REFUND" })
     .last();
-  await expect(bubble.locator(".calmed-mark")).toHaveText(" · Calmed");
+  await expect(bubble.locator(".calmed-mark")).toHaveText(" · Softened");
 
   const profile = page.getByRole("button", {
     name: /^Calming fixture,.* open profile$/,
   });
   await profile.tap();
-  const calm = page.getByRole("switch", { name: "Calm this chat" });
+  const calm = page.getByRole("switch", { name: "Soften hostile messages" });
   await expect(calm).toHaveAttribute("aria-checked", "true");
   await expect(calm).toBeEnabled();
   await calm.tap();
   await expect(calm).toHaveAttribute("aria-checked", "false");
   await page.getByRole("button", { name: "Back", exact: true }).tap();
   // Switching off leaves the calmed message calmed.
-  await expect(bubble.locator(".calmed-mark")).toHaveText(" · Calmed");
+  await expect(bubble.locator(".calmed-mark")).toHaveText(" · Softened");
 
   // The choice is kept, and turns calming back on.
   await profile.tap();

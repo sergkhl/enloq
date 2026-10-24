@@ -137,41 +137,6 @@ async def test_one_jobs_error_leaves_siblings_intact(rig):
     assert not app.store.rows("SELECT * FROM jobs WHERE state='unknown'")
 
 
-async def test_outgoing_starts_beside_background_and_goes_first_when_full(rig):
-    manager, now = rig
-    manager.registry.set_concurrency(3)
-    app = manager.get(1)
-    blocks(app, 2)
-    gate = Gate(manager)
-    manager.dispatch()
-    await asyncio.sleep(0.05)
-    draft = app.store.mutate_draft("1/user:42", 0, lambda d: d.update(text="Mine."))
-    outgoing = asyncio.create_task(
-        app.rewriting.outgoing("1/user:42", draft["revision"])
-    )
-    await asyncio.sleep(0.05)
-    assert gate.running == 3 and gate.seen[-1] == ("outgoing_rewrite", "Mine.")
-    gate.release.set()
-    await outgoing
-    await settle(manager)
-    # With every slot busy, a waiting outgoing Rewrite precedes queued work.
-    manager.registry.set_concurrency(1)
-    gate.release.clear()
-    blocks(manager.get(2), 2)
-    manager.dispatch()
-    await asyncio.sleep(0.05)
-    draft = app.store.draft("1/user:42")
-    outgoing = asyncio.create_task(
-        app.rewriting.outgoing("1/user:42", draft["revision"])
-    )
-    await asyncio.sleep(0.05)
-    gate.release.set()
-    await outgoing
-    await settle(manager)
-    order = [role for role, _ in gate.seen[3:]]
-    assert order[:2] == ["incoming_rewrite", "outgoing_rewrite"]
-
-
 async def test_a_new_limit_applies_without_restart(rig):
     manager, now = rig
     manager.registry.set_concurrency(1)
@@ -208,7 +173,7 @@ async def test_low_classes_never_take_the_last_free_slot(rig):
 
 @pytest.mark.parametrize("limit", [1, 2, 4, 8])
 def test_group_capacity_follows_every_private_class_and_preserves_the_last_slot(limit):
-    private = ("outgoing", "new", "catchup", "reaction", "older", "suggestions")
+    private = ("new", "catchup", "reaction", "older", "suggestions")
     assert CLASSES == (*private, "group", "memory")
     assert all(RANK[klass] < RANK["group"] < RANK["memory"] for klass in private)
     capacity = Capacity(lambda: limit)
@@ -219,7 +184,7 @@ def test_group_capacity_follows_every_private_class_and_preserves_the_last_slot(
 
 async def test_waiting_private_stages_precede_group_and_group_keeps_memory_idle():
     capacity = Capacity(lambda: 1)
-    held = capacity.slot("outgoing")
+    held = capacity.slot("new")
     await held.__aenter__()
     order = []
 

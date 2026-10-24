@@ -1,12 +1,9 @@
 """Response Suggestions: one source-bound outcome per chat (ADR 25).
 
-The prepared input is captured from a validated incoming result, so generation
-never reads Telegram or prepares media; since ADR 55 it reads what the person
-and the owner care about at dispatch. One projection decides
-whether options are usable: the latest-incoming barrier, a later outgoing
-message, used-source dependencies, the 12-hour lifetime and the current
-decision. Since ADR 56 each private chat has its own choice, Off, On or
-Idioms, and a folded set stays folded on every client.
+Automatic input comes from a validated incoming result; manual input captures
+the draft and bounded cached conversation on request. Neither path reads
+Telegram or prepares media. Both read enabled memory at dispatch, use the
+chat's captured Style and insert only on selection.
 """
 
 import asyncio
@@ -22,7 +19,6 @@ from ..domain.models import Conflict, ProcessingPaused, Refused
 from ..domain.selected_media import sticker_selected
 from ..domain.suggestions import (
     CALM_USEFULNESS,
-    DEFAULT_CHOICE,
     EXPIRY,
     QUALIFYING,
     ResponseSuggestions,
@@ -110,6 +106,172 @@ class Suggestions:
             else self.store.rows(sql, args)
         )
 
+    def automatic(self, key, db=None):
+        rows = self.read(
+            "SELECT automatic,style FROM suggestion_settings WHERE chat_key=?",
+            (key,),
+            db,
+        )
+        return (
+            {"automatic": bool(rows[0]["automatic"]), "style": rows[0]["style"]}
+            if rows
+            else {"automatic": True, "style": "friendly"}
+        )
+
+    def settings(self, key):
+        self.private(key)
+        return self.automatic(key)
+
+    def set_settings(self, key, automatic, style):
+        self.private(key)
+        if style not in ("friendly", "professional", "idioms"):
+            raise Refused("Unknown suggestion style")
+        with self.store.transaction() as db:
+            db.execute(
+                "INSERT INTO suggestion_settings VALUES (?,?,?,?) ON CONFLICT(chat_key) DO UPDATE SET automatic=excluded.automatic,style=excluded.style,changed=excluded.changed WHERE automatic!=excluded.automatic OR style!=excluded.style",
+                (key, int(automatic), style, self.store.clock()),
+            )
+        if not automatic:
+            self.cancel_queued(key)
+        return self.settings(key)
+
+    def permitted(self, key, record, db=None):
+        return bool(
+            record
+            and (
+                record.get("kind") == "manual"
+                or (self.enabled() and self.automatic(key, db)["automatic"])
+            )
+        )
+
+    def diagnose(self, record=None, *, reason, **values):
+        _LOG.debug(
+            "suggestion_decision",
+            extra={
+                "suggestion_decision": {
+                    "attempt": record and record.get("attempt"),
+                    "trigger": "manual"
+                    if record and record.get("kind") == "manual"
+                    else "automatic",
+                    "reason": reason,
+                    **values,
+                }
+            },
+        )
+
+    def manual_current(self, key, record, db=None):
+        rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
+        draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
+        latest = self.read(
+            "SELECT coalesce(max(message_id),0) AS identity FROM messages WHERE chat_key=?",
+            (key,),
+            db,
+        )[0]["identity"]
+        count = self.read(
+            "SELECT count(*) AS count FROM messages WHERE chat_key=? AND date>=?",
+            (key, record["context_since"]),
+            db,
+        )[0]["count"]
+        return (
+            draft["revision"] == record["draft_revision"]
+            and latest == record["latest_message"]
+            and count == record["context_count"]
+            and self.sources_current(record, db)
+        )
+
+    def generate(self, key, revision, cursor=None):
+        self.private(key)
+        self.app.admit_ai()
+        if not self.app.authorized():
+            raise Refused("Account is signed out")
+        now = self.store.clock()
+        with self.store.transaction() as db:
+            rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
+            draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
+            if draft["revision"] != revision:
+                raise Conflict("Draft changed; keep your edits and reload")
+            if draft.get("state") == "rewriting" or sticker_selected(draft):
+                raise Conflict("The composer is busy")
+            if len(draft["text"].encode()) > context.TARGET_BYTES:
+                raise Refused(
+                    "Draft exceeds the suggestion input bound; your text is retained"
+                )
+            previous = self.record(key, db)
+            if (
+                previous
+                and previous.get("kind") == "manual"
+                and previous["state"] == "pending"
+                and not self.withdrawn(key, previous, db)
+            ):
+                return SuggestionsView(
+                    state="preparing",
+                    reason="queued",
+                    kind="manual",
+                    style=previous["style"],
+                    attempt=previous["attempt"],
+                    source_time=previous["source_time"],
+                    expires_at=previous["source_time"] + EXPIRY,
+                )
+            captured = context.cached_recent(
+                self.store, key, reply_id=draft.get("reply_to"), db=db
+            )
+            messages = captured.pop("messages")
+            if not messages and not draft["text"].strip():
+                raise Refused("Write a draft or wait for conversation context")
+            latest = self.read(
+                "SELECT coalesce(max(message_id),0) AS identity FROM messages WHERE chat_key=?",
+                (key,),
+                db,
+            )[0]["identity"]
+            attempt = uuid.uuid4().hex
+            record = {
+                "kind": "manual",
+                "source": attempt,
+                "attempt": attempt,
+                "source_time": now,
+                "state": "pending",
+                "failure": None,
+                "refusals": 0,
+                "draft_revision": revision,
+                "latest_message": latest,
+                "context_since": now - 7 * 86400,
+                "context_count": self.read(
+                    "SELECT count(*) AS count FROM messages WHERE chat_key=? AND date>=?",
+                    (key, now - 7 * 86400),
+                    db,
+                )[0]["count"],
+                "cursor": cursor,
+                **captured,
+                "derived": {
+                    k: self.app.emotion.derived(k, db) for k in captured["inputs"]
+                },
+                "sources": [m["id"] for m in messages],
+                "emotion": "unknown",
+                "style": self.automatic(key, db)["style"],
+                "packet": {
+                    "messages": [prepared(m, {}) for m in messages],
+                    "context": [],
+                    "manual": True,
+                    "draft": draft["text"],
+                    "cursor": cursor,
+                },
+            }
+            record["idioms"] = record["style"] == "idioms"
+            db.execute(
+                "UPDATE jobs SET state='superseded',error='Replaced by a manual request' WHERE role='response_suggestions' AND scope=? AND state='queued'",
+                (key,),
+            )
+            record = self.store_record(db, key, record)
+            if record["state"] == "pending":
+                self.enqueue(db, key, record, attempt, now)
+            self.diagnose(
+                record,
+                reason="requested"
+                if record["state"] == "pending"
+                else "input_too_large",
+            )
+        return self.view(key)
+
     def record(self, key, db=None):
         rows = self.read(
             "SELECT body FROM suggestion_state WHERE chat_key=?", (key,), db
@@ -174,6 +336,10 @@ class Suggestions:
 
     def withdrawn(self, key, record, db=None):
         """Why a record no longer belongs to the conversation, if it does not."""
+        if record.get("kind") == "manual":
+            if self.store.clock() >= record["source_time"] + EXPIRY:
+                return "expired"
+            return None if self.manual_current(key, record, db) else "changed"
         kind, event = self.app.assessment.current(key, db)
         if record.get("kind") == "reaction":
             if kind != "reaction" or event["id"] != record["event"]:
@@ -198,6 +364,8 @@ class Suggestions:
         decision is current, its emotion known or not, usefulness at
         CALM_USEFULNESS or more (Q19 A). A reaction's were scheduled only
         after a yes and keep needing a non-neutral emotion too (Q13 A)."""
+        if record.get("kind") == "manual":
+            return True
         signal = signal or self.app.emotion.view(key)
         emotional = signal.reason == "available" and signal.code in QUALIFYING
         if emotional or record.get("kind") == "reaction":
@@ -210,12 +378,14 @@ class Suggestions:
     def view(self, key):
         """The shared validity projection. It never queues work, reads
         Telegram or prepares media."""
-        if not self.enabled() or self.choice(key) == "off":
-            return SuggestionsView(reason="off")
         record = self.record(key)
+        if not self.permitted(key, record):
+            return SuggestionsView(reason="off" if record else "unavailable")
         if not record:
             return SuggestionsView(reason="unavailable")
         times = dict(
+            kind="manual" if record.get("kind") == "manual" else "automatic",
+            style=record.get("style", "idioms" if record.get("idioms") else "friendly"),
             source_time=record["source_time"],
             expires_at=record["source_time"] + EXPIRY,
         )
@@ -243,6 +413,7 @@ class Suggestions:
         return self.progress(record, times)
 
     def progress(self, record, times):
+        times = {**times, "attempt": record["attempt"]}
         rows = self.store.rows(
             "SELECT state,error FROM jobs WHERE id=?", (record["attempt"],)
         )
@@ -355,6 +526,7 @@ class Suggestions:
         ):
             return False
         record = {k: v for k, v in record.items() if k != "packet"}
+        self.diagnose(record, reason="published", options=len(options))
         record.update(
             state="ready",
             options=[option.model_dump() for option in options],
@@ -371,11 +543,13 @@ class Suggestions:
     def fail(self, db, key, attempt, reason):
         record = self.record(key, db)
         if record and record["attempt"] == attempt and record["state"] == "pending":
+            self.diagnose(record, reason="failed", outcome=reason)
             settle(db, key, record, "failed", reason)
 
     def cancel(self, db, key, attempt, reason=None):
         record = self.record(key, db)
         if record and record["attempt"] == attempt and record["state"] == "pending":
+            self.diagnose(record, reason="cancelled", outcome=reason)
             settle(db, key, record, "cancelled", reason)
 
     # ---- automatic scheduling ----------------------------------------------
@@ -390,6 +564,7 @@ class Suggestions:
         ``enabled`` is read before the transaction: the shared registry must
         never be opened while this store transaction holds its lock."""
         if not enabled:
+            self.diagnose({"attempt": job["id"]}, reason="automatic_off")
             return None
         db.execute("SAVEPOINT suggestion_schedule")
         try:
@@ -397,20 +572,32 @@ class Suggestions:
         except Exception:
             db.execute("ROLLBACK TO suggestion_schedule")
             db.execute("RELEASE suggestion_schedule")
-            _LOG.warning("suggestion_schedule_unavailable", exc_info=True)
+            _LOG.warning("suggestion_schedule_unavailable")
+            self.diagnose(reason="schedule_unavailable")
             return None
         db.execute("RELEASE suggestion_schedule")
         return record
 
     def _schedule(self, db, block, job, packet, image_context):
+        decision = {"attempt": job["id"]}
         payload = json.loads(job["payload"] or "{}")
         if payload.get("explicit_retry") or payload.get("class", "new") not in (
             "new",
             "catchup",
         ):
+            self.diagnose(decision, reason="explicit_or_older_processing")
             return None
         key = block["chat_key"]
+        previous = self.record(key, db)
+        if (
+            previous
+            and previous.get("kind") == "manual"
+            and not self.withdrawn(key, previous, db)
+        ):
+            self.diagnose(decision, reason="manual_owns_area")
+            return None
         if self.app.assessment.current(key, db)[0] == "reaction":
+            self.diagnose(decision, reason="newer_reaction")
             return None  # A newer reaction is the current source (ADR 26).
         row = db.execute(
             "SELECT body FROM emotion_state WHERE chat_key=?", (key,)
@@ -419,6 +606,15 @@ class Suggestions:
         # This attempt must have just published a decision with a usable
         # non-neutral emotion or, for a calm block, usefulness at
         # CALM_USEFULNESS or more (ADR 56, either signal; Q19 A).
+        self.diagnose(
+            decision,
+            reason="automatic_signal",
+            emotion=emotion and emotion.get("code"),
+            usefulness=emotion and emotion.get("usefulness"),
+            probability=emotion and (emotion.get("decision") or {}).get("probability"),
+            emotion_threshold=0.35,
+            threshold=CALM_USEFULNESS,
+        )
         if (
             not emotion
             or emotion["attempt"] != job["id"]
@@ -428,21 +624,26 @@ class Suggestions:
                 or (emotion.get("usefulness") or 0) >= CALM_USEFULNESS
             )
         ):
+            self.diagnose(decision, reason="no_current_qualifying_signal")
             return None
-        choice = self.choice(key, db)
-        if choice == "off":
+        settings = self.automatic(key, db)
+        if not settings["automatic"]:
+            self.diagnose(decision, reason="chat_automatic_off")
             return None
         attempt = uuid.uuid4().hex
         record = self.capture(
             db, block, packet, image_context, emotion["code"], attempt
         )
         if record["barrier"] != emotion["barrier"]:
+            self.diagnose(record, reason="source_replaced")
             return None
+        record["style"] = self.automatic(key, db)["style"]
         # The chat's choice when the set is scheduled (ADR 56 Q5 A): a later
         # change applies from the next block, never to this one.
-        if choice == "idioms":
+        if settings["style"] == "idioms":
             record["idioms"] = True
         if self.reusable(self.record(key, db), record):
+            self.diagnose(self.record(key, db), reason="unchanged_source")
             return None
         db.execute(
             "UPDATE jobs SET state='superseded',error='A newer source replaced this suggestion attempt' WHERE role='response_suggestions' AND scope=? AND state='queued'",
@@ -451,6 +652,9 @@ class Suggestions:
         record = self.store_record(db, key, record)
         if record["state"] == "pending":
             self.enqueue(db, key, record, attempt, self.store.clock())
+            self.diagnose(record, reason="scheduled", style=record["style"])
+        else:
+            self.diagnose(record, reason="input_too_large")
         return record
 
     def schedule_reaction(self, db, key, assessment, packet, code):
@@ -460,8 +664,18 @@ class Suggestions:
         transaction; it never delays or undoes the assessment."""
         db.execute("SAVEPOINT reaction_suggestions")
         try:
-            choice = self.choice(key, db)
-            if choice == "off":
+            previous = self.record(key, db)
+            if (
+                previous
+                and previous.get("kind") == "manual"
+                and not self.withdrawn(key, previous, db)
+            ):
+                self.diagnose(previous, reason="manual_owns_area")
+                db.execute("RELEASE reaction_suggestions")
+                return None
+            settings = self.automatic(key, db)
+            if not settings["automatic"]:
+                self.diagnose(reason="chat_automatic_off", source="reaction")
                 db.execute("RELEASE reaction_suggestions")
                 return None
             identity = hashlib.sha256(
@@ -470,6 +684,7 @@ class Suggestions:
                 ).encode()
             ).hexdigest()
             record = {
+                "style": self.automatic(key, db)["style"],
                 "kind": "reaction",
                 "source": identity,
                 "event": assessment["event"],
@@ -500,9 +715,10 @@ class Suggestions:
                 "attribution_inputs": dict(assessment["attribution_inputs"]),
                 "derived": dict(assessment["derived"]),
             }
-            if choice == "idioms":
+            if settings["style"] == "idioms":
                 record["idioms"] = True
             if self.reusable(self.record(key, db), record):
+                self.diagnose(self.record(key, db), reason="unchanged_source")
                 db.execute("RELEASE reaction_suggestions")
                 return None
             db.execute(
@@ -512,10 +728,14 @@ class Suggestions:
             record = self.store_record(db, key, record)
             if record["state"] == "pending":
                 self.enqueue(db, key, record, record["attempt"], self.store.clock())
+                self.diagnose(
+                    record, reason="scheduled", source="reaction", style=record["style"]
+                )
         except Exception:
             db.execute("ROLLBACK TO reaction_suggestions")
             db.execute("RELEASE reaction_suggestions")
-            _LOG.warning("suggestion_schedule_unavailable", exc_info=True)
+            _LOG.warning("suggestion_schedule_unavailable")
+            self.diagnose(reason="schedule_unavailable", source="reaction")
             return None
         db.execute("RELEASE reaction_suggestions")
         return record
@@ -533,11 +753,12 @@ class Suggestions:
             ),
         )
 
-    def cancel_queued(self):
+    def cancel_queued(self, key=None):
         """Suggestions Off stops new work; started calls may finish into cache."""
         with self.store.transaction() as db:
             for row in db.execute(
-                "SELECT id,scope FROM jobs WHERE role='response_suggestions' AND state='queued'"
+                "SELECT j.id,j.scope FROM jobs j JOIN suggestion_state s ON s.chat_key=j.scope WHERE j.role='response_suggestions' AND j.state='queued' AND coalesce(json_extract(s.body,'$.kind'),'automatic')!='manual' AND (? IS NULL OR j.scope=?)",
+                (key, key),
             ).fetchall():
                 db.execute(
                     "UPDATE jobs SET state='cancelled',error='Suggestions turned Off' WHERE id=? AND state='queued'",
@@ -547,48 +768,9 @@ class Suggestions:
 
     # ---- the chat's choice (ADR 56) ------------------------------------------
 
-    def choice(self, key, db=None):
-        """A private chat's Suggestions choice (Q12 A): On unless the chat
-        chose otherwise. Idioms counts only while it can be chosen."""
-        rows = self.read(
-            "SELECT choice FROM suggestion_choice WHERE chat_key=?", (key,), db
-        )
-        choice = rows[0]["choice"] if rows else DEFAULT_CHOICE
-        return "on" if choice == "idioms" and not domain.IDIOMS_LIVE else choice
-
-    def choice_view(self, key):
-        self.private(key)
-        return {"choice": self.choice(key), "idioms": domain.IDIOMS_LIVE}
-
-    def set_choice(self, key, choice):
-        """Applies from the next block that qualifies (Q5 A): nothing is
-        regenerated. Off cancels the chat's queued work, as the global switch
-        does, and a set prepared before shows again on switching back while
-        it is still valid."""
-        self.private(key)
-        if choice == "idioms" and not domain.IDIOMS_LIVE:
-            raise Refused("Idioms can't be chosen yet")
-        with self.store.transaction() as db:
-            db.execute(
-                "INSERT INTO suggestion_choice VALUES (?,?,?) ON CONFLICT(chat_key) DO UPDATE "
-                "SET choice=excluded.choice,changed=excluded.changed "
-                "WHERE choice!=excluded.choice",
-                (key, choice, self.store.clock()),
-            )
-            if choice == "off":
-                for row in db.execute(
-                    "SELECT id FROM jobs WHERE role='response_suggestions' AND scope=? AND state='queued'",
-                    (key,),
-                ).fetchall():
-                    db.execute(
-                        "UPDATE jobs SET state='cancelled',error='Suggestions are Off in this chat' WHERE id=? AND state='queued'",
-                        (row["id"],),
-                    )
-                    self.cancel(db, key, row["id"])
-        return self.choice_view(key)
-
     def private(self, key):
-        if self.store.chat(key).kind != "private":
+        chat = self.store.chat(key)
+        if chat.kind != "private" or not chat.ai_eligible:
             raise Refused("Suggestions are for private chats only")
 
     def fold(self, key, attempt, folded):
@@ -608,6 +790,17 @@ class Suggestions:
         return self.view(key)
 
     # ---- generation ------------------------------------------------------
+
+    def eligible(self, key, record):
+        return (
+            (
+                self.app.authorized()
+                and self.store.chat(key).kind == "private"
+                and self.store.chat(key).ai_eligible
+            )
+            if record and record.get("kind") == "manual"
+            else self.app.rewriting.chat_eligible(key)
+        )
 
     def owned(self, key, attempt):
         record = self.record(key)
@@ -635,7 +828,8 @@ class Suggestions:
         stale = False
         try:
             self.app.admit_ai()
-            if not self.enabled() or self.choice(key) == "off":
+            record = self.record(key)
+            if not self.permitted(key, record):
                 self._job(job, "cancelled", "Suggestions are Off")
                 with self.store.transaction() as db:
                     self.cancel(db, key, job["id"])
@@ -645,13 +839,17 @@ class Suggestions:
                 self._job(job, "superseded", "Suggestion source replaced")
                 return
             reason = self.withdrawn(key, record)
-            if reason or not self.app.rewriting.chat_eligible(key):
+            if reason or not self.eligible(key, record):
                 # Freshness at dispatch: nothing was sent, nothing counts.
                 self._job(job, "superseded", "Suggestion source is no longer current")
                 with self.store.transaction() as db:
                     self.cancel(db, key, job["id"], reason or "ineligible")
                 return
-            packet = {**record["packet"], "recipient_emotion": record["emotion"]}
+            packet = {
+                **record["packet"],
+                "recipient_emotion": record["emotion"],
+                "style": record.get("style", "friendly"),
+            }
             # ADR 55: memory as it stands at dispatch; it is not part of the
             # source, so a changed memory never regenerates options.
             if memory := self.app.memory.for_suggestions(key):
@@ -668,9 +866,8 @@ class Suggestions:
                 current = self.owned(key, job["id"])
                 ok = bool(
                     self.app.authorized()
-                    and self.enabled()
-                    and self.choice(key) != "off"
-                    and self.app.rewriting.chat_eligible(key)
+                    and self.permitted(key, current)
+                    and self.eligible(key, current)
                     and current
                     and not self.withdrawn(key, current)
                 )
@@ -720,8 +917,10 @@ class Suggestions:
                 with self.store.transaction() as db:
                     self.fail(db, key, job["id"], reason)
             elif isinstance(error, ProcessingPaused):
+                self.diagnose(self.record(key), reason="waiting_paused")
                 self._job(job, "queued", str(error))
             elif "budget" in str(error).lower():
+                self.diagnose(self.record(key), reason="waiting_budget")
                 self._job(job, "queued", str(error), due=self.store.clock() + 60)
             elif stale or self.store.rows(
                 "SELECT id FROM jobs WHERE id=? AND state IN ('superseded','cancelled')",
@@ -767,11 +966,19 @@ class Suggestions:
             purposes = await self.app.rewriting.work.run(
                 self.app.decider, labels, request, valid, klass="suggestions"
             )
-            return ResponseSuggestions(
-                options=[
-                    SuggestionOption(purpose=purpose, text=option.text)
-                    for purpose, option in zip(purposes, options, strict=True)
-                ]
+            return ResponseSuggestions.model_validate(
+                {
+                    "options": [
+                        SuggestionOption(purpose=purpose, text=option.text)
+                        for purpose, option in zip(purposes, options, strict=True)
+                    ]
+                },
+                context={
+                    "draft_intent": bool(
+                        record.get("kind") == "manual"
+                        and record["packet"].get("draft", "").strip()
+                    )
+                },
             ).options
         except ValidationError:
             reason = "format"
@@ -802,7 +1009,7 @@ class Suggestions:
                         (job["id"],),
                     )
                     self.cancel(db, key, job["id"], withdrawn)
-                elif not enabled:
+                elif not enabled and current.get("kind") != "manual":
                     self.cancel(db, key, job["id"])
                 else:
                     self.fail(db, key, job["id"], reason)
@@ -847,8 +1054,8 @@ class Suggestions:
         conversation's options nor overwrite newer text. Selection never
         rewrites or sends; Undo restores the complete previous text."""
         self.store.chat(key)
-        if not self.enabled() or self.choice(key) == "off":
-            raise Conflict("Suggestions are Off; reload the conversation")
+        if not self.permitted(key, self.record(key)):
+            raise Conflict("Automatic suggestions are Off; reload the conversation")
         # Read before the transaction, as the view reads it.
         signal = self.app.emotion.view(key)
         with self.store.transaction() as db:
@@ -874,7 +1081,9 @@ class Suggestions:
             if draft["revision"] != revision:
                 raise Conflict("Draft changed; keep your edits and reload")
             text, caret = splice(
-                draft["text"], record["options"][index]["text"], cursor
+                draft["text"],
+                record["options"][index]["text"],
+                record.get("cursor") if record.get("kind") == "manual" else cursor,
             )
             if len(text) > 65536:
                 raise Refused("The draft would exceed its length limit")

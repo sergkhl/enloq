@@ -185,8 +185,8 @@ describe("the Correspondent Profile's memory and traits", () => {
         };
       if (url.endsWith("/calming"))
         return { status: 200, body: { enabled: true } };
-      if (url.endsWith("/suggestions/choice"))
-        return { status: 200, body: { choice: "on", idioms: false } };
+      if (url.endsWith("/suggestions/settings"))
+        return { status: 200, body: { automatic: true, style: "friendly" } };
       if (url.endsWith("/remember")) {
         if (init.method === "POST") {
           const body = JSON.parse(init.body!);

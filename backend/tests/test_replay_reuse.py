@@ -36,8 +36,15 @@ async def complete(app, now):
         "SELECT id FROM jobs WHERE role='incoming_rewrite' AND state='queued' AND due<=?",
         (now[0],),
     )
-    for _ in pending:
+    # Arrival screens are independently queued before the block work.
+    for _ in range(len(pending) + 20):
         await app.process_due()
+        if not app.store.rows(
+            "SELECT id FROM jobs WHERE role IN ('incoming_rewrite','hostility_screen') "
+            "AND state='queued' AND due<=?",
+            (now[0],),
+        ):
+            break
     assert all(b["state"] == "ready" for b in app.conversation(KEY)["blocks"])
     await classified(app)
 

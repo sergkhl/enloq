@@ -1,6 +1,5 @@
-"""ADR 53: calming hostile messages in private chats, on by default. The mood
-decision comes first, a frustrated or angry block is rewritten calmly at any
-length, and a chat's switch turns it off. Authored sources, fake providers."""
+"""ADR 53: explicit hostile wording alone permits softening in private chats.
+Authored sources and fake providers, with independent mood and hostility."""
 
 import json
 
@@ -58,6 +57,7 @@ def rig(tmp_path):
     )
     app = Conversations(store, FakeTransport())
     app.decider.emotion = "angry"
+    app.decider.hostility = 1.0
     # When each rewrite starts, how many decisions were already asked for.
     order = []
     generate = app.engine.generate
@@ -95,6 +95,40 @@ def block(app, identity=None):
 async def settle(app, rounds=6):
     for _ in range(rounds):
         await app.process_due()
+
+
+@pytest.mark.parametrize("mood", ["angry", "frustrated"])
+async def test_queued_legacy_mood_release_requires_a_new_hostility_decision(rig, mood):
+    from enloq.application.blocks import enqueue
+
+    app, now, _ = rig
+    app.sync.ingest(
+        message(app, text="I'm angry about the delay. Please confirm Friday.")
+    )
+    with app.store.transaction() as db:
+        held = db.execute("SELECT * FROM incoming_deferred").fetchone()
+        enqueue(
+            db, held["scope"], held["input_revision"], now[0], payload={"calm": mood}
+        )
+        db.execute("UPDATE blocks SET state='queued'")
+        db.execute(
+            "UPDATE incoming_deferred SET payload=?",
+            (json.dumps({"class": "new", "decided": True}),),
+        )
+    store = Store(
+        app.store.path,
+        account_id=1,
+        clock=lambda: now[0],
+        shared_path=app.store.shared_path,
+    )
+    current = Conversations(store, FakeTransport())
+    current.suggestions.enabled = lambda: False
+    current.decider.emotion, current.decider.hostility = mood, 0.0
+    now[0] += 31
+    await settle(current)
+    assert not [p for role, p in current.engine.calls if role == "incoming_rewrite"]
+    assert block(current)["state"] == "original" and not block(current)["calmed"]
+    assert [role for role, _ in current.decider.calls] == ["emotion_classification"]
 
 
 def test_calming_is_on_by_default_and_a_chat_turns_it_off(rig):
@@ -183,6 +217,7 @@ async def test_a_sarcastic_block_is_calmed_with_the_decisions_hint(rig):
 async def test_text_that_is_not_hostile_stays_combined(rig):
     app, now, order = rig
     app.decider.emotion = "worried"
+    app.decider.hostility = 0.0
     app.sync.ingest(message(app, 1, text=LONG.lower()), live=True)
     now[0] += 30
     await settle(app)
@@ -245,7 +280,7 @@ async def test_a_short_hostile_block_is_calmed_whatever_its_length(rig):
     assert rewrites(app)[0]["calm"] is True
     (released,) = jobs(app, "incoming_rewrite")
     payload = json.loads(released["payload"])
-    assert payload["calm"] == "angry" and payload["class"] == "new"
+    assert payload["calm"] is True and payload["class"] == "new"
     assert block(app)["state"] == "ready" and block(app)["calmed"] is True
     assert app.emotion.view(KEY).code == "angry"
     assert not app.store.rows("SELECT * FROM incoming_deferred")
@@ -271,7 +306,7 @@ async def test_a_refused_calmed_rewrite_retries_calmly_without_a_new_decision(ri
         if j["state"] == "queued"
     ]
     # The retry is still the release: calm, sarcastic, and counted.
-    assert retry["calm"] == "angry" and retry["sarcastic"] is True
+    assert retry["calm"] is True and retry["sarcastic"] is True
     assert retry["refusals"] == 1
     app.calmer.generate = calmed
     now[0] += 20
@@ -304,6 +339,7 @@ async def test_a_calmed_rewrite_refused_three_times_fails_with_retry(rig):
 async def test_a_short_block_that_is_not_hostile_stays_held(rig):
     app, now, _ = rig
     app.decider.emotion = "neutral"
+    app.decider.hostility = 0.0
     app.sync.ingest(message(app, 1, text="See you at six."), live=True)
     now[0] += 30
     await settle(app)
@@ -314,6 +350,7 @@ async def test_a_short_block_that_is_not_hostile_stays_held(rig):
 async def test_a_held_blocks_readiness_waits_for_its_decision(rig):
     app, now, _ = rig
     app.decider.emotion = "neutral"
+    app.decider.hostility = 0.0
     app.sync.ingest(message(app, 1, text="See you at six."), live=True)
     now[0] += 30
     assert block(app)["deciding"]
@@ -335,8 +372,10 @@ async def test_an_older_held_block_is_decided_for_its_calming_only(rig):
         live=True,
     )
     app.decider.emotion = "neutral"
+    app.decider.hostility = 0.0
     app.sync.ingest(message(app, 3, text="Fine, call me.", date=now[0] + 10), live=True)
     app.decider.emotion = "angry"
+    app.decider.hostility = 1.0
     now[0] += 31
     await settle(app)
     # The first block is no longer the chat's current source: its decision
@@ -383,7 +422,7 @@ async def test_switching_off_keeps_what_was_calmed(rig):
 
 def test_calming_guidance_frames_only_blocks_being_calmed():
     guidance = snapshot()
-    assert DEFAULTS_REVISION == 15
+    assert DEFAULTS_REVISION == 16
     assert "calming" in DEFAULTS
     plain = instructions("incoming_rewrite", {}, guidance)
     calm = instructions("incoming_rewrite", {"calm": True}, guidance)
@@ -415,3 +454,18 @@ def test_the_calming_switch_is_strict_and_private_only(tmp_path):
         assert client.get(route).json() == {"enabled": False}
         group = "/api/accounts/1/chats/chat:7/calming"
         assert client.get(group).status_code == 400
+
+
+@pytest.mark.parametrize(
+    "emotion,hostile", [("angry", 0.0), ("frustrated", 0.0), ("neutral", 1.0)]
+)
+async def test_only_explicit_hostility_triggers_softening(rig, emotion, hostile):
+    app, now, _ = rig
+    app.decider.emotion, app.decider.hostility = emotion, hostile
+    app.sync.ingest(
+        message(app, 1, text="Authored communication for the classifier boundary.")
+    )
+    now[0] += 31
+    await settle(app)
+    assert bool(rewrites(app)) == bool(hostile)
+    assert block(app)["calmed"] == bool(hostile)

@@ -42,7 +42,7 @@ Notifications, Budget, AI and Privacy. Processing Guidance's fields, up to
 
 **Everything the web had (Q6).** Both budgets with today's spending, the
 Processing Character Threshold, the Concurrency Limit, the memory and
-suggestions switches, and Guidance with its paused-role notice are in both
+Automatic suggestions switches, and Guidance with its paused-role notice are in both
 clients. The paused-role notice is the only way automatic rewriting resumes
 after three format failures. The web's five chimes and custom sound are not
 offered: the phone's push uses its own sound, and the web plays one.

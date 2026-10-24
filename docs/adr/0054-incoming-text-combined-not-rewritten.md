@@ -23,11 +23,15 @@ a better rewrite later. Cost was not the reason.
   threshold for private chats.
 - **The mood decision stays.** Every text block is held and decided from its
   originals after its quiet ([ADR 49](0049-useful-response-suggestions.md)
-  Q3), for the mood emoji, reply suggestions and sarcasm. With calming on,
-  readiness and notifications wait for that decision.
-- **Calming is the one rewrite of text.** A frustrated or angry block is
-  calmed as [ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
-  says.
+  Q3), for the mood emoji, automatic reply suggestions and sarcasm. With
+  Soften hostile messages On, the explicit hostility decision governs
+  softening and readiness. Notifications follow their immediate bounded
+  screen and original fallback in
+  [ADR 20](0020-minimal-reading-and-ready-notifications.md), independently of
+  the block's quiet period and mood result.
+- **Softening is the one rewrite of text.** Only a hostile block is
+  softened as [ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
+  says. Frustration or anger alone causes no rewrite.
 - **Media keeps its rewrite.** A block with an image, a voice note or a video
   circle is rewritten as before: transcripts become readable text and images
   get their meaning.
@@ -36,11 +40,11 @@ a better rewrite later. Cost was not the reason.
   ([ADR 55](0055-person-and-account-memory-and-traits.md)) learn from what the
   decision read: the same messages, already sent to a model.
 - **Explicit work.** Rewrite earlier messages offers only blocks with media. A
-  Retry of a text block that isn't calmed decides it again and ends combined.
+  Retry of a text block that isn't softened decides it again and ends combined.
 - **The Processing Character Threshold** governs group briefings only.
 - **For later.** The registry keeps a `text_rewriting` switch, off and not in
   Settings; on, it restores text rewriting under the threshold. A better
-  rewrite is future work: calmed texts suggest a structured account
+  rewrite is future work: softened texts suggest a structured account
   (feeling, facts, requests, deadlines) for long or messy messages.
 
 ## Consequences

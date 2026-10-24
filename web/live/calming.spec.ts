@@ -4,9 +4,9 @@ import { expect, MAYA, openMayaChat, OWNER_ACCOUNT, test } from "./maya";
 // ADR 53 CA5 and ADR 54 on the live service, in the Maya chat only (AGENTS.md,
 // Live Telegram sends). Maya sends an angry authored message, a plain one and
 // an image with a caption, the Owner Account answering each so that each is its
-// own block. In the Owner Account's AI view the angry one shows Calmed, the
+// own block. In the Owner Account's AI view the angry one shows Softened, the
 // plain one shows as sent with no AI label, and the image is still rewritten.
-// The remembered Reading View and Calm this chat are the owner's: they are
+// The remembered Reading View and Soften hostile messages are the owner's: they are
 // read, and the view is put back if the check needed AI. LIVE_STAMP reruns the
 // reading alone for a run whose sends are done.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
@@ -210,7 +210,7 @@ test("the AI view shows them as the Owner Account reads them", async ({
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
     const head = (block: Block) =>
       bubble(page, block).locator(".bubble-ai-head");
-    await expect(head(calmed)).toHaveText(/^AI · 1 message · .*Calmed/);
+    await expect(head(calmed)).toHaveText(/^AI · 1 message · .*Softened/);
     await expect(head(combined)).toHaveText(/^1 message · /);
     await expect(bubble(page, combined)).toContainText(
       "The plumber can come on Thursday at ten",

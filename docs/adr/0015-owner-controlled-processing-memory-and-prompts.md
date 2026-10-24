@@ -27,7 +27,7 @@ blocks in the local 30-day cache of an eligible recent chat:
   blocks remain, "keeping budget for new messages".
 - **Retry** of a failed block, from its long-press sheet
   ([ADR 46](0046-the-apps-catch-up-units.md)). Retry of a text block that
-  isn't calmed decides it again and ends combined (ADR 54).
+  isn't softened decides it again and ends combined (ADR 54).
 
 There is no first-time Rewrite now per block
 ([ADR 31](0031-message-deletion-selection-and-group-ai-controls.md)) and no
@@ -40,7 +40,7 @@ its direct reply. Explicit work never fetches or scans Telegram history.
 
 **Memory.** Memory is a bounded list of short cited entries, framed to the
 model as unverified reference data and applied only to targets newer than its
-coverage. It is never a rewrite target and never reaches outgoing Rewrite.
+coverage. It is never a rewrite target.
 The owner sees, edits, adds to and clears it, and it is a reference list, not
 a task list. It is kept until cleared or until the account's local data is
 removed, an exception to the 30-day rule for derived content. A cited list
@@ -57,11 +57,11 @@ chat starts Off ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-def
 Guidance ([ADR 47](0047-pairing-settings-menus-and-profiles.md)), each field up
 to 4,000 characters with Save, Reset and a version:
 
-- **Rewriting:** Faithfulness rules, Incoming rewriting, Calming and Outgoing
-  rewriting;
-- **Tones:** Neutral, Professional and Friendly casual;
+- **Rewriting:** Faithfulness rules, Incoming rewriting and Soften hostile
+  messages;
+- **Suggestion styles:** Friendly, Professional and Idioms;
 - **Other work:** Emotion extraction, Person memory, Account memory, Response
-  suggestions, Idioms, When to suggest and Group briefings.
+  suggestions, When to suggest and Group briefings.
 
 A fixed core the owner cannot edit keeps message and memory content framed as
 untrusted data and holds the output contracts, the hidden image-context
@@ -73,7 +73,7 @@ weaken. Guidance and the other AI settings are server-wide and only the owner
 changes them ([ADR 48](0048-members-on-the-shared-service.md)).
 
 **Format-failure pause.** After three consecutive format failures, automatic
-incoming rewriting, outgoing rewriting or memory updates pause until the owner
+incoming rewriting or memory updates pause until the owner
 keeps or resets that role's guidance from the paused-role notice; saving
 guidance restarts the counts, and so does a change of the role's Model Route
 ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)). Suggestions
@@ -104,14 +104,14 @@ seconds, at most three times, then fails visibly with Retry (Q31). It never
 falls back to another route or provider. A block that failed before dispatch
 only because of Non-AI Media is re-queued once while still inside the
 seven-day window, since nothing reached a provider (Q21). A changed route contract, such as missing
-output parameters or unbounded rates, fails at once, and so does an
-interactive outgoing Rewrite. Work waiting for budget shows why and resumes
+output parameters or unbounded rates, fails at once. Notification screening
+and delivery instead follow ADR 20's bounded original-text fallback. Work waiting for budget shows why and resumes
 when spending allows. Receipts, attempt identities and the
 no-automatic-resampling rule apply throughout.
 
 **Concurrency Limit.** One global limit on concurrent model calls, 1 to 8 and
 4 by default, across accounts and members. Classes are served highest first:
-outgoing Rewrite, new incoming work (a Retry click included), unread catch-up,
+new incoming work (a Retry click included), unread catch-up,
 Reaction Assessment, the earlier-messages run, Response Suggestions, group
 briefings and memory. With a limit of 2 or more, the four lowest classes never
 take the last free slot; at 1, work runs strictly by priority. Members take

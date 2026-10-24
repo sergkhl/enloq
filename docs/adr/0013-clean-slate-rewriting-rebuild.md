@@ -26,14 +26,16 @@ Its core is two flows:
   image, a voice note or a Video Circle is rewritten into clear text, with
   speech made readable and image meaning kept as hidden model context
   ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)), and a
-  frustrated or angry block is calmed
+  hostile block is softened
   ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)).
   Rewriting keeps substance, uncertainty and language under the Faithfulness
   Rules ([ADR 15](0015-owner-controlled-processing-memory-and-prompts.md)), in
   the sender's voice, and the originals stay one tap away.
-- **Outgoing.** Rewrite improves the owner's own draft in Neutral,
-  Professional or Friendly casual. It never invents an answer to an empty
-  composer and never sends.
+- **Outgoing.** Private chats offer manual Response Suggestions alongside
+  automatic ones (ADR 25), using the chat's Friendly, Professional or Idioms
+  Style (ADR 56). With a draft they offer additions following its intent;
+  without one they offer complete messages. Generation changes and sends no
+  draft. Outgoing Rewrite and its tones are removed, in groups too.
 
 **What it does not do.** No attention or commitment tracking, topic
 classification or "needs reply" marks. Two later decisions are narrow
@@ -57,10 +59,11 @@ profile-based advice; and groups get Daily Briefings
   service chats, broadcast channels and Secret Chats are outside automatic
   processing.
 - **Any private chat.** New Message and chat links open any of the account's
-  private chats to read and write; such a chat gets no AI until a message
-  makes it recent ([ADR 51](0051-telegram-phone-look-and-new-messages.md)).
+  private chats to read and write; its draft can request manual suggestions,
+  while background work waits until a message makes it recent ([ADR 51](0051-telegram-phone-look-and-new-messages.md)).
 - **Background work.** New and changed blocks and unread catch-up within the
-  seven days, after 30 quiet seconds. Opening, refreshing and restarting reuse
+  seven days, after 30 quiet seconds. Notification screening starts on arrival
+  under ADR 20's five-second deadline and original fallback. Opening, refreshing and restarting reuse
   unchanged results and start nothing.
 - **Context.** Up to 20 preceding same-chat messages within seven days, plus
   the one message a block directly replies to, even when older
@@ -72,18 +75,14 @@ profile-based advice; and groups get Daily Briefings
   read from Telegram only on demand, and the cache never widens what
   background work may read.
 
-**Composer.** Send and Rewrite are separate, always-visible buttons; the tone
-choice sits with Rewrite and is remembered once for all of a member's chats
-and clients ([ADR 48](0048-members-on-the-shared-service.md)). There is no
-Send/Rewrite mode preference. Rewrite starts on a click, streams into the
-draft ([ADR 19](0019-streamed-rewriting-and-observed-message-history.md)) and
-groups compactly with its status, Stop and Undo; Send transmits exactly the
-draft shown. Small thumbnails sit above one optional shared caption; rewriting
-keeps the attachments, and an image-only send invents no caption. Enter adds a
-new line ([ADR 44](0044-mobile-only-web-in-the-apps-design.md)). A send is
-unquoted unless the owner picks a reply target. No sparkles icon appears
-anywhere. The authored [composer sketch](../design/compact-composer-mobile-dark.png)
-shows the grouping.
+**Composer.** Private chats have separate, always-visible Send and Generate
+suggestions buttons. Send transmits the exact draft; generation leaves it
+intact, and a chosen option inserts at the cursor with Undo (ADR 25).
+Automatic suggestions and Style live in the Correspondent Profile (ADR 56).
+There is no outgoing Rewrite, tone control, draft stream or Stop rewrite.
+Groups and Saved Messages keep send composers without AI actions. Photos,
+GIFs, stickers, captions, native reply targets and ordinary send guards stay.
+Enter adds a new line (ADR 44), and no sparkles or inline usage hints appear.
 
 **Implementation.** One backend, the web and the Enloq app, SQLite state with
 a persisted work queue, the exact model routes (ADR 29,

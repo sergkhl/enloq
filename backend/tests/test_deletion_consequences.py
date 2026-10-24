@@ -238,6 +238,7 @@ async def test_deleted_input_rejects_late_emotion_classification_and_suggestions
         await release.wait()
         return {
             "emotion": choice("worried", 0.9),
+            "hostility": {"type": "noul", "noul": 0.0},
             "suggestions_useful": {"type": "noul", "noul": 0.9},
         }
 

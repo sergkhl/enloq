@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
-import { request } from "./api";
+import { Refused, Revoked, request } from "./api";
+import { readCached, writeCached } from "./cache";
 import { loadCredential } from "./credential";
 import { phonePush } from "./phonePush";
 
@@ -9,6 +10,27 @@ export const PUSH_TASK = "enloq-push";
 const SOUND = "messages";
 const QUIET = "messages-quiet";
 const EVENT = /^[a-f0-9]{32}$/;
+let claims = Promise.resolve();
+
+// FCM can redeliver one opaque event. Serialize its durable claim across
+// concurrent task callbacks; keep only IDs within the notification lifetime.
+async function claim(id: string) {
+  let fresh = false;
+  const next = claims.then(async () => {
+    const now = Date.now();
+    const seen = Object.fromEntries(
+      Object.entries(
+        (await readCached<Record<string, number>>("push-events")) || {},
+      ).filter(([, until]) => until > now),
+    );
+    if (seen[id]) return;
+    fresh = true;
+    writeCached("push-events", { ...seen, [id]: now + 300_000 });
+  });
+  claims = next.catch(() => undefined);
+  await next;
+  return fresh;
+}
 
 export type Push = { id: string; silent: boolean };
 
@@ -41,7 +63,7 @@ export function readPush(data: unknown): Push | null {
 export async function ensureChannels() {
   await Notifications.setNotificationChannelAsync(SOUND, {
     name: "Messages",
-    description: "New messages ready to read",
+    description: "New private messages",
     importance: Notifications.AndroidImportance.HIGH,
   });
   await Notifications.setNotificationChannelAsync(QUIET, {
@@ -53,7 +75,7 @@ export async function ensureChannels() {
   });
 }
 
-async function details(id: string): Promise<Details | null> {
+async function details(id: string): Promise<Details | null | false> {
   const credential = await loadCredential();
   if (!credential) return null;
   const controller = new AbortController();
@@ -64,7 +86,10 @@ async function details(id: string): Promise<Details | null> {
       body: { id },
       signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    // A known invalidated, superseded or revoked locator must not produce
+    // a second generic banner. Network loss keeps the generic fallback.
+    if (error instanceof Refused || error instanceof Revoked) return false;
     return null;
   } finally {
     clearTimeout(timer);
@@ -75,7 +100,9 @@ async function details(id: string): Promise<Details | null> {
 // when the server can't answer in time, a generic notice still opens the app.
 // A chat's newer notice replaces its older one.
 export async function presentPush(push: Push) {
+  if (!(await claim(push.id))) return;
   const found = await details(push.id);
+  if (found === false) return;
   const chat = found && found.account_id !== null && found.peer ? found : null;
   const join = found?.kind === "join";
   // A decision-model outage opens Settings → AI (ADR 49 Q14).
@@ -130,7 +157,7 @@ Notifications.setNotificationHandler({
     return {
       shouldShowBanner: shown,
       shouldShowList: shown,
-      shouldPlaySound: shown,
+      shouldPlaySound: shown && notification.request.content.sound !== null,
       shouldSetBadge: false,
     };
   },

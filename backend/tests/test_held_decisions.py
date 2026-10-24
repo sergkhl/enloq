@@ -182,6 +182,7 @@ async def test_a_released_block_is_classified_after_its_rewrite_without_duplicat
     rig,
 ):
     app, now, registry = rig
+    app.notifications.unavailable = lambda: True
     app.sync.ingest(message(app, 1, text="Are you coming tomorrow?"), live=True)
     now[0] += 31
     # The held decision is queued, then the threshold admits the block first.

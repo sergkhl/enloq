@@ -134,9 +134,7 @@ async def run(tmp_path, check, *, rates=None, budget=None, unknown=False):
     [
         (
             1,
-            ["incoming_rewrite"] * 5
-            + ["outgoing_rewrite"] * 2
-            + ["chat_memory", "response_suggestions"],
+            ["incoming_rewrite"] * 5 + ["chat_memory", "response_suggestions"],
         ),
         (2, ["incoming_rewrite"] * 8),
         (3, ["incoming_rewrite"] * 13),
@@ -168,9 +166,7 @@ async def test_each_check_makes_one_first_attempt_per_case_within_bounds(
         assert payload["user"] == user and "tool_choice" not in payload
         assert payload["model"] == MODEL
         assert "provider" not in payload and "reasoning" not in payload
-        assert payload["extra_body"]["thinking"] == (
-            {"type": "disabled"} if role == "outgoing_rewrite" else {"type": "enabled"}
-        )
+        assert payload["extra_body"]["thinking"] == {"type": "enabled"}
     streamed = [c for r in report["results"] for c in r["calls"] if "stream" in c]
     assert not streamed  # Packets and timings only; no raw request bodies.
     timed = [

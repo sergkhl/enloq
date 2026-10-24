@@ -27,7 +27,8 @@ per-chat choices in a Correspondent Profile.
 
 **What Off stops.** Every new AI stage for that account: transcription,
 rewriting, image understanding, decisions, suggestions, memory, briefings and
-outgoing Rewrite and Retry. Sync, originals, cached results, drafts and
+manual suggestion generation and Retry. Notification delivery takes ADR 20's
+original fallback without screening. Sync, originals, cached results, drafts and
 sending continue. Work already started may finish and save a still-valid
 result and its receipt but starts no next stage, so admission and
 publication validity are separate checks. Toggling alone never discards a
@@ -42,7 +43,7 @@ toggle at the conversation header's right end, pressed for AI
 combined blocks and rewrites, falling back to originals; Originals shows
 native messages in order. The choice is remembered per member across chats,
 accounts, clients and restarts (ADR 48), independently of processing and of
-the tone, and changing it starts no model work. A message's own choice is in
+Suggestion Style, and changing it starts no model work. A message's own choice is in
 its long-press sheet ([ADR 20](0020-minimal-reading-and-ready-notifications.md)),
 and conversation previews follow the global one
 ([ADR 23](0023-local-unseen-messages-and-conversation-previews.md)). Saved
@@ -56,4 +57,5 @@ Messages has no toggle.
   its member's Daily Budget
   ([ADR 15](0015-owner-controlled-processing-memory-and-prompts.md)).
 - There is no per-chat processing switch for private chats; a profile's
-  choices (calming, memory and suggestions) narrow specific work only.
+  choices (softening, memory, Automatic suggestions and Style) govern specific
+  work only.
