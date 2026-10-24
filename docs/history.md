@@ -442,7 +442,7 @@ not. Burst identities are account/chat scoped and distinct from Incoming Blocks;
 block. Once current output validates, or rewriting is known unavailable, one
 pending outcome references the current source revisions and completed blocks.
 A text-only block, combined rather than rewritten, is ready as its originals;
-one held for the calming decision
+one held for the hostility decision
 ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md))
 waits until it is decided. Fallback consumes that burst even if a later
 rewrite succeeds. No notification operation starts inference or adjusts

@@ -537,8 +537,8 @@ brief, and **Hide bots**; a passive AI off tag shows while account or group
 AI is Off. A bot original that Hide bots hides offers **Stop ignoring this
 bot** in its long-press menu once it shows.
 
-The composer offers Neutral, Professional and Friendly casual, and acts only
-while the group's native access is verified. Offline, the Groups list and
+The composer offers Send without suggestion generation, and acts only while
+the group's native access is verified. Offline, the Groups list and
 opened groups stay readable, while the slot, the switches and sends wait for
 the server.
 
@@ -559,8 +559,8 @@ minutes; once they pass, the review closes and must be opened again.
 **Saved**, the switch's third tab, shows the account's own Saved Messages in
 place of a list ([ADR 50](adr/0050-icon-tabs-saved-messages-and-one-saved-build.md)):
 its timeline, newest at the bottom, Load earlier and the composer without
-Rewrite, tone or Undo. The message menu offers Copy, Reply, Select and the
-media actions, but no reactions, which Telegram treats as its Premium tags
+suggestion generation or Undo. The message menu offers Copy, Reply, Select
+and the media actions, but no reactions, which Telegram treats as its Premium tags
 there. Nothing in it goes to a model, is unseen or alerts, and its content
 follows the chats' 30-day rule. Every account has its own, members' included.
 
@@ -690,16 +690,17 @@ The app has no Help screen; this is what a Help screen would explain.
   Rewrite and its tone controls are removed.
 - **Groups** list basic groups and supergroups active in the last seven days.
   Group AI processing starts Off; turn it on in the group's ⋮. Groups offer
-  Neutral, Professional and Friendly casual, and send no sound or push.
-- **Budgets.** The Daily Budget pays private-chat processing and every
-  suggestions and arrival screening; the Group Briefing Budget pays briefings and their Retry. Each is
-  shared by all your accounts and never changes by itself. Counted spending
+  Send without suggestion generation, and send no sound or push.
+- **Budgets.** The Daily Budget pays private-chat processing, suggestions and
+  arrival screening; the Group Briefing Budget pays briefings and their Retry.
+  Each is shared by all your accounts and never changes by itself. Counted spending
   is the provider's receipts plus a flat estimate for each unknown cost. New
   calls wait at the limit, and started calls may finish slightly past it.
 - **Processing.** Minimum characters applies to group briefings: a day starts
   once its messages reach that many characters, and images, voice notes and
-  videos don't need it. Model calls at once serves outgoing rewrites first,
-  then new messages; transcription runs one at a time. The Memory switch
+  videos don't need it. Model calls at once limits all accounts together;
+  private work precedes briefings, which precede idle memory. Transcription
+  runs one at a time. The Memory switch
   stops use and updates without deleting anything. Guidance applies from the
   next model call; work already started keeps its version, and group
   briefing guidance is separate from the private-chat fields.

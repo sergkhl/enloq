@@ -1,6 +1,6 @@
 # Prompt notifications, hostile-only softening and manual suggestions
 
-Status: active; implementation authorized.
+Status: complete; deployed and Android Saved Build published.
 Last meaningful update: 2026-10-24
 
 Policy: ADR 20 (notifications), ADR 25 and ADR 49 (suggestions), ADR 53
@@ -55,16 +55,19 @@ Telegram authorizations, spending and unrelated work.
   from deterministic checks. Runtime image and Saved Build identify the
   committed change. iPhone delivery follows its existing Mac build boundary.
 
-## Open findings
+## Delivery and retained limits
 
 Implementation and the complete deterministic checks passed. Provider semantic
 acceptance completed as Low quality. The pushed revision is deployed healthy;
 the guarded manual and arrival browser checks passed their controls. Reviewing
 the manual output found a full-draft echo in Professional options; its
-deterministic extraction and regression checks now pass before the
-follow-up deployment and Android Saved Build. Native phone notification
+deterministic extraction and regression checks now pass. The follow-up is
+deployed healthy, its fresh Professional check passed, and the matching
+Android Saved Build is published and pinned. Native phone notification
 display and an iPhone build are separate claims; the browser arrival check
-observes service eligibility metadata.
+observes service eligibility metadata. No agent-owned work remains in this
+plan. Owner quality review, phone installation and native delivery gates
+remain in TODO; they are not inferred from the deterministic or browser checks.
 
 Provider acceptance bounds: the authored softening pass uses at most 32
 rewrite, 32 decision and 30 sarcasm-judge requests, 2,400 seconds and $0.20
@@ -165,3 +168,32 @@ resample of the hostile-only semantic corpus.
   and source state. It includes exact mid-draft and UTF-16 extraction,
   punctuation, unchanged draft/Undo and echo-only format failure without
   another call. Ruff, format, web typecheck and whitespace checks passed.
+- Follow-up `e8fe3d9417986dfcab5ce688c3062c41b02d2685` was committed in its
+  task worktree, merged and pushed from primary main, and verified against
+  origin/main. The clean merged worktree and branch were removed before
+  deploying `enloq:e8fe3d941798` from clean primary main. The container is
+  healthy and its OCI revision matches the commit.
+- Reverified the exact MiMo/Xiaomi and pinned Decider/Perplexity routes and
+  unchanged rates before the separately bounded Professional check. The fresh
+  authored Monday draft passed generation, unchanged composition, insertion
+  exactly once, Undo and no-send assertions in 34.5 seconds. Its one writer
+  and one label request cost $0.000484814, both receipted. Settings and empty
+  composer were restored, Remember stayed Off, and there was no resampling.
+  Allowance now 1,845. Private route, generated-option and scoped receipt
+  evidence is retained in `.local/live-evidence/`.
+- Corrected remaining runbook descriptions of removed group composer tones,
+  outgoing budget roles and concurrency; manual draft-only generation remains
+  distinct from automatic recent-chat admission.
+- Built the release arm64 Android APK from clean primary commit `e8fe3d9`
+  with `mobile/scripts/publish-android`. The service confirmed replacement of
+  its one Saved Build and that it is pinned. The local publication record
+  matches the full deployed revision. APK signature verification passed;
+  size is 57,667,848 bytes and SHA-256 is
+  `645616f9cc12f19b8b3a1ad6a8947075425d838858550724dab89203c57d8e29`.
+  The script exited successfully; its temporary service upload was removed.
+- Final read-only checks confirmed an empty Maya composer, Remember Off and
+  restored Automatic suggestions On / Friendly. The deployed container
+  remains healthy. Documentation local-link and whitespace checks passed.
+  The complete implementation and delivery record is committed before the
+  separate plan-deletion commit; remaining source changes are documentation
+  only and require no additional model calls or deployment.

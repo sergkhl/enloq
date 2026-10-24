@@ -166,8 +166,8 @@ across the complete block; context, metadata, transcripts and generated wording
 do not count. An analysable image, voice note or Video Circle exempts the
 block, and zero removes only this gate. It governs group briefings, and private
 text only while `text_rewriting` is on. Quiet, target, account, budget and
-concurrency gates remain; deliberate composer Rewrite, failure Retry, older
-runs, independent reactions and memory keep their own admission.
+concurrency gates remain; manual suggestions, failure Retry, older runs,
+independent reactions and memory keep their own admission.
 
 Held blocks use durable `incoming_deferred` records, outside runnable jobs and
 model reservations. They show originals without a threshold status or counter,
@@ -278,8 +278,8 @@ Each member has two budgets ([ADR 15](adr/0015-owner-controlled-processing-memor
 [ADR 48](adr/0048-members-on-the-shared-service.md)), counting only their own
 accounts:
 
-- **The Daily Budget** pays for every private role, hosted speech and every
-  composer Rewrite, a group draft included.
+- **The Daily Budget** pays for every private role, including manual and
+  automatic suggestions, arrival screening and hosted speech.
 - **The Group Briefing Budget** pays for briefing image understanding, chunk
   summaries, final synthesis, group filtering and briefing Retry.
 
@@ -500,10 +500,12 @@ prove the real staging, accounting and guard mechanics; the
 
 ## Private processing and media
 
-Private rewriting, emotion, suggestions and memory targets must belong to
+Automatic private rewriting, emotion, suggestions and memory targets belong to
 eligible human private chats active in the last seven days; a chat opened or
-written to outside that list spends nothing on AI until a message makes it
-recent. Background work and initial catch-up admit sources within seven days,
+written to outside that list starts no background AI until a message makes it
+recent. Manual suggestions can instead use an authored draft alone, under
+their ordinary account, target and budget guards. Background work and initial
+catch-up admit sources within seven days,
 unread ones only for catch-up; change-driven blocks wait 30 quiet seconds.
 Explicit processing (the chat-level Rewrite earlier messages, or a failure
 Retry; completed results have no repeat action under
