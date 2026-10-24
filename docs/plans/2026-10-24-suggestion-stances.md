@@ -39,9 +39,26 @@ it applies to automatic and manual generation in every Style.
 - The six-case provider harness passed offline with fake routes and keeps its
   source beside private evidence. Live preflight found no running model jobs;
   the existing Daily Budget admits the bounded check without changing it.
+- Candidate `e6e4726` passed the authored live format check in 57.45 seconds:
+  six writer and six label requests, $0.001383608 counted, no receipt errors
+  and six published sets. Five sets had only accept or only decline stances.
+  All three styles passed through automatic and blank-draft manual paths,
+  preserving the draft and inserting without a send. Exact MiMo/Xiaomi,
+  Muse/Meta and pinned Decider/Perplexity routes and current rates were
+  verified before calls. The service restarted healthy after the check.
+  Private evidence and harness: service `data/suggestion-stances-9t15_1xw/`.
+  The allowance count includes these 12 requests.
+- Semantic review remains separate: manual Friendly made a firm refusal
+  tentative and offered an unsupplied update, and Professional invented being
+  busy as a reason. Both are **Low quality**, retained in `docs/inference.md`;
+  no request was resampled and the format fix does not claim to repair them.
+- `./scripts/check` passed: Ruff and formatting, 3,913 backend tests, web
+  typecheck and 53 phone-size journeys, mobile typecheck/formatting and 302
+  Jest tests in 38 suites. No code changed after these checks; subsequent
+  changes record acceptance and its request allowance only.
 
 ## Open findings
 
-- Full validation, finite provider acceptance and deployment remain. Old failed attempts retain no
+- Deployment remains. Old failed attempts retain no
   recoverable options and will not be regenerated automatically; a new
   manual press or qualifying changed source uses the corrected rule.

@@ -1182,8 +1182,13 @@ checks never establishes semantic acceptance.
   mixed; promised an owner action ("Let me take a quick look"); invented an
   offer (bringing boxes and tape) or an answer with an apology for fault; and
   given a bare "yes" as an acceptance. The decision model's labels once filed
-  a calendar question as later. Minor, not failures: "I'm here if you want to
-  talk", "Sending you love" and an offer to ask around inside a decline.
+  a calendar question as later. **Low quality:** a manual Friendly set made
+  a firm refusal tentative and added an unsupplied promise to update; a
+  Professional set supplied being busy as the reason for a refusal when the
+  authored conversation gave no reason. One-sidedness is valid under ADR 49
+  Q20 and does not excuse these grounding misses. Minor, not failures: "I'm
+  here if you want to talk", "Sending you love" and an offer to ask around
+  inside a decline.
 - **Reaction usefulness.** On Decider V1.2 every authored reaction case was
   judged not useful, including three written to need a reply (a 👎 on a
   proposal, on the correspondent's own bad news and on a cancelled visit, at
