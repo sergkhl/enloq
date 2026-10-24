@@ -56,9 +56,18 @@ it applies to automatic and manual generation in every Style.
   typecheck and 53 phone-size journeys, mobile typecheck/formatting and 302
   Jest tests in 38 suites. No code changed after these checks; subsequent
   changes record acceptance and its request allowance only.
+- Delivered `653fb25` from clean primary main after the task branch was
+  merged, pushed, verified against the remote and removed with its clean
+  worktree. The running image's revision matches; container health is healthy
+  and the public health endpoint returns HTTP 200. A content-free in-container
+  check confirms fixed guidance revision 17 and accepts both all-accept and
+  all-decline sets. No mobile code, shared code or API schema changed.
 
 ## Open findings
 
-- Deployment remains. Old failed attempts retain no
-  recoverable options and will not be regenerated automatically; a new
-  manual press or qualifying changed source uses the corrected rule.
+- No remaining implementation or delivery work for the format failure.
+  The old-attempt behavior is retained in `docs/inference.md`; a new manual
+  press or qualifying changed source uses the corrected rule.
+- The two semantic misses remain Low quality in the inference runbook and
+  fall under TODO's existing Quality review item. This is not a semantic
+  acceptance claim.
