@@ -13,3 +13,6 @@ const answer = http.post(`http://127.0.0.1:8776${ROUTE}`, {
   }),
 });
 output.status = answer.status;
+if (answer.status !== 200) {
+  throw new Error(`Fixture setup failed (${answer.status}) for ${ROUTE}`);
+}

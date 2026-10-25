@@ -198,9 +198,12 @@ login is a MacHelm setting, and install does not change it.
   trust in `.local/live-browser/`
   ([operations](docs/operations.md#live-checks-in-a-vps-browser)).
 - **The phone only when needed.** Use the Galaxy S9+ only when a check needs
-  the phone, and there only Maya's account, never the Owner Account's. Its
-  release Enloq stays paired as the owner, so switch it to Maya first; it may
-  stay in the trusted list.
+  the phone, using only Maya's test account or the authored development
+  login. Never sign in to the Owner Account on this phone, in Enloq or
+  Telegram, or retain an owner-linked Enloq pairing. Switching the selected
+  workspace to Maya does not remove access to the Owner Account. Revoke any
+  owner-linked trust and clear the phone's local credentials and cached data
+  before testing; keep the service's Telegram sessions intact.
 - Enloq lists only chats active in the last seven days, so the Maya chat can
   fall out of the list. A chat link opens it directly (ADR 36):
   `?account=<owner>#<maya>`, or the reverse from Maya's side.

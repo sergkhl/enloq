@@ -1,8 +1,9 @@
 # Useful response suggestions (ADR 49) on the fixture: answer stances above
 # the composer (Q4, Q8) fold, and the server keeps the fold for every client
 # until the next set (ADR 56 Q12 B); a chosen one goes into the draft with
-# Undo. The profile's Suggestions choice (ADR 56 Q12 A) turns the chat's set
-# off and on again. Settings → AI then shows a decision-model outage (Q14)
+# Undo. The profile's Automatic suggestions switch pauses automation while
+# keeping manual generation available. Settings → AI shows a
+# decision-model outage (Q14)
 # until it clears. The fixture routes stand in for a published set and for
 # the route's state. Selectors stay ASCII.
 appId: ${APP_ID}
@@ -53,35 +54,42 @@ appId: ${APP_ID}
       enabled: true
     timeout: 15000
 - tapOn: "Undo suggestion"
-# The chat's Suggestions choice: On, with Idioms since its launch (ADR 56
-# Q20 A). Off shows nothing; On again shows the set while it is valid.
+# Automation and Style are separate (ADR 56). Pausing hides the automatic
+# set while leaving manual generation available.
 - tapOn: "Suggestion fixture, .*open profile"
 - scrollUntilVisible:
     element:
-      id: "suggestions-on"
+      id: "automatic-suggestions"
 - assertVisible:
-    id: "suggestions-on"
+    id: "automatic-suggestions"
     checked: true
 - assertVisible:
-    id: "suggestions-idioms"
+    id: "suggestion-style-idioms"
 - tapOn:
-    id: "suggestions-off"
+    id: "automatic-suggestions"
 - extendedWaitUntil:
-    visible: "No reply suggestions in this chat\\."
+    visible:
+      id: "automatic-suggestions"
+      checked: false
     timeout: 15000
 - tapOn: "Back"
+- assertNotVisible: "Hide suggestions"
+- assertVisible:
+    text: "Generate suggestions"
+    enabled: true
+- tapOn: "Generate suggestions"
 - extendedWaitUntil:
-    notVisible: "Hide suggestions"
-    timeout: 15000
+    visible: "Acknowledge: Thank you for telling me[.]"
+    timeout: 20000
 - tapOn: "Suggestion fixture, .*open profile"
 - scrollUntilVisible:
     element:
-      id: "suggestions-on"
+      id: "automatic-suggestions"
 - tapOn:
-    id: "suggestions-on"
+    id: "automatic-suggestions"
 - extendedWaitUntil:
     visible:
-      id: "suggestions-on"
+      id: "automatic-suggestions"
       checked: true
     timeout: 15000
 - tapOn: "Back"

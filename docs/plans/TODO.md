@@ -98,11 +98,9 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
-- **Reminder device acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
-  the Galaxy S9+ was unavailable over its saved tunnel during delivery.
-  Run `mobile/scripts/journeys android` when connected, including the new
-  reminder flow. iOS simulator journeys remain with the next Mac build;
-  iOS push retains the existing enrollment gate below.
+- **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
+  iOS simulator journeys remain with the next Mac build; iOS push retains the
+  existing enrollment gate below.
 
 - **The Android release key's backup** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md)
   Q5, [mobile](../mobile.md#the-android-phone)): copy both files of
@@ -113,9 +111,11 @@ Act only if they recur or grow.
   the old debug key refuses Saved Builds signed with the release key. On each
   phone with the release Enloq (the S25, and the S9+ beside Enloq Dev):
   **Disconnect from enloq.globesoul.com** at the foot of Settings, uninstall
-  Enloq, install the pinned Saved Build, Connect with the code, then turn
-  notifications back on. Forget the phone's old entry in Settings → Privacy →
-  Trusted browsers and devices if it is still listed.
+  Enloq and install the pinned Saved Build. On the S25, Connect with the code
+  and turn notifications back on. The S9+ must stay disconnected from the
+  owner's member; only Maya or an authored development login is allowed
+  there (ADR 38 Q31, Q36). Forget the phone's old entry in Settings → Privacy
+  → Trusted browsers and devices if it is still listed.
 - **The newest Saved Build** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md),
   [ADR 50](../adr/0050-icon-tabs-saved-messages-and-one-saved-build.md)):
   install it from the pinned message in the Owner Account's Saved Messages as
@@ -133,9 +133,6 @@ Act only if they recur or grow.
 - **Pairing** ([ADR 47](../adr/0047-pairing-settings-menus-and-profiles.md)):
   a QR pairing between the owner's own devices; whether a tap on the code in
   Saved Messages copies it; Sign in with Telegram in a real recovery.
-- **A leftover device** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md)):
-  forget "Conari app on SM-G965F" in Settings → Trusted browsers and devices
-  if it is still listed.
 - **The first member** ([ADR 48](../adr/0048-members-on-the-shared-service.md)):
   forward the APK to a friend; their sign-in and Join Request, the push on the
   owner's devices and approval in People.

@@ -46,8 +46,8 @@ appId: ${APP_ID}
     element: "Guidance.*"
 - tapOn: "Guidance.*"
 - scrollUntilVisible:
-    element: "Neutral, Default"
-- tapOn: "Neutral, Default"
+    element: "Friendly, Default"
+- tapOn: "Friendly, Default"
 - tapOn:
     id: "guidance-text"
 - inputText: " Journey edit."
@@ -64,7 +64,7 @@ appId: ${APP_ID}
       enabled: false
     timeout: 15000
 - tapOn: "Back"
-- assertVisible: "Neutral, Default"
+- assertVisible: "Friendly, Default"
 - tapOn: "Back"
 - tapOn: "Back"
 - tapOn: "Privacy.*"

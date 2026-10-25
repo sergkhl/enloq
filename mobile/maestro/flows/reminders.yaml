@@ -4,7 +4,7 @@ appId: ${APP_ID}
 - runScript:
     file: ../scripts/fixture-post.js
     env:
-      ROUTE: /api/test/reminders
+      ROUTE: /fixture/reminders
 - tapOn: "Reminders"
 - extendedWaitUntil:
     visible: "Reminder fixture"

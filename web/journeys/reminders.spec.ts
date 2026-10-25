@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ORIGIN, trust } from "./fixture";
 
-const PATH = "/api/accounts/1/chats/user:128/reminder";
+const PATH = "/api/accounts/1/chats/user:130/reminder";
 const headers = { Origin: ORIGIN };
 
 test("member reminders list makes no model calls; review preserves draft and reuses one set", async ({
@@ -38,7 +38,7 @@ test("member reminders list makes no model calls; review preserves draft and reu
     await page
       .getByRole("button", { name: "Review reminder", exact: true })
       .tap();
-    await expect(page).toHaveURL(/account=1&reminder=[a-f0-9]{32}#128$/);
+    await expect(page).toHaveURL(/account=1&reminder=[a-f0-9]{32}#130$/);
     const field = page.getByRole("textbox", { name: "Message", exact: true });
     await expect(field).toHaveValue("");
     const option = page.getByRole("button", {

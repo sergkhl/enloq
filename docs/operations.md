@@ -597,8 +597,10 @@ and keep note contents out of the repository.
 
 Checks with real accounts run in a browser on the VPS first, and on the
 Android development phone only when they need the phone (AGENTS.md, Live
-Telegram sends). They use only the chat between the Owner Account and Maya,
-the test account:
+Telegram sends). The Galaxy S9+ may use only Maya or an authored development
+login, never the Owner Account or an owner-linked Enloq pairing (ADR 38 Q31,
+Q36). Checks use only the chat between the Owner Account and Maya, the test
+account:
 
 ```sh
 npm --prefix web run live -- live/maya-chat.spec.ts

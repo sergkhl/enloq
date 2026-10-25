@@ -8,10 +8,12 @@
 #
 #   mobile/scripts/journeys ios
 #   mobile/scripts/journeys android
+#   mobile/scripts/journeys android maestro/reminders.yaml
 set -eu
 cd "$(dirname "$0")/.."
 root=$(cd .. && pwd)
 platform=${1:-}
+flow=${2:-maestro/journeys.yaml}
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 EXPO_NO_TELEMETRY=1
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 unset CI # Metro watches files only without it.
@@ -32,10 +34,14 @@ android)
   app=com.globesoul.enloq.dev
   ;;
 *)
-  echo "Usage: mobile/scripts/journeys ios|android" >&2
+  echo "Usage: mobile/scripts/journeys ios|android [maestro/flow.yaml]" >&2
   exit 2
   ;;
 esac
+if [ ! -f "$flow" ]; then
+  echo "Journey file not found: $flow" >&2
+  exit 2
+fi
 if [ -z "$device" ]; then
   echo "Boot the simulator or connect the phone, then run this again." >&2
   exit 1
@@ -108,6 +114,6 @@ until grep -q '^http' "$logs/pair.log" 2>/dev/null; do
 done
 link=$(grep -m 1 '^http' "$logs/pair.log")
 
-"$maestro" --device "$device" test maestro/journeys.yaml \
+"$maestro" --device "$device" test "$flow" \
   -e APP_ID="$app" -e LINK="$link" -e DEV_URL="$dev_url" \
   --test-output-dir "$logs/output" --format junit --output "$logs/report.xml"

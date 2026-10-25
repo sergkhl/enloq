@@ -1,0 +1,5 @@
+# Focused ADR 58 device acceptance against the authored fixture only.
+appId: ${APP_ID}
+---
+- runFlow: flows/pair.yaml
+- runFlow: flows/reminders.yaml

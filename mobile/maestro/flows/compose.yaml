@@ -1,5 +1,5 @@
-# Composing (MC3): Swipe to Reply, Rewrite, Undo and Send. The fixture's rewrite returns the
-# draft unchanged, so the flow waits for Undo to become available instead.
+# Composing (MC3): Swipe to Reply, Generate suggestions, insert, Undo and Send.
+# Generation preserves the draft; Undo restores it after inserting an option.
 # Each run sends its own wording, since the fixture keeps earlier sends. The
 # send is a Reply, so the composer and the sent message quote the message it
 # answers (ADR 41).
@@ -15,13 +15,19 @@ appId: ${APP_ID}
 - evalScript: ${output.note = 'Bringing the board game ' + new Date().getTime()}
 - tapOn: "Message.*"
 - inputText: ${output.note}
-- tapOn: "Rewrite"
+- tapOn: "Generate suggestions"
+- extendedWaitUntil:
+    visible: "Acknowledge: Thank you for telling me[.]"
+    timeout: 20000
+- assertVisible: "${output.note}"
+- tapOn: "Acknowledge: Thank you for telling me[.]"
 - extendedWaitUntil:
     visible:
-      text: "Undo rewrite"
+      text: "Undo suggestion"
       enabled: true
     timeout: 20000
-- tapOn: "Undo rewrite"
+- tapOn: "Undo suggestion"
+- assertVisible: "${output.note}"
 - tapOn: "Send"
 # iOS reads the sent bubble as one label ending in its mark; Android keeps the
 # text and the mark apart.

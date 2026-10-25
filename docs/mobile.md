@@ -99,6 +99,14 @@ It builds native code for the connected phone's processor only, installs and
 starts the release app. Enloq Dev is a separate app with its own pairing and
 never replaces it.
 
+The Galaxy S9+ is restricted to Maya's test account or the authored
+development login, in both Enloq and Telegram (ADR 38 Q31, Q36). Never sign in
+to the Owner Account or pair the phone to the owner's member: that pairing
+grants access to the Owner Account even when Maya is selected. Revoke any
+existing owner-linked entry in Trusted browsers and devices and clear the
+release app's local data before tests. This leaves the service's Telegram
+sessions and other clients intact.
+
 **Signing.** Release builds, Saved Builds included, are signed with Enloq's
 private release key (ADR 43 Q5), so only its holder can make an APK that
 Android accepts as an update to Enloq. Any release build installs over the
@@ -782,6 +790,8 @@ with `scripts/fixture_seed.py`. Install the development build first, then:
 ```sh
 mobile/scripts/journeys ios
 mobile/scripts/journeys android
+# Pair afresh and run just the recurring reminder checks:
+mobile/scripts/journeys android maestro/reminders.yaml
 ```
 
 The script starts the fixture server and Metro when they aren't running and

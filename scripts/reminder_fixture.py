@@ -6,11 +6,15 @@ from enloq.domain.models import Chat
 from enloq.domain.reminders import ReminderRule
 from fastapi import Request
 
-PEER = "user:128"
+# Keep this empty-context chat separate from calming (128) and combined text
+# (129), which run earlier in the shared browser fixture.
+PEER = "user:130"
 KEY = "1/" + PEER
 
 
 def register(app):
+    # Maestro's authored fixture requests carry no client credential.
+    @app.post("/fixture/reminders")
     @app.post("/api/test/reminders")
     async def reminders(request: Request):
         body = await request.json()

@@ -73,10 +73,13 @@ from Eclipse Temurin, the Android SDK and NDK at the Mac's versions, and
 Maestro. VPS builds run at low priority with Gradle capped at four workers.
 
 **Phones (Q31, Q36, Q43).** The owner's Android development phone is a Galaxy
-S9+ on Android 10, where Enloq Dev and its journeys run. The agent installs
-newer builds over the owner's release Enloq with
-`mobile/scripts/install-android`, keeping its pairing, and never reads that
-app's screen. The physical iPhone is not part of the checks.
+S9+ on Android 10, where Enloq Dev and its journeys run. Only Maya's test
+account or an authored development login may be used there, in Enloq or
+Telegram. The Owner Account must never be signed in or accessible through an
+owner-linked Enloq pairing; selecting Maya in that pairing is insufficient.
+The agent may install newer release builds with
+`mobile/scripts/install-android`, preserving only an allowed test pairing.
+The physical iPhone is not part of the checks.
 
 **Checks (Q11, Q54).** Jest with React Native Testing Library against authored
 fixtures; Maestro journeys against the authored fixture server
@@ -257,15 +260,16 @@ Q2, Q7, Q14-Q19 and Q21 are in ADR 37.
 - Q29: the Mac has room for both toolchains.
 - Q30: the agent downloads runtimes, images and dependencies from official
   sources.
-- Q31: the Galaxy S9+ on Android 10 is the development phone.
+- Q31: the Galaxy S9+ on Android 10 is the development phone; only Maya or an
+  authored development login is allowed, never the Owner Account.
 - Q32: separate npm packages with a `shared/` source folder.
 - Q33: the agent accepts the Android SDK license; the physical iPhone stays
   out of the checks.
 - Q34: replaced by Q37; the ntfy server at `ntfy.globesoul.com` awaits
   removal (Q45).
 - Q35: replaced by Q37; no ntfy distributor app.
-- Q36: the agent installs over the owner's release app, keeping its pairing,
-  without reading its screen.
+- Q36: the agent installs release updates, preserving only an allowed test
+  pairing; no owner-linked pairing may remain on the Galaxy S9+.
 - Q37: FCM HTTP v1 data-only messages; UnifiedPush leaves.
 - Q38: the Firebase project `enloq-globesoul`, no billing, Analytics or
   Gemini, Android apps only.
@@ -274,8 +278,8 @@ Q2, Q7, Q14-Q19 and Q21 are in ADR 37.
   key made on the VPS.
 - Q41: the FCM credential exists only on the VPS.
 - Q42: no contact with Google before notifications are turned on.
-- Q43: the FCM build installs over the owner's release app, keeping its
-  pairing.
+- Q43: the FCM build installs over the release app, keeping only an allowed
+  test pairing on the Galaxy S9+ (Q31, Q36).
 - Q44: open: the owner's first test notification through the VPS.
 - Q45: open: ntfy's removal after Q44.
 - Q46: `expo-notifications`, with a background task for closed-app pushes;
