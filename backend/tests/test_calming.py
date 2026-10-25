@@ -422,7 +422,7 @@ async def test_switching_off_keeps_what_was_calmed(rig):
 
 def test_calming_guidance_frames_only_blocks_being_calmed():
     guidance = snapshot()
-    assert DEFAULTS_REVISION == 18
+    assert DEFAULTS_REVISION == 19
     assert "calming" in DEFAULTS
     plain = instructions("incoming_rewrite", {}, guidance)
     calm = instructions("incoming_rewrite", {"calm": True}, guidance)

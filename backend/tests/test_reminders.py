@@ -187,6 +187,7 @@ async def test_first_review_empty_context_style_language_and_reopen(tmp_path, st
         packet for role, packet in app.engine.calls if role == "response_suggestions"
     )
     assert packet["check_in"] == {
+        "intent": "check_in",
         "occurrence": identity,
         "fallback_language": "English",
     }
@@ -262,6 +263,30 @@ async def test_dismiss_during_generation_rejects_late_output_without_draft_chang
     await work
     assert app.suggestions.view(KEY).state != "ready"
     assert app.store.draft(KEY)["text"] == ""
+
+
+async def test_reminder_context_is_reference_data_instead_of_an_unanswered_reply_target(
+    tmp_path,
+):
+    app, now = scheduled(tmp_path)
+    app.sync.ingest(
+        message(app, text="Can you bring the chairs to the rehearsal?"), target=False
+    )
+    identity = due(app, now)
+    app.reminders.review(KEY, identity, 0)
+    packet = app.suggestions.record(KEY)["packet"]
+    assert packet["messages"] == []
+    assert [item["id"] for item in packet["context"]] == [1]
+    assert packet["check_in"]["intent"] == "check_in"
+    await finish(app)
+    assert app.suggestions.view(KEY).state == "ready"
+    writers = sum(role == "response_suggestions" for role, _ in app.engine.calls)
+    app.sync.ingest(message(app, 2, text="Authored changed context"), target=False)
+    await finish(app)
+    assert app.suggestions.view(KEY).reason == "changed"
+    assert (
+        sum(role == "response_suggestions" for role, _ in app.engine.calls) == writers
+    )
 
 
 def test_digest_dst_gap():

@@ -51,9 +51,23 @@ print(json.dumps({'requests':len(rows),'counted':sum(r['actual'] if r['actual'] 
 test("recurring reminder review and confirmed manual sends through the live service", async ({
   page,
 }) => {
-  test.setTimeout(1_800_000);
-  const began = Date.now() / 1000;
-  const evidence: Record<string, any> = { routes: null, sets: [], sends: 0 };
+  const continuation = process.env.ENLOQ_REMINDER_ACCEPTANCE_CONTINUE === "1";
+  const began = Number(
+    process.env.ENLOQ_REMINDER_ACCEPTANCE_SINCE || Date.now() / 1000,
+  );
+  const priorSends = Number(process.env.ENLOQ_REMINDER_ACCEPTANCE_SENDS || 0);
+  expect(
+    Number.isFinite(began) &&
+      (continuation ? priorSends === 1 : priorSends === 0),
+  ).toBe(true);
+  test.setTimeout(Math.max(1, 1800 - (Date.now() / 1000 - began)) * 1000);
+  const evidence: Record<string, any> = {
+    began,
+    continuation,
+    routes: null,
+    sets: [],
+    sends: priorSends,
+  };
   const metadata = () =>
     JSON.parse(
       execFileSync("docker", ["exec", "-i", "enloq", "python", "-c", READ], {
@@ -190,15 +204,23 @@ test("recurring reminder review and confirmed manual sends through the live serv
         { timeout: 30000, intervals: [1000] },
       )
       .toBeNull();
-    const state = await (await page.request.get(CHAT)).json();
-    expect(
-      state.operations.some(
-        (op: any) =>
-          op.text ===
-            `[Enloq authored reminder acceptance ${index}] Manual delivery check.` &&
-          op.state === "confirmed",
-      ),
-    ).toBe(true);
+    // Confirmed operations leave the pending-operation projection as soon
+    // as their native messages are stored. Assert on that native evidence.
+    await expect
+      .poll(
+        async () => {
+          const state = await (await page.request.get(CHAT)).json();
+          return state.messages.some(
+            (message: any) =>
+              message.outgoing &&
+              message.message_id > 0 &&
+              message.text ===
+                `[Enloq authored reminder acceptance ${index}] Manual delivery check.`,
+          );
+        },
+        { timeout: 30000, intervals: [1000] },
+      )
+      .toBe(true);
   }
   try {
     expect(
@@ -225,6 +247,11 @@ test("recurring reminder review and confirmed manual sends through the live serv
     await page.reload();
     await expect(field).toBeVisible();
     expect(metadata().requests).toBe(reused);
+    if (continuation) {
+      await authoredSend(2);
+      evidence.result = await bounds();
+      return;
+    }
     for (const style of ["professional", "idioms"]) {
       await bounds();
       expect(Date.now() / 1000 - began).toBeLessThan(1200);

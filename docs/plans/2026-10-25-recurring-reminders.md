@@ -47,7 +47,22 @@ requests in TODO and assess semantics separately from format and delivery.
 - The running service's own proxy caller verified MiMo/Xiaomi, Muse/Meta
   and Decider/Perplexity at the adopted rates and checkpoint. Metadata reads
   made no model requests; finite acceptance re-verifies before its run.
+- Initial delivery is healthy at `1854197`. Live acceptance used six model
+  requests ($0.001909315 counted), one confirmed authored send and 117 seconds.
+  All styles passed format and draft/Undo guards. Friendly empty-draft
+  wording was Low quality (old-request answers), recorded in inference.
+  The send assertion incorrectly checked the pending-operation projection
+  after confirmation; native evidence proves delivery and reminder completion.
+- Revision 19 carries explicit check-in intent and moves cached conversation
+  into reference context. The bounded continuation keeps the original
+  30-minute/$0.10/60-request ceilings and permits only the one remaining send.
+- Revision 19 validation passed 111 affected backend tests, all three reminder
+  browser journeys, lint/format and the web typecheck. Native send acceptance
+  now checks the confirmed native message, since the pending-operation view
+  deliberately removes confirmed sends once their messages are stored.
 
 ## Open findings
 
-- None yet.
+- Revision 19's empty-draft check-in candidate needs its bounded live
+  continuation. The earlier Low quality set remains in the inference limits
+  and the owner's quality-review gate; no unchanged input is resampled.

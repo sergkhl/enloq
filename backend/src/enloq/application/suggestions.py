@@ -263,14 +263,15 @@ class Suggestions:
                 "emotion": "unknown",
                 "style": self.automatic(key, db)["style"],
                 "packet": {
-                    "messages": [prepared(m, {}) for m in messages],
-                    "context": [],
+                    "messages": [] if reminder else [prepared(m, {}) for m in messages],
+                    "context": [prepared(m, {}) for m in messages] if reminder else [],
                     "manual": True,
                     "draft": draft["text"],
                     "cursor": cursor,
                     **(
                         {
                             "check_in": {
+                                "intent": "check_in",
                                 "occurrence": reminder,
                                 "fallback_language": language,
                             }

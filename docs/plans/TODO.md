@@ -156,7 +156,8 @@ Act only if they recur or grow.
   [group briefing outcomes](../inference.md#group-briefing-first-outcomes)):
   the Low quality outcomes kept for media rewrites (ADR 29), Emotion
   Classification and Reaction Assessment (ADR 30), Response Suggestions
-  (ADR 49) and Daily Briefings (ADR 34), and ADR 35's two unverified image
+  (ADR 49), recurring reminder check-ins (ADR 58) and Daily Briefings
+  (ADR 34), and ADR 35's two unverified image
   cases.
 - **Ordinary use of native paths no check has observed**: queued-send
   recovery after a real interruption or flood wait ([ADR 26](../adr/0026-mobile-message-actions-and-send-status.md));
@@ -187,4 +188,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 1,857 are used. Add each check's requests here.
+total; 1,863 are used. Add each check's requests here.

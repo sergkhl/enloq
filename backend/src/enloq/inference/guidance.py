@@ -41,7 +41,8 @@ LIMIT = 4000
 # the shared Friendly, Professional and Idioms suggestion styles. Revision 17
 # allows otherwise valid suggestion sets with only one answer stance (ADR 49).
 # Revision 18 adds occurrence-bound check-in intent and fallback language (ADR 58).
-DEFAULTS_REVISION = 18
+# Revision 19 separates reminder check-in intent from cached reply targets.
+DEFAULTS_REVISION = 19
 
 DEFAULTS = {
     "faithfulness": (
@@ -587,6 +588,11 @@ def instructions(role, packet, guidance=None):
                 " This request reviews one recurring message reminder. Its separate intent is a gentle check-in, "
                 "never an obligation or an automatic send. A nonblank draft remains the owner's intent and "
                 "options are additions fitting its cursor. With a blank draft offer complete check-in messages. "
+                "For a blank draft, check_in.intent is the user's sole intent: proactively check in. "
+                "Cached conversation is optional reference context, not a current request to answer. "
+                "Do not accept, decline, defer or promise to fulfill an old request, revive its deadlines, "
+                "or treat a past question as the user's reason for writing. Prefer a simple open check-in "
+                "when a contextual reference would invent intent. Only a nonblank draft can supply an answer stance. "
                 "Use only current bounded conversation and enabled memory, without assuming old events are still true. "
                 "Without usable conversation or memory, offer simple check-ins in check_in.fallback_language. "
                 "Do not invent a reason for contacting, a lapse, feelings, promises or facts. "

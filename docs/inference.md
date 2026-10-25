@@ -712,8 +712,11 @@ requests still require AI and budget admission.
 ## Recurring reminder reviews
 
 [ADR 58](adr/0058-recurring-message-reminders.md) extends the manual path
-with a separate `check_in` packet carrying the occurrence identity and saved
-fallback language. Draft text remains the user's intent. Without usable
+with a separate `check_in` packet carrying explicit check-in intent, the
+occurrence identity and saved fallback language. Current cached conversation
+is reference context, separate from reply targets; it cannot supply a new
+answer stance for an empty-draft check-in. Draft text remains the user's
+intent. Without usable
 current context or enabled memory, a blank draft can request simple
 check-ins; other manual requests retain their empty-input refusal.
 
@@ -1165,6 +1168,15 @@ Authored offline coverage: `backend/tests/test_message_actions.py` and
 `backend/tests/test_speech_proxy.py`.
 
 ## Retained acceptance limits
+
+- **Reminder check-ins: Low quality.** An empty-draft Friendly set answered
+  an old request and included an unsupplied commitment instead of offering
+  check-ins. Format and labels passed; Professional and Idioms additions
+  preserved draft intent and insertion/Undo. Reminder packets now separate
+  current cached reference context from reply targets and carry explicit
+  check-in intent under defaults revision 19. A later bounded check does not
+  re-score the earlier set; the owner's ordinary-use quality review remains
+  open.
 
 - **Hostile-wording detection: Low quality.** The pinned decision model can
   miss subtle hostile sarcasm, aggressive blame and hostility in a forwarded
