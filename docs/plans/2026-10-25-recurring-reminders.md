@@ -70,11 +70,12 @@ requests in TODO and assess semantics separately from format and delivery.
   quality set remains recorded rather than re-scored.
 - Web profile section order now matches the app's Suggestions, Reminder,
   Memory sequence; typecheck and all three reminder journeys pass for this
-  final presentation adjustment. Android Saved Build publication is running from clean
-  primary main; device/iOS and ordinary-use quality gates remain in TODO.
+  final presentation adjustment. Android Saved Build `0a89a12` was published
+  from clean primary main and confirmed in the Owner Account's pinned Saved
+  Messages entry. Device/iOS and ordinary-use quality gates remain in TODO.
 
 ## Open findings
 
-- No unresolved implementation defect. Android Saved Build publication is
-  pending. Phone/iOS acceptance and the owner's quality review have bounded
-  homes in TODO and inference.
+- No unresolved implementation defect. Phone/iOS acceptance and the owner's
+  quality review have bounded homes in TODO and inference. Deploy the final
+  web profile alignment, then close this plan with its retained evidence in Git.
