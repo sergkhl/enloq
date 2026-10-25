@@ -629,6 +629,25 @@ screening metadata through Docker, using no second Telegram client. It checks
 early clean eligibility and silent later updates; OS-banner display is a
 separate phone check. Both save private evidence under `.local/live-results/`.
 
+`live/reminders.spec.ts` checks the calendar occurrence's first review,
+reopening, all three Styles, draft preservation, insertion/Undo and confirmed
+native sends. It requires the Maya composer to be empty, Remember this chat
+Off, the owner's account AI On, Maya's AI Off, global Automatic suggestions
+On and available Daily Budget. It creates only a temporary exact-time Maya
+schedule, restores its settings and removes that schedule. Its ceiling is 60
+model requests, two authored sends, 30 minutes and $0.10 counted, within the
+unchanged member budget. Route/rate verification precedes each run. Private
+evidence is in `.local/live-evidence/`; actual requests go in TODO.
+
+A bounded continuation after a changed candidate can retain the original
+start with `ENLOQ_REMINDER_ACCEPTANCE_SINCE` (Unix seconds), set
+`ENLOQ_REMINDER_ACCEPTANCE_CONTINUE=1` and
+`ENLOQ_REMINDER_ACCEPTANCE_SENDS=1`. It then tests one fresh empty-draft
+Friendly set and only the remaining send, counting receipts from the original
+start. This never resets the request, cost, time or send ceilings. A confirmed
+send is proved by its native message; the conversation's pending-operation
+projection removes confirmed sends once their native messages are present.
+
 ### Android push through FCM
 
 The service sends Android pushes as FCM HTTP v1 data messages

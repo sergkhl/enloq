@@ -60,9 +60,21 @@ requests in TODO and assess semantics separately from format and delivery.
   browser journeys, lint/format and the web typecheck. Native send acceptance
   now checks the confirmed native message, since the pending-operation view
   deliberately removes confirmed sends once their messages are stored.
+- Revision 19's continuation passed on deployed `0a89a12`. Aggregate bounds:
+  eight receipted model requests, two confirmed authored Owner Account–Maya
+  sends, $0.002288163 counted and 914 seconds from the original start. The
+  fresh empty-draft Friendly set contained check-ins. Earlier Professional
+  and Idioms sets passed format, draft additions, insertion and Undo;
+  reopening reused options without a request. Test schedules were removed
+  and the chat's original suggestion settings restored. The earlier Low
+  quality set remains recorded rather than re-scored.
+- Web profile section order now matches the app's Suggestions, Reminder,
+  Memory sequence; typecheck and all three reminder journeys pass for this
+  final presentation adjustment. Android Saved Build publication is running from clean
+  primary main; device/iOS and ordinary-use quality gates remain in TODO.
 
 ## Open findings
 
-- Revision 19's empty-draft check-in candidate needs its bounded live
-  continuation. The earlier Low quality set remains in the inference limits
-  and the owner's quality-review gate; no unchanged input is resampled.
+- No unresolved implementation defect. Android Saved Build publication is
+  pending. Phone/iOS acceptance and the owner's quality review have bounded
+  homes in TODO and inference.

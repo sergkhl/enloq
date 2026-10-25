@@ -294,11 +294,11 @@ function CorrespondentProfile({
       <Section title="Suggestions">
         <SuggestionsChoice account={account} peer={peer} />
       </Section>
-      <Section title="Memory">
-        <RememberSwitch account={account} peer={peer} />
-      </Section>
       <Section title="Reminder">
         <ReminderEditor account={account} peer={peer} />
+      </Section>
+      <Section title="Memory">
+        <RememberSwitch account={account} peer={peer} />
       </Section>
       <Section title="Cares about">
         <MemoryPanel account={account} peer={peer} />

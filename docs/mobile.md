@@ -314,11 +314,12 @@ and deleted with the conversation's copy.
 
 ## The list and New Message
 
-The list header holds the account switcher, the **Private | Groups | Saved**
-switch as icons (a person, two people and a bookmark) and, on Private only, a
-pencil for **New Message**; on Groups and Saved its place stays empty, so the
-icons never move. The switch opens on Private and is remembered per account
-while the app runs.
+The list header holds the account switcher and the **Private | Groups |
+Saved | Reminders** icons (a person, two people, a bookmark and a clock).
+Private alone has the New Message pencil; its place stays empty on the other
+tabs, so the icons never move. The first three tabs keep their account scope
+and remembered choice; Reminders says All accounts and belongs to the member.
+The app opens on Private.
 
 New Message opens on the account's existing private chats, newest first,
 older than seven days included, then the contacts it has never chatted with,
