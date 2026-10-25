@@ -9,6 +9,7 @@ import uuid
 
 from ..domain.models import Refused
 from ..transport.fcm import FakeFcmTransport, FcmTransport, validate_token
+from .reminders import SUBJECT as REMINDER_SUBJECT
 
 TEST_TEXT = "Notifications are ready on this phone."
 # The subject of the owner's decision-model push (ADR 49 Q14); a Join
@@ -278,6 +279,11 @@ class NotificationDevices:
         if not rows:
             return {"kind": "unavailable"}
         row = rows[0]
+        if row["subject"] and row["subject"].startswith(REMINDER_SUBJECT):
+            return self.manager.reminders.target(
+                row["subject"][len(REMINDER_SUBJECT) :],
+                self.delivery.member_of(identity),
+            )
         if row["subject"] == DECISION_MODEL:
             return {"kind": "ai"}  # Settings → AI shows the outage (ADR 49).
         if row["subject"]:

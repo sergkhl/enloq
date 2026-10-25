@@ -134,7 +134,7 @@ test("the header's icon tabs open Saved Messages in the third tab", async () => 
   // Icons only, each named for screen readers, in this order.
   expect(
     screen.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel),
-  ).toEqual(["Private", "Groups", "Saved"]);
+  ).toEqual(["Private", "Groups", "Saved", "Reminders"]);
   expect(screen.queryByText("Private")).toBeNull();
   await fireEvent.press(screen.getByRole("tab", { name: "Saved" }));
   expect(await screen.findByText("Pick up the keys")).toBeTruthy();

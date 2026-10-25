@@ -53,6 +53,13 @@ Account Memory); when updates run is
 [ADR 21](0021-chat-memory-takeaways-and-idle-processing.md)'s; Remember this
 chat starts Off ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
 
+**Reminders.** Calendar timing, listing and notifications run independently
+of AI admission and make no model calls. Reviewing a pending occurrence uses
+manual suggestions under the existing Account AI switch, Daily Budget and
+capacity, with a separate check-in intent (ADR 58). Global and per-chat
+Automatic suggestions Off pause reminders; Account AI Off does not pause
+their timing or alerts.
+
 **Processing Guidance.** The owner edits global guidance in Settings → AI →
 Guidance ([ADR 47](0047-pairing-settings-menus-and-profiles.md)), each field up
 to 4,000 characters with Save, Reset and a version:

@@ -110,7 +110,11 @@ const EMOTIONS: Record<string, [string, string]> = {
 type Row = ReadingItem | { kind: "pending"; key: string; operation: Operation };
 
 export default function ConversationRoute() {
-  const params = useLocalSearchParams<{ account: string; peer: string }>();
+  const params = useLocalSearchParams<{
+    account: string;
+    peer: string;
+    reminder?: string;
+  }>();
   const account = Number(params.account);
   const peer = String(params.peer ?? "");
   const { connection } = useConnection();
@@ -128,7 +132,12 @@ export default function ConversationRoute() {
       peer={peer}
     />
   ) : (
-    <Conversation key={`${account}/${peer}`} account={account} peer={peer} />
+    <Conversation
+      key={`${account}/${peer}`}
+      account={account}
+      peer={peer}
+      reminder={params.reminder}
+    />
   );
 }
 
@@ -136,17 +145,40 @@ export function Conversation({
   account,
   peer,
   embedded = false,
+  reminder,
 }: {
   account: number;
   peer: string;
   // Saved Messages inside its tab, under the list's header (ADR 50 Q2).
   embedded?: boolean;
+  reminder?: string;
 }) {
   const { connection, api } = useConnection();
   const palette = usePalette();
   const { snapshot, live, readAt, captured, error, loadEarlier, reload } =
     useConversation(account, peer);
-  const composer = useComposer(account, peer, snapshot, reload, readAt);
+  const activeReminder =
+    reminder === snapshot?.reminder_occurrence ? reminder : undefined;
+  const composer = useComposer(
+    account,
+    peer,
+    snapshot,
+    reload,
+    readAt,
+    activeReminder,
+  );
+  const reviewed = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !activeReminder ||
+      reviewed.current === activeReminder ||
+      !live ||
+      !composer.canGenerate
+    )
+      return;
+    reviewed.current = activeReminder;
+    void composer.generate(false);
+  }, [activeReminder, live, composer.canGenerate]);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const { view: chosen, choose } = useReadingView();
   // The account's own Saved Messages (ADR 50): originals only, with no AI,

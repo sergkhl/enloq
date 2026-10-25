@@ -11,6 +11,7 @@ from ..transport.push import FakePushTransport, PushTransport, validate_subscrip
 from .notification_attention import NotificationAttention
 from .notification_devices import DECISION_MODEL, NotificationDevices
 from .notification_sounds import NotificationSounds
+from .reminders import SUBJECT as REMINDER_SUBJECT
 
 
 class NotificationDelivery:
@@ -162,6 +163,11 @@ class NotificationDelivery:
     def subject_event(self, delivery):
         """A delivery that names a subject: the owner's decision-model push
         (ADR 49 Q14) or a Join Request (ADR 48 Q19)."""
+        if delivery["subject"].startswith(REMINDER_SUBJECT):
+            member = self.member_of(delivery.get("browser") or delivery.get("device"))
+            return self.manager.reminders.event(
+                delivery["subject"][len(REMINDER_SUBJECT) :], member
+            )
         if delivery["subject"] == DECISION_MODEL:
             return self.decision_event(delivery)
         return self.join_event(delivery)
@@ -283,6 +289,21 @@ class NotificationDelivery:
                 pass
 
     async def tick(self):
+        self.manager.reminders.tick()
+        for row in self.registry.rows(
+            "SELECT id,member FROM reminder_notices WHERE expires>?", (self.clock(),)
+        ):
+            event = self.manager.reminders.event(row["id"], row["member"])
+            if not event:
+                continue
+            self.devices.fan_out(event, row["member"])
+            active = self.active(row["member"])
+            if (
+                active
+                and self.auth.active(active)
+                and self.browser(active)["subscription"]
+            ):
+                self.claim(event, active, "push")
         for row in self.registry.rows(
             "SELECT value FROM member_settings WHERE key='push_destination'"
         ):
@@ -334,6 +355,9 @@ class NotificationDelivery:
                 (self.clock() - 86400,),
             )
             self.devices.cleanup(db)
+            db.execute(
+                "DELETE FROM reminder_notices WHERE expires<?", (self.clock() - 86400,)
+            )
             for row in db.execute(
                 "SELECT browser FROM notification_browsers UNION SELECT browser FROM notification_sounds"
             ).fetchall():
@@ -413,6 +437,10 @@ class NotificationDelivery:
             # Unknown, removed or another browser's locator opens nothing.
             return {"kind": "unavailable"}
         row = rows[0]
+        if row["subject"] and row["subject"].startswith(REMINDER_SUBJECT):
+            return self.manager.reminders.target(
+                row["subject"][len(REMINDER_SUBJECT) :], self.member_of(identity)
+            )
         if row["subject"] == DECISION_MODEL:
             return {"kind": "ai"}  # Settings → AI shows the outage (ADR 49).
         if row["subject"]:

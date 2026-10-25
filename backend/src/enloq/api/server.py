@@ -27,6 +27,7 @@ from .group_filters import group_filter_routes
 from .limits import RefusalLimit
 from .notifications import notification_routes
 from .people import people_routes
+from .reminders import reminder_routes
 from .routes import routes
 from .saved import saved_routes
 from .selected_media import selected_media_routes
@@ -100,6 +101,7 @@ def create_app(
     app.include_router(saved_routes(owner, auth))
     app.include_router(notification_routes(notifications))
     app.include_router(people_routes(manager, auth))
+    app.include_router(reminder_routes(manager))
 
     expected_origin = settings.origin
     expected_host = urlsplit(expected_origin).netloc

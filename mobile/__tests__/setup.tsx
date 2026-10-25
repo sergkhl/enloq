@@ -5,6 +5,7 @@ export const mockRouter = {
   replace: jest.fn(),
   push: jest.fn(),
   navigate: jest.fn(),
+  setParams: jest.fn(),
   back: jest.fn(),
   canGoBack: jest.fn(() => false),
 };
@@ -489,6 +490,7 @@ export function reset() {
   mockRouter.replace.mockReset();
   mockRouter.push.mockReset();
   mockRouter.navigate.mockReset();
+  mockRouter.setParams.mockReset();
   mockNotifications.granted = true;
   mockNotifications.scheduled.length = 0;
   mockNotifications.tokenListeners.length = 0;

@@ -543,11 +543,22 @@ class AccountRegistry:
 
     def set_suggestions_enabled(self, enabled):
         with self.transaction() as db:
+            old = db.execute(
+                "SELECT value FROM metadata WHERE key='suggestions_enabled'"
+            ).fetchone()
+            if (old[0] != "0" if old else True) != enabled:
+                db.execute(
+                    "INSERT INTO metadata VALUES ('suggestions_epoch','1') ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1"
+                )
             db.execute(
                 "INSERT OR REPLACE INTO metadata VALUES ('suggestions_enabled',?)",
                 ("1" if enabled else "0",),
             )
         return self.suggestions_enabled()
+
+    def suggestions_epoch(self):
+        rows = self.rows("SELECT value FROM metadata WHERE key='suggestions_epoch'")
+        return rows[0]["value"] if rows else "0"
 
     def concurrency(self):
         from ..application.capacity import DEFAULT_LIMIT

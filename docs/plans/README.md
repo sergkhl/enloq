@@ -16,7 +16,8 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-No active plans.
+1. [Recurring message reminders](2026-10-25-recurring-reminders.md): durable
+   schedules, combined reminders, guarded review, validation and delivery.
 
 Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
 implementation or deployment.

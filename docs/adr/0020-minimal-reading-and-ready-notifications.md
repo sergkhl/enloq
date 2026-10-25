@@ -141,6 +141,16 @@ subscriptions and tokens are private and tied to the client's trust.
 ([ADR 49](0049-useful-response-suggestions.md)) each send one opaque push to
 the owner's destinations; neither concerns a chat or carries message content.
 
+**Reminder pushes.** [ADR 58](0058-recurring-message-reminders.md) adds one
+combined daily digest across a member's accounts, or an occurrence's separate
+exact-time alert. They use the same opaque payload, trusted destinations and
+client notification permissions, without message previews or model work.
+Digest taps open the member's Reminders list; exact alerts resolve the exact
+account, chat and still-pending occurrence before review. Durable occurrence
+and delivery claims prevent repeated alerts for an old pending occurrence.
+Schedule edits/removal, completion, logout and revoked trust cancel obsolete
+queued alerts. These are calendar alerts, separate from incoming bursts.
+
 **Controls.** Settings → Notifications on each browser or phone has
 Notifications on or off, Sound and Send a test notification
 ([ADR 47](0047-pairing-settings-menus-and-profiles.md)); each client asks once

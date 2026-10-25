@@ -39,6 +39,7 @@ export type Connection =
 type Request = <T>(
   path: string,
   options?: {
+    method?: "DELETE";
     body?: unknown;
     signal?: AbortSignal;
     // Keeps the answer under this key for reading offline (Q20).

@@ -80,6 +80,17 @@ it. Editing its draft or changing its conversation evidence withdraws it,
 including late output, and starts no replacement call. Another press captures
 the revised draft and context.
 
+**Reminder review.** Opening one pending recurring reminder deliberately
+requests its first set through this manual path (ADR 58). Its occurrence and
+check-in intent are separate from draft text. Duplicate reviews share only
+that occurrence's attempt. Reopening reuses valid options; changed context,
+expiry or failure needs explicit Generate/Retry. A blank draft without usable
+context or enabled memory may receive simple check-ins in the schedule's
+editable fallback language. Each occurrence gets newly generated wording,
+with no wording history for repetition avoidance. Listing or notifying
+reminders starts no inference. Schedule edits/removal and occurrence
+completion/replacement withdraw options without touching drafts.
+
 **Added meaning.** Options may offer grounded acknowledgement, sympathy,
 celebration and gentle questions the owner hasn't written. When the person
 asks for an answer, a decision or an action, options may answer with
@@ -141,7 +152,8 @@ sets retain their captured style, with no replacement call. Emotion and
 conversation guide the wording within that style. Options use the latest
 block's language; for
 a mixed block, the owner's established recent language in that chat,
-otherwise the dominant incoming language. There is no language selector.
+otherwise the dominant incoming language. Reminder schedules alone have a
+fallback-language selector for missing conversation and memory (ADR 58).
 When the draft is the only evidence, its language supplies the language.
 
 **Lifetime.** An automatic set is withdrawn by new incoming content, changed, deleted or
@@ -173,8 +185,8 @@ Off prepares neither kind of set. Owner-editable guidance retains Save,
 Reset and versions for future calls: Response suggestions, When to suggest,
 Friendly, Professional and Idioms (ADR 56 Q6).
 
-**No implicit generation.** Apart from the automatic triggers and deliberate
-manual presses above, opening,
+**No implicit generation.** Apart from automatic triggers, deliberate manual
+presses and first reminder reviews above, opening,
 refreshing, restarting, switching On or editing guidance neither backfills nor
 regenerates; a deliberate Retry of an incoming block prepares no set. A failed
 set shows an unobtrusive status and composing stays available; the next new or

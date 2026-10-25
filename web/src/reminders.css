@@ -1,0 +1,58 @@
+.reminder-form {
+  display: grid;
+  gap: 12px;
+}
+.reminder-form label {
+  display: grid;
+  gap: 5px;
+}
+.reminder-form input,
+.reminder-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.reminders-list {
+  padding: 16px;
+  overflow-y: auto;
+}
+.reminders-list h2 {
+  margin: 0;
+}
+.reminder-scope {
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.reminder-row {
+  display: grid;
+  gap: 6px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.reminder-row p {
+  margin: 0;
+}
+.reminder-row > span {
+  opacity: 0.7;
+}
+.reminder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reminder-actions button,
+.reminder-form button {
+  padding: 10px 12px;
+}
+.reminder-digest {
+  margin: 16px 0;
+}
+.reminder-digest summary {
+  padding: 8px 0;
+  cursor: pointer;
+}

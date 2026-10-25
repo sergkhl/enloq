@@ -329,6 +329,31 @@ no history, ready to write. A chat opened this way, from a group member's
 profile or by a chat link shows its history as originals only and gets no AI
 work; it joins the Private list once a message is sent or received there.
 
+## Reminders
+
+The fourth tab has a clock icon and says **All accounts**. It lists pending
+and upcoming Weekly/Monthly reminders with their account labels, next dates
+and paused/unavailable state (ADR 58). Opening the list starts no AI. Set up
+or edit a schedule in the correspondent's profile: weekday or monthly date,
+saved timezone, Daily digest or Exact time, and fallback language. Check the
+next delivery before Save reminder; Remove reminder changes no draft.
+
+Daily digest settings in the tab save the member's time and timezone,
+initially 09:00 and the device's timezone. Travel does not change saved
+zones. Exact alerts stay separate from the digest. Short months use their
+last day without changing the next month's selected date; daylight-saving
+gaps advance to the first valid time, and repeated times occur once.
+
+Review opens the exact account/chat and requests the occurrence's first
+suggestion set. Reopening reuses valid options; Generate suggestions is the
+explicit action after expiry, context change or failure. A nonempty draft
+gets additions at its cursor with Undo. Nothing sends automatically. Dismiss
+or any confirmed outgoing Telegram message after the due time completes the
+pending occurrence; incoming messages and opening do not. Either Automatic
+suggestions switch pauses reminders, with future-only resumption; Account
+AI Off permits alerts but blocks generation. Offline, the app's last loaded
+list is read-only and actions wait for the service.
+
 ## Composing
 
 A private composer has separate **Generate suggestions** and **Send** buttons.

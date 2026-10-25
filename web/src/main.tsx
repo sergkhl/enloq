@@ -96,6 +96,7 @@ import { useGroupProcessing } from "./GroupProcessingControl";
 import { DailyBriefings } from "./DailyBriefings";
 import { useHideBots } from "./HideBots";
 import { ListScreen } from "./ListScreen";
+import { RemindersList } from "./Reminders";
 
 // Processing Stage labels, as the app words them (mobile/src/conversation.ts);
 // done shows the rewrite, failed shows its error.
@@ -121,6 +122,7 @@ function Conversation({
   chat,
   retained = false,
   embedded = false,
+  reminder,
   onBack,
   onTarget,
   onProfile,
@@ -137,6 +139,7 @@ function Conversation({
   retained?: boolean;
   // Saved Messages inside its tab, under the list's header (ADR 50 Q2).
   embedded?: boolean;
+  reminder?: string;
   onBack: () => void;
   // A budget or pause message opens its Settings section (ADR 45 Q8).
   onTarget: (target: SettingsTarget) => void;
@@ -943,6 +946,11 @@ function Conversation({
                 {data && (
                   <ComposerSlot>
                     <Composer
+                      reminder={
+                        reminder === data.reminder_occurrence
+                          ? reminder
+                          : undefined
+                      }
                       account={account}
                       visible={visible}
                       processing={processing}
@@ -1042,6 +1050,7 @@ function Conversation({
 // The application's one destination (ADR 36). Account, tab, chat and list
 // visibility commit together, with the history entry they publish.
 type Route = {
+  reminder?: string;
   account: number;
   tab: ChatTab;
   // The open conversation; leaving it closes it, as in the app (ADR 44 MW1).
@@ -1099,6 +1108,13 @@ function intended(
   entry: Entry,
 ): Route {
   switch (intent.kind) {
+    case "reminders":
+      return restoreList(
+        from?.account || startupAccount(),
+        "reminders",
+        true,
+        entry,
+      );
     case "restore": {
       const account = startupAccount();
       return restoreList(account, rememberedTab(account), true, entry);
@@ -1116,7 +1132,10 @@ function intended(
       // The account's own chat is Saved Messages, its third tab (ADR 50).
       if (intent.peer === `user:${intent.account}`)
         return openList(intent.account, "saved", entry);
-      return openChat(intent.account, peerTab(intent.peer), intent.peer, entry);
+      return {
+        ...openChat(intent.account, peerTab(intent.peer), intent.peer, entry),
+        reminder: intent.occurrence,
+      };
     case "choose":
       return {
         ...openChat(0, peerTab(intent.peer), "", entry),
@@ -1135,6 +1154,7 @@ const routeKey = (route: Route) =>
     route.list,
     route.restore,
     route.problem,
+    route.reminder,
   ]);
 
 function App() {
@@ -1246,6 +1266,43 @@ function App() {
         ? { kind: "guidance" }
         : { kind: "budget", section: target },
     );
+  async function reviewReminder(
+    target: { account_id: number; peer: string; occurrence?: string },
+    notificationCurrent = () => true,
+  ) {
+    return navigate(async (current) => {
+      const [opened, reminder] = await Promise.all([
+        workspaceApi<Chat>(openPath(target.account_id, target.peer), {}),
+        workspaceApi<{ occurrence?: { id: string } | null }>(
+          `accounts/${target.account_id}/chats/${encodeURIComponent(target.peer)}/reminder`,
+        ),
+      ]);
+      if (!current() || !notificationCurrent()) return false;
+      if (!target.occurrence || reminder.occurrence?.id !== target.occurrence)
+        throw new Error("This reminder is no longer pending.");
+      if (!(await navigationAllowed(() => current() && notificationCurrent())))
+        return false;
+      setOpenedChats((entries) => [
+        ...entries.filter(
+          (entry) =>
+            !(
+              entry.account === target.account_id &&
+              entry.chat.peer === target.peer
+            ),
+        ),
+        { account: target.account_id, chat: opened },
+      ]);
+      commit({
+        ...openChat(
+          target.account_id,
+          "private",
+          target.peer,
+          destination.current.problem === "notification" ? "replace" : "push",
+        ),
+        reminder: target.occurrence,
+      });
+    });
+  }
   const [accountSheet, setAccountSheet] = useState(false);
   const [error, setError] = useState("");
   const overviewVersion = useRef(0),
@@ -1256,10 +1313,12 @@ function App() {
   const account = overview?.accounts.find((a) => a.account_id === accountId);
   const authorized = account?.state === "authorized";
   const listed =
-    authorized &&
-    loadedChats?.account === accountId &&
-    loadedChats.kind === kind;
-  const chats = listed ? loadedChats.values : [];
+    kind === "reminders"
+      ? !!overview
+      : authorized &&
+        loadedChats?.account === accountId &&
+        loadedChats.kind === kind;
+  const chats = listed && kind !== "reminders" ? loadedChats!.values : [];
   const retainedGroups =
     authorized && kind === "group" && loadedRetained?.account === accountId
       ? loadedRetained.entries
@@ -1297,7 +1356,11 @@ function App() {
       const fallback =
         value.accounts.find((a) => a.state === "authorized")?.account_id || 0;
       if (fallback !== now.account)
-        commit({ ...now, account: fallback, tab: rememberedTab(fallback) });
+        commit({
+          ...now,
+          account: fallback,
+          tab: now.tab === "reminders" ? "reminders" : rememberedTab(fallback),
+        });
     }
   }
   useEffect(() => {
@@ -1319,7 +1382,7 @@ function App() {
   useEffect(() => {
     let alive = true;
     chatList.current = () => {};
-    if (accountId && authorized) {
+    if (accountId && authorized && kind !== "reminders") {
       const prepared =
         preparedList.current?.account === accountId &&
         preparedList.current.kind === kind;
@@ -1429,7 +1492,13 @@ function App() {
   }, [route, overview]);
   useEffect(() => {
     // Only successful navigation becomes a saved choice.
-    if (!listed || route.problem || route.restore || (!route.list && !chat))
+    if (
+      kind === "reminders" ||
+      !listed ||
+      route.problem ||
+      route.restore ||
+      (!route.list && !chat)
+    )
       return;
     rememberAccount(accountId);
     rememberTab(accountId, kind);
@@ -1448,13 +1517,20 @@ function App() {
       chatList.current();
   }, [accountId, kind, peer]);
   const address: Destination | null =
-    route.problem || route.restore || !accountId
-      ? null
-      : route.list || !peer
-        ? { kind: "list", account: accountId, tab: kind }
-        : peerFragment(peer)
-          ? { kind: "chat", account: accountId, peer }
-          : null;
+    kind === "reminders" && !route.problem
+      ? { kind: "reminders" }
+      : route.problem || route.restore || !accountId
+        ? null
+        : route.list || !peer
+          ? { kind: "list", account: accountId, tab: kind }
+          : peerFragment(peer)
+            ? {
+                kind: "chat",
+                account: accountId,
+                peer,
+                occurrence: route.reminder,
+              }
+            : null;
   const addressKey = address ? JSON.stringify(address) : "";
   useEffect(() => {
     // An exact destination keeps its address while it is pending or
@@ -1596,11 +1672,36 @@ function App() {
         );
       setScreens([{ kind: "settings" }, { kind: "ai" }]);
     },
+    async (target, current) => {
+      if (target.kind === "reminders")
+        return navigate(() =>
+          commit(
+            openList(
+              destination.current.account,
+              "reminders",
+              destination.current.problem === "notification"
+                ? "replace"
+                : "push",
+            ),
+          ),
+        );
+      if (target.account_id && target.peer && target.occurrence)
+        await reviewReminder(
+          {
+            account_id: target.account_id,
+            peer: target.peer,
+            occurrence: target.occurrence,
+          },
+          current,
+        );
+    },
   );
   // The list shows for a signed-in account, while loading and when no account
   // is signed in at all; a signed-out exact account names why instead.
   const listShown =
-    route.list && !route.problem && (authorized || !overview || !accountId);
+    route.list &&
+    !route.problem &&
+    (kind === "reminders" || authorized || !overview || !accountId);
   const startup = () => intended({ kind: "restore" }, null, "push");
   const conversations = (target: () => Route) => (
     <button
@@ -1745,6 +1846,7 @@ function App() {
     <main className="rewriting-app">
       {conversationShown ? (
         <Conversation
+          reminder={route.reminder}
           key={`${accountId}/${peer}`}
           account={accountId}
           accountName={account?.name || `Account ${accountId}`}
@@ -1755,7 +1857,13 @@ function App() {
           onBack={() =>
             // Leaving a conversation closes it, as in the app (MW1).
             void navigate(() => {
-              commit(openList(accountId, kind, "push"));
+              commit(
+                openList(
+                  accountId,
+                  route.reminder ? "reminders" : kind,
+                  "push",
+                ),
+              );
             })
           }
           onTarget={openTarget}
@@ -1790,6 +1898,28 @@ function App() {
           onAdd={() => open({ kind: "login" })}
           onSettings={() => open({ kind: "settings" })}
           onNewMessage={() => open({ kind: "new-message", account: accountId })}
+          reminders={
+            <RemindersList
+              onReview={(item) =>
+                void reviewReminder({
+                  account_id: item.account_id,
+                  peer: item.peer,
+                  occurrence: item.occurrence?.id,
+                }).catch((e) => setError(e.message))
+              }
+              onEdit={(item) =>
+                open({
+                  kind: "profile",
+                  account: item.account_id,
+                  peer: item.peer,
+                  title: item.title,
+                  photoId: null,
+                  emotion: null,
+                  timezone: item.schedule?.timezone || "UTC",
+                })
+              }
+            />
+          }
           saved={
             kind === "saved" && chats[0] ? (
               <Conversation

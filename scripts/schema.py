@@ -87,6 +87,16 @@ from enloq.domain.catalog_assets import (
 )
 from enloq.domain.emotion import EmotionView
 from enloq.domain.models import Chat, GroupProcessing, Message
+from enloq.domain.reminders import (
+    DigestSettings,
+    ReminderAction,
+    ReminderEdit,
+    ReminderList,
+    ReminderPreview,
+    ReminderReview,
+    ReminderRevision,
+    ReminderView,
+)
 from enloq.domain.selected_media import (
     SelectedMediaAction,
     SelectedMediaView,
@@ -104,6 +114,14 @@ _, schema = models_json_schema(
         (m, "serialization" if m in (ConversationRow, Message) else "validation")
         for m in (
             Chat,
+            DigestSettings,
+            ReminderAction,
+            ReminderEdit,
+            ReminderList,
+            ReminderPreview,
+            ReminderReview,
+            ReminderRevision,
+            ReminderView,
             Message,
             AccountSummary,
             AccountProcessing,

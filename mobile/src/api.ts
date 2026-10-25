@@ -17,6 +17,7 @@ export class Refused extends Error {
 }
 
 type Options = {
+  method?: "DELETE";
   token?: string;
   body?: unknown;
   headers?: Record<string, string>;
@@ -42,7 +43,7 @@ export async function request<T>(
   let response: Response;
   try {
     response = await fetch(`${origin}/api/${path}`, {
-      method: post ? "POST" : "GET",
+      method: options.method || (post ? "POST" : "GET"),
       headers: {
         Accept: "application/json",
         ...(post ? { "Content-Type": "application/json" } : {}),

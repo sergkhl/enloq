@@ -4,22 +4,24 @@
 
 // The account's three tabs: private chats, Group Chats (ADR 34) and its own
 // Saved Messages (ADR 50).
-export type ChatTab = "private" | "group" | "saved";
+export type ChatTab = "private" | "group" | "saved" | "reminders";
 
 export type RouteIntent =
+  | { kind: "reminders" }
   // The plain application URL: ordinary startup restoration.
   | { kind: "restore" }
   // Ordinary tab/chat restoration within one exact account.
   | { kind: "account"; account: number }
   | { kind: "list"; account: number; tab: ChatTab }
-  | { kind: "chat"; account: number; peer: string }
+  | { kind: "chat"; account: number; peer: string; occurrence?: string }
   // A chat fragment without its account: the owner chooses one.
   | { kind: "choose"; peer: string }
   | { kind: "invalid" };
 
 export type Destination =
+  | { kind: "reminders" }
   | { kind: "list"; account: number; tab: ChatTab }
-  | { kind: "chat"; account: number; peer: string };
+  | { kind: "chat"; account: number; peer: string; occurrence?: string };
 
 // Supergroups are spelled -(10^12 + id); basic groups stay below that base.
 const supergroupBase = 10n ** 12n;
@@ -29,6 +31,7 @@ const tabs: Record<string, ChatTab> = {
   private: "private",
   groups: "group",
   saved: "saved",
+  reminders: "reminders",
 };
 
 function identity(digits: string) {
@@ -82,6 +85,12 @@ export function parseRoute(search: string, hash: string): RouteIntent {
     return { kind: "invalid" };
   const [accountText] = accounts;
   const [tabText] = requestedTabs;
+  const occurrences = query.getAll("reminder");
+  if (
+    occurrences.length > 1 ||
+    (occurrences[0] && !/^[a-f0-9]{32}$/.test(occurrences[0]))
+  )
+    return { kind: "invalid" };
   const account =
     accountText === undefined ? undefined : accountIdentity(accountText);
   // Own names only: "constructor" is not a tab.
@@ -97,8 +106,18 @@ export function parseRoute(search: string, hash: string): RouteIntent {
     const peer = fragmentPeer(fragment);
     if (!peer) return { kind: "invalid" };
     // A valid tab beside a fragment is redundant and cannot redirect the peer.
-    return account ? { kind: "chat", account, peer } : { kind: "choose", peer };
+    if (occurrences[0] && !account) return { kind: "invalid" };
+    return account
+      ? {
+          kind: "chat",
+          account,
+          peer,
+          ...(occurrences[0] ? { occurrence: occurrences[0] } : {}),
+        }
+      : { kind: "choose", peer };
   }
+  if (occurrences.length) return { kind: "invalid" };
+  if (tab === "reminders") return { kind: "reminders" };
   if (!account) return tab ? { kind: "invalid" } : { kind: "restore" };
   return tab ? { kind: "list", account, tab } : { kind: "account", account };
 }
@@ -117,11 +136,16 @@ export function routeHref(
   destination: Destination,
 ): string {
   const query = new URLSearchParams();
-  query.set("account", String(destination.account));
+  if (destination.kind !== "reminders")
+    query.set("account", String(destination.account));
+  else query.set("tab", "reminders");
   if (destination.kind === "list")
     query.set("tab", destination.tab === "group" ? "groups" : destination.tab);
+  if (destination.kind === "chat" && destination.occurrence)
+    query.set("reminder", destination.occurrence);
   for (const [name, value] of new URLSearchParams(search))
-    if (name !== "account" && name !== "tab") query.append(name, value);
+    if (name !== "account" && name !== "tab" && name !== "reminder")
+      query.append(name, value);
   return `${pathname}?${query}${destination.kind === "chat" ? chatHash(destination.peer) : ""}`;
 }
 

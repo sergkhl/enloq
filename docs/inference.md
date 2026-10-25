@@ -709,6 +709,29 @@ the generation/state/control tests, both composers' tests and phone-size web
 journeys. Cached sets remain readable while Account AI is Off; new manual
 requests still require AI and budget admission.
 
+## Recurring reminder reviews
+
+[ADR 58](adr/0058-recurring-message-reminders.md) extends the manual path
+with a separate `check_in` packet carrying the occurrence identity and saved
+fallback language. Draft text remains the user's intent. Without usable
+current context or enabled memory, a blank draft can request simple
+check-ins; other manual requests retain their empty-input refusal.
+
+`POST /api/accounts/{account}/chats/{peer}/reminder/review` carries the exact
+occurrence, draft revision and optional UTF-16 cursor. The first review is
+durably claimed; duplicate reviews share that occurrence's active attempt.
+Reopening returns the current outcome, including changed/expired/failed
+states, without generating. `regenerate: true` is an explicit Generate or
+Retry. Each occurrence gets fresh wording, without a wording archive.
+
+The existing Style, MiMo/Muse writers, Decider labels, memory restrictions,
+Daily Budget, capacity, twelve-hour validity, input freshness, insertion,
+Undo and pending-send guards apply. Schedule edits/removal, completion and
+occurrence replacement reject late output. Timing, list reads, previews and
+notification delivery use no model requests and remain available with
+Account AI Off. First review claims survive admission failure, so enabling
+AI later requires explicit Generate/Retry.
+
 ## Reaction Assessment
 
 [ADR 26](adr/0026-mobile-message-actions-and-send-status.md) adds a background

@@ -71,9 +71,12 @@ class NotificationIdentity(Model):
 class NotificationTarget(Model):
     """What a clicked notification opens for the browser it was delivered to."""
 
-    kind: Literal["conversation", "test", "people", "ai", "unavailable"]
+    kind: Literal[
+        "conversation", "test", "people", "ai", "unavailable", "reminders", "reminder"
+    ]
     account_id: int | None = None
     peer: str | None = None
+    occurrence: str | None = None
 
 
 class NotificationStatus(Model):

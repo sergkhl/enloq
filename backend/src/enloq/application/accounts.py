@@ -39,6 +39,7 @@ from .demo import seed
 from .fair_lock import FairLock
 from .group_rollout import GroupBriefingRollout
 from .media_cache import MediaCache, evict
+from .reminders import ReminderClock
 from .runtime import connection_status, housekeeping, personal_sync
 
 GROUP_ROLES = GROUP_ROLES | FILTER_ROLES
@@ -67,6 +68,7 @@ class AccountManager:
         self.settings = settings
         self.registry = AccountRegistry(settings.data)
         self.runtimes: dict[int, AccountRuntime] = {}
+        self.reminders = ReminderClock(self)
         self.lifecycle = asyncio.Lock()
         # One global model-call limit across accounts (ADR 15); Whisper is one.
         self.capacity = Capacity(limit=self.registry.concurrency)
@@ -182,6 +184,8 @@ class AccountManager:
         assistant.rewriting.paused_roles = self.registry.paused_roles
         assistant.memory.enabled = self.registry.memory_enabled
         assistant.suggestions.enabled = self.registry.suggestions_enabled
+        assistant.reminders.preferences = lambda: self.reminders.settings(member)
+        assistant.reminders.global_epoch = self.registry.suggestions_epoch
         assistant.memory.idle = self.memory_idle
         assistant.rewriting.work.admit = assistant.admit_ai
         runtime = AccountRuntime(assistant, member=member)
@@ -350,6 +354,7 @@ class AccountManager:
                     for runtime in tuple(self.runtimes.values()):
                         runtime.assistant.unseen.advance()
                         runtime.assistant.notifications.advance()
+                    self.reminders.tick()
                 self.dispatch()
             except Exception:
                 # Jobs keep their durable state; the next tick tries again.
@@ -860,6 +865,7 @@ class AccountManager:
                     "Sign in and resolve pending deletions before removing local data"
                 )
             # Keep registry/accounting and other accounts even for the legacy root.
+            self.reminders.remove_account(identity)
             if directory == self.settings.data:
                 for name in (
                     "rewriting.sqlite3",

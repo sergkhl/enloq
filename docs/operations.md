@@ -946,6 +946,40 @@ mechanics are proven with authored offline tests; native group sends,
 permissions and deletion still need owner-selected, authorized targets for
 qualification.
 
+## Recurring reminders
+
+[ADR 58](adr/0058-recurring-message-reminders.md) owns the behavior. Schedules,
+one latest pending occurrence per chat and confirmed-outbox watermarks live
+in the account's `reminder_schedules`, `reminder_occurrences` and
+`reminder_outbox` tables. Schema 39 adds empty tables and creates no schedules.
+They survive content expiry and the recent-chat window. Removing local
+account data deletes them; logout hides them and stops alerts.
+
+The service tick runs calendar timing outside AI admission. Schedule and
+digest preference writes use revisions. Global automation changes carry a
+persisted epoch, including Off/On between ticks, so resumption starts at the
+next future occurrence without backfill. Digest preferences live in the
+member's `reminder_digest` setting. A missed digest occurrence waits for the
+next daily slot after recovery; exact alerts recover the latest missed one
+once. A native outgoing timestamp after the due time completes a reminder,
+including external-client sends; an unresolved Send Operation does not.
+
+`GET/POST/DELETE /api/accounts/{account}/chats/{peer}/reminder` own schedules;
+`/preview` calculates the next delivery without saving. `/review` and
+`/dismiss` require the exact occurrence. Member-scoped `GET /api/reminders`
+combines accounts, and `GET/POST /api/reminders/settings` own digest time and
+timezone. Review uses the guarded manual suggestion path described in
+[inference](inference.md#recurring-reminder-reviews).
+
+The registry's `reminder_notices` is a durable outbox into the existing
+browser/phone delivery machinery and permission controls. Each occurrence
+claims one notice; a digest claims one member/calendar-day identity. Repeated
+ticks and restarts reuse those claims, without alerting an old pending
+occurrence again. Editing/removing a schedule, completion, logout and lost
+trust invalidate queued targets before delivery. Digests open `?tab=reminders`;
+exact alerts resolve their current occurrence before review. No message
+content goes into a reminder alert or push payload.
+
 ## Working and recovery
 
 The recent list holds human private chats with native activity in the last

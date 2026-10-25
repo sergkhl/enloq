@@ -4,6 +4,7 @@ import {
   Bookmark,
   Check,
   ChevronDown,
+  Clock,
   Settings,
   SquarePen,
   Trash2,
@@ -23,6 +24,7 @@ const EMPTY: Record<ChatTab, string> = {
   private: "No private conversations in the last seven days.",
   group: "No groups in the last seven days.",
   saved: "Saved Messages is unavailable.",
+  reminders: "No reminders.",
 };
 
 // The three tabs, as icons in the header (ADR 50 Q1, Q9, Q10).
@@ -30,6 +32,7 @@ const TABS = [
   { tab: "private", label: "Private", Icon: User },
   { tab: "group", label: "Groups", Icon: Users },
   { tab: "saved", label: "Saved", Icon: Bookmark },
+  { tab: "reminders", label: "Reminders", Icon: Clock },
 ] as const;
 
 // The list screen in the Enloq app's design (ADR 44 Q1, MW1): one header row
@@ -54,6 +57,7 @@ export function ListScreen({
   onSettings,
   onNewMessage,
   saved,
+  reminders,
 }: {
   overview: Overview | null;
   account?: Account;
@@ -74,6 +78,7 @@ export function ListScreen({
   onNewMessage: () => void;
   // The account's Saved Messages, shown in place of a list (ADR 50 Q2).
   saved?: React.ReactNode;
+  reminders?: React.ReactNode;
 }) {
   const signedIn = (overview?.accounts || []).filter(
     (a) => a.state === "authorized",
@@ -102,7 +107,9 @@ export function ListScreen({
               className="switcher-avatar"
             />
           )}
-          <span className="switcher-name">{shown?.name || "Enloq"}</span>
+          <span className="switcher-name">
+            {tab === "reminders" ? "All accounts" : shown?.name || "Enloq"}
+          </span>
           {/* The sheet holds Settings too, so it always has more to show
               (ADR 51 Q21). */}
           <ChevronDown size={18} aria-hidden />
@@ -117,13 +124,17 @@ export function ListScreen({
                 aria-label={label}
                 title={label}
                 aria-selected={tab === option}
-                disabled={!shown}
+                disabled={!shown && option !== "reminders"}
                 onClick={() => tab !== option && onTab(option)}
               >
                 <Icon
                   size={18}
                   aria-hidden
-                  fill={tab === option ? "currentColor" : "none"}
+                  fill={
+                    tab === option && option !== "reminders"
+                      ? "currentColor"
+                      : "none"
+                  }
                 />
               </button>
             ))}
@@ -150,7 +161,9 @@ export function ListScreen({
           {error}
         </p>
       )}
-      {overview && signedIn.length === 0 ? (
+      {tab === "reminders" ? (
+        reminders
+      ) : overview && signedIn.length === 0 ? (
         <div className="list-empty">
           <p>No Telegram account is signed in on this server.</p>
           <button

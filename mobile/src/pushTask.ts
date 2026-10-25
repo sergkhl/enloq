@@ -119,13 +119,16 @@ export async function presentPush(push: Push) {
     content: {
       title: found?.sender?.trim() || "Enloq",
       body: found?.text?.trim() || "New messages are ready",
-      data: chat
-        ? { account: chat.account_id, peer: chat.peer }
-        : join
-          ? { target: "people" }
-          : decider
-            ? { target: "ai" }
-            : {},
+      data:
+        found?.kind === "reminders"
+          ? { reminder: push.id }
+          : chat
+            ? { account: chat.account_id, peer: chat.peer }
+            : join
+              ? { target: "people" }
+              : decider
+                ? { target: "ai" }
+                : {},
       sound: push.silent || found?.silent ? false : "default",
       priority: Notifications.AndroidNotificationPriority.HIGH,
     },

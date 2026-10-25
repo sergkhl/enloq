@@ -27,6 +27,7 @@ from . import (
     history,
     memory,
     reactions,
+    reminders,
     streams,
     suggestions,
     traits,
@@ -52,7 +53,7 @@ RETENTION = 30 * 86400
 # Each account's own Saved Messages, shown in the list's third tab (ADR 50).
 SAVED_TITLE = "Saved Messages"
 METADATA = "metadata"
-SCHEMA_VERSION = 38
+SCHEMA_VERSION = 39
 
 
 def forward_merge(prior: Message, message: Message):
@@ -326,6 +327,7 @@ class Store:
                 36,
                 37,
                 38,
+                39,
             ):
                 raise Refused(
                     "Use the fresh rewriting store; legacy content is retired"
@@ -414,6 +416,11 @@ class Store:
             suggestions.migrate_settings(db)
             for trigger in change_triggers("suggestion_settings", "chat_key"):
                 db.execute(trigger)
+            for statement in reminders.DDL:
+                db.execute(statement)
+            for table in ("reminder_schedules", "reminder_occurrences"):
+                for trigger in change_triggers(table, "chat_key"):
+                    db.execute(trigger)
             # ADR 26: reaction metadata and dated correspondent evidence.
             reactions.initialize(db, self.clock())
             # ADR 29: results also record the shipped-defaults revision; earlier
@@ -753,6 +760,8 @@ class Store:
             group = chat.kind == "group"
             if group and not self.groups.permit_source(db, chat, message, group_epoch):
                 return False
+            if chat.kind == "private":
+                reminders.sent(db, message)
             old = db.execute(
                 "SELECT body FROM messages WHERE key=?", (message.key,)
             ).fetchone()

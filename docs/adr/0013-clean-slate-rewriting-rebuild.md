@@ -37,9 +37,10 @@ Its core is two flows:
   without one they offer complete messages. Generation changes and sends no
   draft. Outgoing Rewrite and its tones are removed, in groups too.
 
-**What it does not do.** No attention or commitment tracking, topic
-classification or "needs reply" marks. Two later decisions are narrow
-exceptions: Response Suggestions offer short editable replies
+**What it does not do.** No inferred attention or commitment tracking, topic
+classification or "needs reply" marks. Narrow exceptions: user-configured
+weekly/monthly Reminders invite review and manual sending
+([ADR 58](0058-recurring-message-reminders.md)); Response Suggestions offer short editable replies
 ([ADR 25](0025-emotion-response-suggestions.md),
 [ADR 49](0049-useful-response-suggestions.md),
 [ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)), and
@@ -73,7 +74,8 @@ profile-based advice; and groups get Daily Briefings
 - **Retention.** A 30-day local cache of messages and results; drafts and
   their attachments are kept until sent or discarded. Older originals are
   read from Telegram only on demand, and the cache never widens what
-  background work may read.
+  background work may read. Reminder schedules and their latest pending
+  occurrence survive chat inactivity and content expiry (ADR 58).
 
 **Composer.** Private chats have separate, always-visible Send and Generate
 suggestions buttons. Send transmits the exact draft; generation leaves it

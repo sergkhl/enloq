@@ -41,6 +41,7 @@ export function Composer({
   chat,
   incoming,
   suggestions,
+  reminder,
   reply,
   refresh,
   onPending,
@@ -60,6 +61,7 @@ export function Composer({
   chat: Chat;
   incoming: Draft;
   suggestions: SuggestionsView;
+  reminder?: string;
   reply: { identity: number | null; nonce: number } | null;
   refresh: () => Promise<void>;
   // Immediate presentation of a submission, replaced by its saved operation;
@@ -328,8 +330,21 @@ export function Composer({
       edit({ reply_to: reply.identity });
     }
   }, [reply, sending, locked, mediaBusy]);
-  async function generate() {
-    if (action.current || !canGenerate()) return;
+  const reviewed = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !reminder ||
+      reviewed.current === reminder ||
+      processing === null ||
+      !visible ||
+      !canGenerate(false)
+    )
+      return;
+    reviewed.current = reminder;
+    void generate(false);
+  }, [reminder, processing, visible, incoming.revision]);
+  async function generate(regenerate = true) {
+    if (action.current || !canGenerate(!reminder || regenerate)) return;
     const clicked = current.current;
     const cursor = caret.current;
     action.current = "generate";
@@ -344,10 +359,11 @@ export function Composer({
       await chatApi<SuggestionsView>(
         account,
         chat.peer,
-        "/suggestions/generate",
+        reminder ? "/reminder/review" : "/suggestions/generate",
         {
           revision: server.current.revision,
           cursor,
+          ...(reminder ? { occurrence: reminder, regenerate } : {}),
         },
       );
     } catch (e) {
@@ -705,9 +721,9 @@ export function Composer({
       window.removeEventListener("beforeunload", closing);
     };
   }, [sending, attaching, undoing]);
-  function canGenerate() {
+  function canGenerate(requireAi = true) {
     return (
-      processing &&
+      (!requireAi || processing) &&
       nativeAvailable &&
       current.current.selected_media?.kind !== "sticker" &&
       current.current.selected_media?.status !== "preparing" &&

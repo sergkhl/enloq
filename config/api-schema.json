@@ -2047,6 +2047,32 @@
         "title": "DeviceToken",
         "type": "object"
       },
+      "DigestSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "time": {
+            "default": "09:00",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Time",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "UTC",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "DigestSettings",
+        "type": "object"
+      },
       "EmotionView": {
         "additionalProperties": false,
         "properties": {
@@ -3720,7 +3746,9 @@
               "test",
               "people",
               "ai",
-              "unavailable"
+              "unavailable",
+              "reminders",
+              "reminder"
             ],
             "title": "Kind",
             "type": "string"
@@ -3748,6 +3776,18 @@
             ],
             "default": null,
             "title": "Peer"
+          },
+          "occurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Occurrence"
           }
         },
         "required": [
@@ -4313,6 +4353,402 @@
           "enabled"
         ],
         "title": "Remembering",
+        "type": "object"
+      },
+      "ReminderAction": {
+        "additionalProperties": false,
+        "properties": {
+          "occurrence": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Occurrence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurrence"
+        ],
+        "title": "ReminderAction",
+        "type": "object"
+      },
+      "ReminderEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "frequency": {
+            "default": "weekly",
+            "enum": [
+              "weekly",
+              "monthly"
+            ],
+            "title": "Frequency",
+            "type": "string"
+          },
+          "weekday": {
+            "default": 0,
+            "maximum": 6,
+            "minimum": 0,
+            "title": "Weekday",
+            "type": "integer"
+          },
+          "month_day": {
+            "default": 1,
+            "maximum": 31,
+            "minimum": 1,
+            "title": "Month Day",
+            "type": "integer"
+          },
+          "timezone": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "delivery": {
+            "default": "digest",
+            "enum": [
+              "digest",
+              "exact"
+            ],
+            "title": "Delivery",
+            "type": "string"
+          },
+          "time": {
+            "default": "09:00",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Time",
+            "type": "string"
+          },
+          "language": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Language",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "timezone",
+          "language",
+          "revision"
+        ],
+        "title": "ReminderEdit",
+        "type": "object"
+      },
+      "ReminderItem": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "default": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderRule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "next_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next At"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "paused",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "occurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderOccurrence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "peer": {
+            "title": "Peer",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "ai_enabled": {
+            "title": "Ai Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account_id",
+          "account",
+          "peer",
+          "title",
+          "ai_enabled"
+        ],
+        "title": "ReminderItem",
+        "type": "object"
+      },
+      "ReminderList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReminderItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReminderList",
+        "type": "object"
+      },
+      "ReminderOccurrence": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "due_at": {
+            "title": "Due At",
+            "type": "number"
+          },
+          "calendar_date": {
+            "title": "Calendar Date",
+            "type": "string"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "due_at",
+          "calendar_date",
+          "reviewed"
+        ],
+        "title": "ReminderOccurrence",
+        "type": "object"
+      },
+      "ReminderPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "next_at": {
+            "title": "Next At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "next_at"
+        ],
+        "title": "ReminderPreview",
+        "type": "object"
+      },
+      "ReminderReview": {
+        "additionalProperties": false,
+        "properties": {
+          "occurrence": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Occurrence",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
+          "regenerate": {
+            "default": false,
+            "title": "Regenerate",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "occurrence",
+          "revision"
+        ],
+        "title": "ReminderReview",
+        "type": "object"
+      },
+      "ReminderRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "ReminderRevision",
+        "type": "object"
+      },
+      "ReminderRule": {
+        "additionalProperties": false,
+        "properties": {
+          "frequency": {
+            "default": "weekly",
+            "enum": [
+              "weekly",
+              "monthly"
+            ],
+            "title": "Frequency",
+            "type": "string"
+          },
+          "weekday": {
+            "default": 0,
+            "maximum": 6,
+            "minimum": 0,
+            "title": "Weekday",
+            "type": "integer"
+          },
+          "month_day": {
+            "default": 1,
+            "maximum": 31,
+            "minimum": 1,
+            "title": "Month Day",
+            "type": "integer"
+          },
+          "timezone": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "delivery": {
+            "default": "digest",
+            "enum": [
+              "digest",
+              "exact"
+            ],
+            "title": "Delivery",
+            "type": "string"
+          },
+          "time": {
+            "default": "09:00",
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Time",
+            "type": "string"
+          },
+          "language": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timezone",
+          "language"
+        ],
+        "title": "ReminderRule",
+        "type": "object"
+      },
+      "ReminderView": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "default": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderRule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "next_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next At"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "paused",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "occurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderOccurrence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "ReminderView",
         "type": "object"
       },
       "Removed": {

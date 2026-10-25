@@ -12,6 +12,10 @@ appId: ${APP_ID}
 - runFlow: flows/compose.yaml
 - runFlow: flows/groups.yaml
 - runFlow: flows/saved.yaml
+- runFlow:
+    when:
+      platform: Android
+    file: flows/reminders.yaml
 - runFlow: flows/settings.yaml
 - runFlow: flows/media.yaml
 - runFlow: flows/carousel.yaml

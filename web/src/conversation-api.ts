@@ -164,6 +164,7 @@ export type DailyBriefing = {
   retry: { attempt: string; enabled: boolean; reason: string | null } | null;
 };
 export type ConversationData = {
+  reminder_occurrence?: string | null;
   briefing_update?: {
     enabled: boolean;
     status: string;

@@ -151,6 +151,24 @@ test.each([400, 401, 403])(
   },
 );
 
+test("a reminder notification keeps its opaque locator for current-target resolution", async () => {
+  serve(() => ({
+    status: 200,
+    body: {
+      kind: "reminders",
+      account_id: null,
+      peer: null,
+      sender: "Enloq",
+      text: "Review your message reminders.",
+      silent: false,
+    },
+  }));
+  await run(push({}));
+  expect(mockNotifications.scheduled[0]).toMatchObject({
+    content: { data: { reminder: ID } },
+  });
+});
+
 test("later burst updates replace the chat notice without sound", async () => {
   serve(() => ({
     status: 200,

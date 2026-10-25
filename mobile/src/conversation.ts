@@ -95,6 +95,7 @@ export type BriefingUpdate = {
 };
 
 export type Snapshot = {
+  reminder_occurrence?: string | null;
   timezone: string;
   chat: Schemas["Chat"];
   messages: NativeMessage[];

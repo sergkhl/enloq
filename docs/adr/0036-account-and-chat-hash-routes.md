@@ -18,6 +18,7 @@ and a link must never silently open a different account or chat.
 
 **Scope (Q1).** Routes cover private chats, supported basic groups and
 ordinary supergroups, plus each account's Private, Groups and Saved lists.
+The fourth Reminders list is member-scoped at `?tab=reminders` (ADR 58).
 Individual message positions, Settings, memory, invites, forums and
 broadcasts are outside them.
 
@@ -88,6 +89,7 @@ sign-in or lookup (Q14).
 | `/?account=123456789&tab=private` | This account's Private list. |
 | `/?account=123456789&tab=groups` | This account's Groups list. |
 | `/?account=123456789&tab=saved` | This account's Saved Messages. |
+| `/?tab=reminders` | The member's combined Reminders list, All accounts. |
 
 No list opens a chat by itself; the app does not remember a chat per tab
 ([ADR 44](0044-mobile-only-web-in-the-apps-design.md)). A chat fragment
@@ -145,6 +147,11 @@ five-minute rule for undelivered alerts adds no age limit to clicking a
 delivered one, and every real target is checked against current
 authorization and eligibility.
 
+An exact reminder review adds `reminder=<opaque occurrence>` beside the
+account query and chat fragment. Its target must still be pending; a stale
+target cannot review a replacement. Digest notifications open `?tab=reminders`
+without changing the remembered account or its tab (ADR 58).
+
 The Enloq app uses the same identities: a notification tap opens its exact
 chat, and Copy chat link copies the canonical web URL.
 [Operations](../operations.md#accounts-and-browser-trust) describes the
@@ -172,7 +179,8 @@ address forms and their behavior.
 - Q7: Copy chat link lives in the profiles (ADR 47 Q8).
 - Q8: explicit URLs win; only successful navigation updates remembered
   choices.
-- Q9: list URLs with `tab=private|groups|saved`; no remembered chat per tab.
+- Q9: account lists with `tab=private|groups|saved`, and member-scoped
+  `tab=reminders`; no remembered chat per tab.
 - Q10: a fragment without an account asks which account.
 - Q11: Back goes to the list route with a history entry.
 - Q12: a refused navigation restores the prior URL and history.

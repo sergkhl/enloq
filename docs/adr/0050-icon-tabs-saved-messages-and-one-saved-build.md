@@ -65,11 +65,14 @@ are.
 
 **Q8:** delivery scope; no lasting rule.
 
-**Tab order (Q9).** Private, Groups, Saved. Not adopted: Saved first.
+**Tab order (Q9).** Private, Groups, Saved, Reminders (ADR 58). The first
+three belong to the selected account; Reminders says All accounts and is
+member-scoped. Not adopted: Saved first.
 
-**Tab icons (Q10).** A person for Private, two people for Groups and a
-bookmark for Saved (Ionicons `person`, `people` and `bookmark` in the app,
-Lucide `User`, `Users` and `Bookmark` on the web), outlined, with the chosen
+**Tab icons (Q10).** A person for Private, two people for Groups, a bookmark
+for Saved and a clock for Reminders (Ionicons `person`, `people`, `bookmark`
+and `time` in the app, Lucide `User`, `Users`, `Bookmark` and `Clock` on the
+web), outlined, with the chosen
 one filled on the accent. Not adopted: chat-bubble icons.
 
 **No notes list (Q11-Q16).** The owner: "skip tag list saved messages, just

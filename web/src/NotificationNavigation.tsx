@@ -50,9 +50,10 @@ export function useNotificationNavigation(
   people?: () => void,
   // A decision-model outage's push, which opens Settings → AI (ADR 49 Q14).
   ai?: () => void,
+  reminders?: (target: Opened, current: () => boolean) => Promise<unknown>,
 ) {
-  const latest = useRef({ open, failed, test, capture, people, ai });
-  latest.current = { open, failed, test, capture, people, ai };
+  const latest = useRef({ open, failed, test, capture, people, ai, reminders });
+  latest.current = { open, failed, test, capture, people, ai, reminders };
   useEffect(() => {
     if (!ready) return;
     let alive = true,
@@ -81,7 +82,10 @@ export function useNotificationNavigation(
           (latest.current.people ?? latest.current.test)();
         else if (target.kind === "ai")
           (latest.current.ai ?? latest.current.test)();
-        else if (target.kind === "conversation" && target.account_id) {
+        else if (target.kind === "reminders" || target.kind === "reminder") {
+          opening = true;
+          await latest.current.reminders?.(target, current);
+        } else if (target.kind === "conversation" && target.account_id) {
           opening = true;
           await latest.current.open(
             { account_id: target.account_id, peer: target.peer || "" },

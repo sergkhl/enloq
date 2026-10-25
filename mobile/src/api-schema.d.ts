@@ -896,6 +896,24 @@ export interface components {
       /** Token */
       token: string;
     };
+    /** DigestSettings */
+    DigestSettings: {
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number;
+      /**
+       * Time
+       * @default 09:00
+       */
+      time: string;
+      /**
+       * Timezone
+       * @default UTC
+       */
+      timezone: string;
+    };
     /** EmotionView */
     EmotionView: {
       /**
@@ -1591,7 +1609,14 @@ export interface components {
        * Kind
        * @enum {string}
        */
-      kind: "conversation" | "test" | "people" | "ai" | "unavailable";
+      kind:
+        | "conversation"
+        | "test"
+        | "people"
+        | "ai"
+        | "unavailable"
+        | "reminders"
+        | "reminder";
       /**
        * Account Id
        * @default null
@@ -1602,6 +1627,11 @@ export interface components {
        * @default null
        */
       peer: string | null;
+      /**
+       * Occurrence
+       * @default null
+       */
+      occurrence: string | null;
     };
     /** OutdatedMemory */
     OutdatedMemory: {
@@ -1835,6 +1865,180 @@ export interface components {
     Remembering: {
       /** Enabled */
       enabled: boolean;
+    };
+    /** ReminderAction */
+    ReminderAction: {
+      /** Occurrence */
+      occurrence: string;
+    };
+    /** ReminderEdit */
+    ReminderEdit: {
+      /**
+       * Frequency
+       * @default weekly
+       * @enum {string}
+       */
+      frequency: "weekly" | "monthly";
+      /**
+       * Weekday
+       * @default 0
+       */
+      weekday: number;
+      /**
+       * Month Day
+       * @default 1
+       */
+      month_day: number;
+      /** Timezone */
+      timezone: string;
+      /**
+       * Delivery
+       * @default digest
+       * @enum {string}
+       */
+      delivery: "digest" | "exact";
+      /**
+       * Time
+       * @default 09:00
+       */
+      time: string;
+      /** Language */
+      language: string;
+      /** Revision */
+      revision: number;
+    };
+    /** ReminderItem */
+    ReminderItem: {
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number;
+      /** @default null */
+      schedule: components["schemas"]["ReminderRule"] | null;
+      /**
+       * Next At
+       * @default null
+       */
+      next_at: number | null;
+      /**
+       * Status
+       * @default active
+       * @enum {string}
+       */
+      status: "active" | "paused" | "unavailable";
+      /** @default null */
+      occurrence: components["schemas"]["ReminderOccurrence"] | null;
+      /** Account Id */
+      account_id: number;
+      /** Account */
+      account: string;
+      /** Peer */
+      peer: string;
+      /** Title */
+      title: string;
+      /** Ai Enabled */
+      ai_enabled: boolean;
+    };
+    /** ReminderList */
+    ReminderList: {
+      /** Items */
+      items: components["schemas"]["ReminderItem"][];
+    };
+    /** ReminderOccurrence */
+    ReminderOccurrence: {
+      /** Id */
+      id: string;
+      /** Due At */
+      due_at: number;
+      /** Calendar Date */
+      calendar_date: string;
+      /** Reviewed */
+      reviewed: boolean;
+    };
+    /** ReminderPreview */
+    ReminderPreview: {
+      /** Next At */
+      next_at: number;
+    };
+    /** ReminderReview */
+    ReminderReview: {
+      /** Occurrence */
+      occurrence: string;
+      /** Revision */
+      revision: number;
+      /**
+       * Cursor
+       * @default null
+       */
+      cursor: number | null;
+      /**
+       * Regenerate
+       * @default false
+       */
+      regenerate: boolean;
+    };
+    /** ReminderRevision */
+    ReminderRevision: {
+      /** Revision */
+      revision: number;
+    };
+    /** ReminderRule */
+    ReminderRule: {
+      /**
+       * Frequency
+       * @default weekly
+       * @enum {string}
+       */
+      frequency: "weekly" | "monthly";
+      /**
+       * Weekday
+       * @default 0
+       */
+      weekday: number;
+      /**
+       * Month Day
+       * @default 1
+       */
+      month_day: number;
+      /** Timezone */
+      timezone: string;
+      /**
+       * Delivery
+       * @default digest
+       * @enum {string}
+       */
+      delivery: "digest" | "exact";
+      /**
+       * Time
+       * @default 09:00
+       */
+      time: string;
+      /** Language */
+      language: string;
+    };
+    /** ReminderView */
+    ReminderView: {
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number;
+      /** @default null */
+      schedule: components["schemas"]["ReminderRule"] | null;
+      /**
+       * Next At
+       * @default null
+       */
+      next_at: number | null;
+      /**
+       * Status
+       * @default active
+       * @enum {string}
+       */
+      status: "active" | "paused" | "unavailable";
+      /** @default null */
+      occurrence: components["schemas"]["ReminderOccurrence"] | null;
     };
     /** Removed */
     Removed: {

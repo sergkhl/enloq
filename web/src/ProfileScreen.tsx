@@ -7,6 +7,7 @@ import type { components } from "./api-schema";
 import { Avatar } from "./Avatar";
 import { chatApi } from "./conversation-api";
 import { MemoryPanel } from "./MemoryPanel";
+import { ReminderEditor } from "./Reminders";
 import {
   ChoiceRow,
   Explanation,
@@ -295,6 +296,9 @@ function CorrespondentProfile({
       </Section>
       <Section title="Memory">
         <RememberSwitch account={account} peer={peer} />
+      </Section>
+      <Section title="Reminder">
+        <ReminderEditor account={account} peer={peer} />
       </Section>
       <Section title="Cares about">
         <MemoryPanel account={account} peer={peer} />

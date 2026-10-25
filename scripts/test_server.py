@@ -41,6 +41,7 @@ from scripts.group_recovery_fixture import register as group_recovery_fixture
 from scripts.members_fixture import register as members_fixture
 from scripts.pairing_fixture import register as pairing_fixture
 from scripts.people_fixture import register as people_fixture
+from scripts.reminder_fixture import register as reminder_fixture
 from scripts.saved_fixture import register as saved_fixture
 from scripts.suggestion_fixture import register as suggestion_fixture
 from scripts.threshold_fixture import register as threshold_fixture
@@ -115,6 +116,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
     group_recovery_fixture(app)
     unseen_fixture(app)
     suggestion_fixture(app)
+    reminder_fixture(app)
     threshold_fixture(app)
     video_fixture(app)
     gif_sticker_fixture(app)

@@ -225,7 +225,7 @@ def test_old_shared_and_local_ledgers_gain_daily_family_without_rewriting_values
             local_path, account_id=1, timezone="UTC", shared_path=registry.path
         )
         assert (
-            store.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 38
+            store.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 39
         )
         assert old_rows(shared_path, shared_columns) == shared_before
         local_after = old_rows(local_path, local_columns)

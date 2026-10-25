@@ -16,6 +16,7 @@ import { chatKey, readCached } from "../../../src/cache";
 import { useConnection } from "../../../src/connection";
 import type { Snapshot } from "../../../src/conversation";
 import { MemoryPanel } from "../../../src/MemoryPanel";
+import { ReminderEditor } from "../../../src/Reminders";
 import {
   ChoiceRow,
   Explanation,
@@ -324,6 +325,9 @@ function CorrespondentProfile({
           </Section>
           <Section title="Suggestions">
             <SuggestionsChoice account={account} peer={peer} />
+          </Section>
+          <Section title="Reminder">
+            <ReminderEditor account={account} peer={peer} />
           </Section>
           <Section title="Memory">
             {/* Off by default (ADR 56 Q9); off, the chat teaches neither

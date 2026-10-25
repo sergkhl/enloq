@@ -867,7 +867,7 @@ def test_schema31_upgrade_is_additive_and_preserves_real_content_policy_and_ledg
         shared_path=rig.registry.path,
     )
     assert (
-        reopened.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 38
+        reopened.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 39
     )
     assert {
         table: reopened.rows(f"SELECT * FROM {table}") for table in tables

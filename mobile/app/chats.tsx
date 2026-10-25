@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Redirect, router } from "expo-router";
-import React, { useState } from "react";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -28,6 +28,7 @@ import { usePalette, type Palette } from "../src/theme";
 import { useHourCycle } from "../src/time";
 import { Body, Button } from "../src/ui";
 import { RetainedGroups } from "../src/RetainedGroups";
+import { RemindersList } from "../src/Reminders";
 import { Conversation } from "./chat/[account]/[peer]";
 
 export default function ChatsRoute() {
@@ -40,7 +41,7 @@ export default function ChatsRoute() {
 
 // The account's three tabs: its two lists and its own Saved Messages
 // (ADR 50 Q2).
-type Tab = ChatKind | "saved";
+type Tab = ChatKind | "saved" | "reminders";
 
 // The tab each account showed last, while the app runs (ADR 34's tab rule);
 // the app opens on Private.
@@ -54,12 +55,21 @@ const EMPTY: Record<ChatKind, string> = {
 // The chosen account's seven-day Private and Groups lists (ADR 38 Q6, ADR 23,
 // ADR 42 AG2), and its Saved Messages in the third tab (ADR 50).
 function Chats() {
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [reminders, setReminders] = useState(params.tab === "reminders");
+  useEffect(() => setReminders(params.tab === "reminders"), [params.tab]);
   const { connection, account, selectAccount, refresh } = useConnection();
   const palette = usePalette();
   const [lists, setLists] = useState(() => new Map(shownLists));
-  const tab = (account !== null && lists.get(account)) || "private";
-  const kind: ChatKind = tab === "saved" ? "private" : tab;
-  const { rows, reload } = useChatList(account, tab === "saved" ? null : kind);
+  const tab = reminders
+    ? "reminders"
+    : (account !== null && lists.get(account)) || "private";
+  const kind: ChatKind =
+    tab === "saved" || tab === "reminders" ? "private" : tab;
+  const { rows, reload } = useChatList(
+    account,
+    tab === "saved" || tab === "reminders" ? null : kind,
+  );
   const { view } = useReadingView();
   const [choosing, setChoosing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,6 +82,9 @@ function Chats() {
   const timezone = connection.accounts?.timezone ?? "UTC";
 
   function showList(next: Tab) {
+    setReminders(next === "reminders");
+    router.setParams({ tab: next === "reminders" ? "reminders" : undefined });
+    if (next === "reminders") return;
     if (account === null) return;
     shownLists.set(account, next);
     setLists(new Map(shownLists));
@@ -115,7 +128,7 @@ function Chats() {
             numberOfLines={1}
             style={[styles.accountName, { color: palette.text }]}
           >
-            {shown?.name || "Enloq"}
+            {tab === "reminders" ? "All accounts" : shown?.name || "Enloq"}
           </Text>
           {/* The sheet holds Settings too, so it always has more to show
               (ADR 51 Q21). */}
@@ -153,7 +166,9 @@ function Chats() {
       <View style={styles.status}>
         <ConnectionStatus />
       </View>
-      {connection.accounts && accounts.length === 0 ? (
+      {tab === "reminders" ? (
+        <RemindersList />
+      ) : connection.accounts && accounts.length === 0 ? (
         <View style={[styles.empty, styles.gap]}>
           <Body muted>No Telegram account is signed in on this server.</Body>
           <Button
@@ -216,7 +231,11 @@ function Chats() {
         visible={choosing}
         accounts={accounts}
         current={account}
-        onSelect={selectAccount}
+        onSelect={(id) => {
+          setReminders(false);
+          router.setParams({ tab: undefined });
+          selectAccount(id);
+        }}
         onClose={() => setChoosing(false)}
       />
     </SafeAreaView>
@@ -229,6 +248,7 @@ const TABS = [
   { tab: "private", label: "Private", icon: "person" },
   { tab: "group", label: "Groups", icon: "people" },
   { tab: "saved", label: "Saved", icon: "bookmark" },
+  { tab: "reminders", label: "Reminders", icon: "time" },
 ] as const;
 
 function ListSwitch({

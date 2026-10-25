@@ -1,0 +1,29 @@
+# ADR 58: combined reminders, first review, cached reopening and manual insertion.
+appId: ${APP_ID}
+---
+- runScript:
+    file: ../scripts/fixture-post.js
+    env:
+      ROUTE: /api/test/reminders
+- tapOn: "Reminders"
+- extendedWaitUntil:
+    visible: "Reminder fixture"
+    timeout: 20000
+- assertVisible: "All accounts"
+- tapOn: "Review reminder"
+- extendedWaitUntil:
+    visible: "Acknowledge: Thank you for telling me\\."
+    timeout: 20000
+- tapOn: "Back to conversations"
+- tapOn: "Reminders"
+- tapOn: "Review reminder"
+- extendedWaitUntil:
+    visible: "Acknowledge: Thank you for telling me\\."
+    timeout: 15000
+- tapOn: "Acknowledge: Thank you for telling me\\."
+- tapOn: "Undo suggestion"
+- tapOn: "Back to conversations"
+- tapOn: "Reminders"
+- tapOn: "Dismiss"
+- assertNotVisible: "Review reminder"
+- tapOn: "Private"

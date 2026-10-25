@@ -49,14 +49,14 @@ export async function workspaceApi<T>(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
-  options?: { recoverableUnavailable?: readonly string[] },
+  options?: { recoverableUnavailable?: readonly string[]; method?: "DELETE" },
 ): Promise<T> {
   const response = await fetch(
     `/api/${path}`,
     body === undefined
       ? { cache: "no-store", signal }
       : {
-          method: "POST",
+          method: options?.method || "POST",
           signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),

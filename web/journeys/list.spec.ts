@@ -100,7 +100,7 @@ test("the header's icons open Saved Messages, which writes notes without Rewrite
   });
   expect(seeded.status()).toBe(200);
   const tabs = page.getByRole("tablist", { name: "Lists" }).getByRole("tab");
-  await expect(tabs).toHaveCount(3);
+  await expect(tabs).toHaveCount(4);
   // Icons only, named for screen readers, in the account's header row.
   await expect(page.getByRole("tab", { name: "Private" })).toHaveText("");
   await expect(

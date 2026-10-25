@@ -138,6 +138,7 @@ class Suggestions:
             )
         if not automatic:
             self.cancel_queued(key)
+        self.app.reminders.tick()
         return self.settings(key)
 
     def permitted(self, key, record, db=None):
@@ -165,6 +166,10 @@ class Suggestions:
         )
 
     def manual_current(self, key, record, db=None):
+        if record.get("reminder") and not self.app.reminders.current(
+            key, record["reminder"], db
+        ):
+            return False
         rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
         draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
         latest = self.read(
@@ -184,13 +189,15 @@ class Suggestions:
             and self.sources_current(record, db)
         )
 
-    def generate(self, key, revision, cursor=None):
+    def generate(self, key, revision, cursor=None, *, reminder=None, language=None):
         self.private(key)
         self.app.admit_ai()
         if not self.app.authorized():
             raise Refused("Account is signed out")
         now = self.store.clock()
         with self.store.transaction() as db:
+            if reminder and not self.app.reminders.current(key, reminder, db):
+                raise Conflict("This reminder is no longer pending")
             rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
             draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
             if draft["revision"] != revision:
@@ -206,6 +213,7 @@ class Suggestions:
                 previous
                 and previous.get("kind") == "manual"
                 and previous["state"] == "pending"
+                and previous.get("reminder") == reminder
                 and not self.withdrawn(key, previous, db)
             ):
                 return SuggestionsView(
@@ -221,7 +229,7 @@ class Suggestions:
                 self.store, key, reply_id=draft.get("reply_to"), db=db
             )
             messages = captured.pop("messages")
-            if not messages and not draft["text"].strip():
+            if not messages and not draft["text"].strip() and not reminder:
                 raise Refused("Write a draft or wait for conversation context")
             latest = self.read(
                 "SELECT coalesce(max(message_id),0) AS identity FROM messages WHERE chat_key=?",
@@ -231,6 +239,7 @@ class Suggestions:
             attempt = uuid.uuid4().hex
             record = {
                 "kind": "manual",
+                "reminder": reminder,
                 "source": attempt,
                 "attempt": attempt,
                 "source_time": now,
@@ -259,6 +268,16 @@ class Suggestions:
                     "manual": True,
                     "draft": draft["text"],
                     "cursor": cursor,
+                    **(
+                        {
+                            "check_in": {
+                                "occurrence": reminder,
+                                "fallback_language": language,
+                            }
+                        }
+                        if reminder
+                        else {}
+                    ),
                 },
             }
             record["idioms"] = record["style"] == "idioms"

@@ -10,6 +10,11 @@ decisions go into the ADR, not here. Active work is listed in the
 
 None of these is adopted, implemented or authorized.
 
+- **Reminder follow-ups** ([ADR 58](../adr/0058-recurring-message-reminders.md)
+  Q9): conversation-derived timed-event proposals next. Other reminder
+  workflows beyond weekly/monthly private-chat schedules need their own
+  scope and decision; no automatic sending is adopted.
+
 - **Further decision-model uses** ([ADR 30](../adr/0030-decider-emotion-classification.md)
   Q10): a completeness and invention check of rewritten text (media and softened
   rewrites since ADR 54), a guard against suggestion options that add meaning
@@ -92,6 +97,12 @@ Act only if they recur or grow.
   Spark 1.3 for the memory update (Q28).
 
 ## Waiting on the owner
+
+- **Reminder device acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
+  the Galaxy S9+ was unavailable over its saved tunnel during delivery.
+  Run `mobile/scripts/journeys android` when connected, including the new
+  reminder flow. iOS simulator journeys remain with the next Mac build;
+  iOS push retains the existing enrollment gate below.
 
 - **The Android release key's backup** ([ADR 43](../adr/0043-installable-android-builds-and-phone-setup.md)
   Q5, [mobile](../mobile.md#the-android-phone)): copy both files of

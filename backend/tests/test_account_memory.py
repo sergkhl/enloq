@@ -232,7 +232,7 @@ def test_schema_37_clears_takeaways_and_arms_the_start(tmp_path):
     assert store.rows("SELECT value FROM metadata WHERE key='memory_start'") == [
         {"value": str(now[0])}
     ]
-    assert store.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 38
+    assert store.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 39
     assert not store.rows(
         "SELECT name FROM sqlite_master WHERE name='memory_consolidation'"
     )

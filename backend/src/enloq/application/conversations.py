@@ -33,6 +33,7 @@ from .notifications import IncomingNotifications
 from .previews import ConversationPreviews
 from .profiles import Profiles
 from .reactions import Reactions
+from .reminders import Reminders
 from .replies import Replies
 from .retained_groups import RetainedGroups
 from .rewriting import Rewriting
@@ -66,6 +67,7 @@ class Conversations:
         self.emotion = Emotion(self)
         self.calming = Calming(self)
         self.suggestions = Suggestions(self)
+        self.reminders = Reminders(self)
         self.delivery = Delivery(store, transport)
         self.delivery.authorized = lambda: self.authorized()
         self.forwarding = Forwarding(store, transport)
@@ -193,6 +195,7 @@ class Conversations:
             unread_sources=unread,
             emotion=None if group else self.emotion.view(key).model_dump(),
             suggestions=None if group else self.suggestions.view(key).model_dump(),
+            reminder_occurrence=None if group else self.reminders.identity(key),
             # ADR 53: the profile's switch, kept with the app's snapshot.
             calming=None if group else self.calming.on(key),
             group_processing=self.group_processing(key).model_dump() if group else None,

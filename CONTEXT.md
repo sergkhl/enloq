@@ -287,6 +287,43 @@ The URL of one Account Workspace's Private, Groups or Saved list, without a
 chat fragment: `?account=<id>`, with `&tab=groups` or `&tab=saved`. A link to
 the account's own chat opens its Saved tab.
 
+**Reminders**:
+The fourth tab, after Private, Groups and Saved, with a clock icon and
+**All accounts** shown clearly (ADR 58). It lists a Member's pending and
+upcoming reminders with account labels and paused/unavailable states.
+`?tab=reminders` opens it independently of account selection. A digest opens
+the list; an exact alert and Review name the exact account, private chat and
+occurrence. Listing starts no model work.
+
+**Reminder Schedule**:
+One Weekly or Monthly calendar rule per private human chat, configured in
+the Correspondent Profile (ADR 58). It saves its weekday or date, timezone,
+delivery choice and fallback language; timezone and language initially come
+from the device and travel changes neither. Short months use their last day
+without moving later months' selected date. The editor previews the next
+future delivery. A schedule survives inactivity and the thirty-day cache.
+
+**Reminder Occurrence**:
+A schedule's due invitation to review fresh check-in options and send
+manually (ADR 58). Only the latest pending occurrence per chat remains.
+Opening it requests its first set; reopening reuses valid options and
+changed context, expiry or failure needs explicit Generate/Retry. Draft text
+supplies intent and gets additions with insertion and Undo; a blank draft
+gets complete check-ins using bounded current context and enabled memory,
+or simple wording in the saved fallback language. No past wording is kept
+to avoid repetition. Only a Telegram-confirmed later outgoing message, from
+any client, or Dismiss completes it. Incoming messages and opening do not.
+
+**Reminder Digest**:
+One daily alert across the member's accounts, initially 09:00 in a saved
+device timezone, with editable time and timezone (ADR 58). A schedule's local
+calendar date becomes eligible for the first digest on or after it begins.
+Exact-time occurrences use the schedule's local time and are excluded.
+Latest missed digest occurrences wait for the next digest after downtime;
+old pending occurrences never alert repeatedly. Both Automatic suggestions
+switches pause reminders; On resumes at the next future delivery without
+backfill. Account AI Off allows reminders but blocks new generation.
+
 **Conversation Preview**:
 A chat row's one-line excerpt of its latest sent or received native message,
 with its time and a mute icon
@@ -305,6 +342,7 @@ The screen a private chat's header photo and name open
 - the Recipient Emotion with its label, reason, source and time;
 - the chat's switches: Soften hostile messages, Automatic suggestions and
   Remember This Chat, plus its Suggestion Style;
+- its Weekly or Monthly Reminder Schedule;
 - what the person cares about (Person Memory) and their Traits;
 - Copy chat link.
 
