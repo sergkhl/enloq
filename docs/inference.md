@@ -1209,6 +1209,12 @@ Authored offline coverage: `backend/tests/test_message_actions.py` and
   prefix, and an Idioms option used "falls through" for an unavailable day.
   The owner's ordinary-use quality review remains open.
 
+- **Reminder sets: Low quality.** In ADR 58's live check under defaults
+  revision 21, every set kept the idea's purpose, answered Maya's later
+  question with accept, decline and later variants and followed the idea's
+  bracketed instruction to keep it short, with no bracketed text. One later
+  option offered to get back "on Friday", a time nobody supplied.
+
 - **Hostile-wording detection: Low quality.** The pinned decision model can
   miss subtle hostile sarcasm, aggressive blame and hostility in a forwarded
   exchange. In the authored hostile-only pass it missed six of 18 positive

@@ -151,19 +151,60 @@ quality in [inference](../inference.md#retained-acceptance-limits).
 - 2026-10-26, Phase 1 live check: the routes matched the adopted MiMo, Muse
   Spark 1.3 and Decider V1.2 (`pplx-decider-v1.2-20261016`) rates. Remember
   this chat was On in the Maya chat, switched On on 2026-10-25 at 17:28 UTC
-  outside any agent session; it was switched Off for each run (nothing was
-  waiting to be learned) and On again afterwards. Friendly draft, Friendly
-  bracketed and Professional draft sets were ready; the Professional
-  bracketed set failed visibly (`provider`) when its decision-model labels
-  call ended with an unknown outcome. A continuation from that set, keeping
-  the original start, had Professional bracketed, both Idioms sets and the
-  long draft ready. In total: 16 model requests, $0.0139 counted (the unknown
-  at its $0.01 reservation), 9.5 minutes from the first start, no sends, no
-  bracketed text in any option, Undo restored every draft, and the chat's
-  Automatic suggestions and Friendly Style were restored. Long-draft options
-  ran 227–330 characters. Wording is Low quality
+  while no agent session on the VPS was active; it was switched Off for each
+  run (nothing was waiting to be learned) and On again afterwards. Friendly
+  draft, Friendly bracketed and Professional draft sets were ready; the
+  Professional bracketed set failed visibly (`provider`) when its
+  decision-model labels call ended with an unknown outcome. A continuation
+  from that set, keeping the original start, had Professional bracketed, both
+  Idioms sets and the long draft ready. In total: 16 model requests, $0.0139
+  counted (the unknown at its $0.01 reservation), 9.5 minutes from the first
+  start, no sends, no bracketed text in any option, Undo restored every draft,
+  and the chat's Automatic suggestions and Friendly Style were restored.
+  Long-draft options ran 227–330 characters. Wording is Low quality
   ([inference](../inference.md#retained-acceptance-limits)): the Friendly
   bracketed set began each option with "not yet:".
+- 2026-10-26, Phase 2 checks: `5ec45ea` with the live check fixes that
+  followed. `./scripts/check` passed on the task branch (3,975 backend tests,
+  59 phone-size web journeys, 313 Jest tests). Enloq Dev was rebuilt with
+  `@react-native-community/datetimepicker` 9.1.0. On the S9+ (development
+  login), the reminders, compose and ai-controls flows passed first; the full
+  run passed its first 16 flows, then push failed because the worktree's
+  build lacked the untracked Firebase config. Rebuilt with it, the run from
+  push on passed (9 min).
+- 2026-10-26, Phase 2 delivered: `main` and `origin/main` named `b642809`, the
+  task worktree and branch were removed, and the schema 40 deploy was healthy;
+  both account stores read version 40, and the one schema 39 schedule, a
+  weekly exact reminder in the Maya chat that no check of this plan made,
+  moved with revision 5. The Saved Build `enloq-0.1.0-c1aceff.apk` replaced
+  the pinned message.
+- 2026-10-26, Phase 2 live check, started 08:47:57 UTC in Pacific/Gambier,
+  12 minutes before its midnight. An earlier start sent nothing: Send asked
+  about the authored message's square brackets and Playwright declined, so
+  the check's messages now use parentheses. The run sent the day's authored
+  message and saved an exact Once reminder whose idea named 25 Oct and one
+  without an idea, leaving that weekly schedule alone. Listing made no model
+  call; at the day's end its three cached messages were kept; the set was
+  prepared 60 seconds before the first alert, covered both reminders and
+  carried the Kept Messages. The check then failed on reading those Kept
+  Messages from the finished set, whose packet is dropped on completion, and
+  removed its schedules. A continuation from the same start reused the sent
+  message: saving kept the ended day at once, both reminders' sets were
+  prepared early, the bar listed both once due, Maya's message brought a
+  refresh 30 quiet seconds later while no client had the chat open (the
+  automatic set was suppressed, and opening reused the refreshed set), and
+  then the web bar's Dismiss could not be tapped: the long idea widened it
+  past the phone's edge. `d860166` fixed that with a long-idea journey (the
+  app's bar already fitted on the S9+) and deployed as `5ffb383`, healthy.
+  The last steps then ran through a one-off script repeating the check's
+  steps 6 and 7 on the same reminders: Dismiss sat inside the screen,
+  reopening prepared the idea's set, a send from it completed the reminder
+  and its Once schedule ended, and the weekly schedule stayed unchanged. In
+  total: 14 model requests, $0.0024 counted, three authored sends, 36
+  minutes from the start; the chat's Automatic suggestions and Friendly
+  Style were restored, the draft was empty and Remember this chat, Off for
+  every run, was On again. Wording is in
+  [inference](../inference.md#retained-acceptance-limits).
 
 ## Open findings
 

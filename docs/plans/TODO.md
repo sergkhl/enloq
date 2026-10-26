@@ -97,6 +97,12 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
+- **Remember this chat in the Maya chat** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)
+  Q29): it has been On since 2026-10-25 17:28 UTC, when no agent session on
+  the VPS was active, while Q29 and AGENTS.md keep it Off so live sends teach
+  nothing. Live checks switch it Off for their runs and back On; the owner
+  decides which state stands.
+
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the
   existing enrollment gate below.
@@ -152,9 +158,9 @@ Act only if they recur or grow.
   [group briefing outcomes](../inference.md#group-briefing-first-outcomes)):
   the Low quality outcomes kept for media rewrites (ADR 29), Emotion
   Classification and Reaction Assessment (ADR 30), Response Suggestions
-  (ADR 49), recurring reminder check-ins (ADR 58), complete manual messages
-  (ADR 25) and Daily Briefings (ADR 34), and ADR 35's two unverified image
-  cases.
+  (ADR 49), recurring reminder check-ins and reminder sets (ADR 58),
+  complete manual messages (ADR 25) and Daily Briefings (ADR 34), and ADR
+  35's two unverified image cases.
 - **Ordinary use of native paths no check has observed**: queued-send
   recovery after a real interruption or flood wait ([ADR 26](../adr/0026-mobile-message-actions-and-send-status.md));
   native disconnect recovery; downloads across Telegram data centres;
@@ -184,4 +190,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 1,881 are used. Add each check's requests here.
+total; 1,895 are used. Add each check's requests here.
