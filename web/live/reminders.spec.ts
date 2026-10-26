@@ -207,10 +207,19 @@ test("message reminders through the live service: early sets, refresh, a send fr
     await page.request.get(`${CHAT}/suggestions/settings`)
   ).json();
   evidence.settings = settings;
+  // The owner's own Maya schedules stay as they are: none may have an
+  // occurrence or be due before the run ends, and only the check's own
+  // schedules are removed afterwards.
   const existing = (await (await page.request.get(REMINDERS)).json()).items;
-  expect(existing, "Live acceptance preserves any existing schedule").toEqual(
-    [],
-  );
+  for (const item of existing)
+    expect(
+      !item.occurrence &&
+        (item.next_at === null || item.next_at > began + SECONDS + 300),
+      "An existing Maya schedule is due during the run",
+    ).toBe(true);
+  const others = existing.map((item: any) => `${item.id}:${item.revision}`);
+  evidence.existing = existing.length;
+  const own: string[] = [];
   const global = await (await page.request.get("/api/settings")).json();
   expect(global.suggestions && !global.budget.reached).toBe(true);
   const accounts = (await (await page.request.get("/api/accounts")).json())
@@ -327,6 +336,7 @@ test("message reminders through the live service: early sets, refresh, a send fr
     });
     expect(withIdea.status(), await withIdea.text()).toBe(200);
     const reminder = await withIdea.json();
+    own.push(reminder.id);
     evidence.kept_on_save = reminder.kept;
     expect(reminder.kept.day).toBe(day);
     const checkIn = exact(lead + 1);
@@ -341,6 +351,7 @@ test("message reminders through the live service: early sets, refresh, a send fr
     });
     expect(plain.status(), await plain.text()).toBe(200);
     const check = await plain.json();
+    own.push(check.id);
     // Listing makes no model call.
     const listed = metadata().requests;
     await page.goto("/?tab=reminders");
@@ -427,11 +438,13 @@ test("message reminders through the live service: early sets, refresh, a send fr
     await send(chosen);
     await expect
       .poll(
-        async () => (await (await page.request.get(REMINDERS)).json()).items,
+        async () =>
+          (await (await page.request.get(REMINDERS)).json()).items.map(
+            (item: any) => `${item.id}:${item.revision}`,
+          ),
         { timeout: 60000, intervals: [2000] },
       )
-      .toEqual([]);
-    evidence.check_in = check.id;
+      .toEqual(others);
     evidence.result = await bounds();
   } finally {
     const draft = (await (await page.request.get(CHAT)).json()).draft;
@@ -442,10 +455,15 @@ test("message reminders through the live service: early sets, refresh, a send fr
         reply_to: draft.reply_to,
       });
     for (const item of (await (await page.request.get(REMINDERS)).json()).items)
-      await page.request.delete(`${REMINDERS}/${item.id}`, {
-        data: { revision: item.revision },
-        headers: { Origin: ORIGIN },
-      });
+      if (own.includes(item.id))
+        await page.request.delete(`${REMINDERS}/${item.id}`, {
+          data: { revision: item.revision },
+          headers: { Origin: ORIGIN },
+        });
+    evidence.preserved = (
+      await (await page.request.get(REMINDERS)).json()
+    ).items.map((item: any) => `${item.id}:${item.revision}`);
+    expect(evidence.preserved).toEqual(others);
     await change("/suggestions/settings", settings);
     evidence.restored = await (
       await page.request.get(`${CHAT}/suggestions/settings`)

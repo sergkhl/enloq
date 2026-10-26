@@ -647,10 +647,11 @@ again; a send from that set completes it and ends its schedule. When some
 timezone's midnight is at most 22 minutes away, the reminders use it, so the
 idea's day ends within the run and its Kept Messages are copied first. It
 requires the Maya composer to be empty, Remember this chat Off, no Maya
-schedule, the owner's account AI On, Maya's AI Off, global Automatic
-suggestions On and available Daily Budget. It turns the chat's Automatic
-suggestions On for the run, then restores the chat's settings, clears its
-draft and removes any schedule left. Its ceiling is 60 model requests, three
+schedule pending or due during the run, the owner's account AI On, Maya's AI
+Off, global Automatic suggestions On and available Daily Budget. It turns the
+chat's Automatic suggestions On for the run, then restores the chat's
+settings, clears its draft and removes only its own schedules, checking that
+any others are unchanged. Its ceiling is 60 model requests, three
 authored sends, 45 minutes and $0.15 counted, within the unchanged member
 budget. Route/rate verification precedes each run, and Docker reads request
 counts and the set's shape, never message text. Private evidence is in
