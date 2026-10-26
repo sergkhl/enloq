@@ -627,7 +627,10 @@ never runs them; run one file at a time.
 each Style, plus one long draft, with automation Off and no sends; its ceiling
 is 20 model requests, 20 minutes and $0.05 counted. It checks that every set
 is ready with no bracketed text in its options, the unchanged draft,
-replacement with Undo and restored settings.
+replacement with Undo and restored settings. After a provider failure, a
+continuation keeps the original start in `ENLOQ_MANUAL_ACCEPTANCE_SINCE`
+(Unix seconds) and runs from set `ENLOQ_MANUAL_ACCEPTANCE_FROM` (1–7, in the
+order above); every ceiling still counts from the original start.
 `live/arrival-notifications.spec.ts` sends three authored Maya messages and
 reads only the service's scoped eligibility and screening metadata through
 Docker, using no second Telegram client. It checks early clean eligibility and

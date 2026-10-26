@@ -13,10 +13,15 @@ import {
 // Style, plus one long draft, with automation off and no sends. Bounds: at
 // most 20 model requests, 20 minutes and $0.05 counted (unknowns included).
 // Docker reads route metadata and request counts, never sessions or content.
+// A continuation after a provider failure keeps the original start in
+// ENLOQ_MANUAL_ACCEPTANCE_SINCE (Unix seconds) and runs from set
+// ENLOQ_MANUAL_ACCEPTANCE_FROM (1–7); it never resets a bound.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
 const LIMIT = 50_000_000;
 const REQUESTS = 20;
 const SECONDS = 1200;
+const SINCE = Number(process.env.ENLOQ_MANUAL_ACCEPTANCE_SINCE || 0);
+const FROM = Number(process.env.ENLOQ_MANUAL_ACCEPTANCE_FROM || 1);
 const VERIFY = String.raw`
 import asyncio,json
 from enloq.config import Settings
@@ -64,13 +69,26 @@ const LONG = [
   "Let me know which option works best for everyone, and I'll book my ticket tonight.",
 ].join(" ");
 const STYLES = ["friendly", "professional", "idioms"];
+const SETS = [
+  ...STYLES.flatMap((style) => [
+    [style, "draft", DRAFT],
+    [style, "bracketed", BRACKETED],
+  ]),
+  ["friendly", "long", LONG],
+];
 
 test("manual suggestions develop drafts and bracketed instructions in each Style, replacing with Undo", async ({
   page,
 }) => {
-  test.setTimeout(SECONDS * 1000);
-  const began = Date.now() / 1000;
-  const evidence: Record<string, any> = { began, routes: null, sets: [] };
+  const began = SINCE || Date.now() / 1000;
+  expect(Date.now() / 1000 - began).toBeLessThan(SECONDS - 60);
+  test.setTimeout((SECONDS - (Date.now() / 1000 - began)) * 1000);
+  const evidence: Record<string, any> = {
+    began,
+    from: FROM,
+    routes: null,
+    sets: [],
+  };
   const metadata = () =>
     JSON.parse(
       execFileSync("docker", ["exec", "-i", "enloq", "python", "-c", READ], {
@@ -180,7 +198,8 @@ test("manual suggestions develop drafts and bracketed instructions in each Style
       .toMatchObject({ text: "" });
   }
   try {
-    for (const style of STYLES) {
+    for (const [index, [style, kind, draft]] of SETS.entries()) {
+      if (index + 1 < FROM) continue;
       expect(
         (
           await change("/suggestions/settings", {
@@ -189,18 +208,8 @@ test("manual suggestions develop drafts and bracketed instructions in each Style
           })
         ).status(),
       ).toBe(200);
-      await set(style, "draft", DRAFT);
-      await set(style, "bracketed", BRACKETED);
+      await set(style!, kind!, draft!);
     }
-    expect(
-      (
-        await change("/suggestions/settings", {
-          automatic: false,
-          style: "friendly",
-        })
-      ).status(),
-    ).toBe(200);
-    await set("friendly", "long", LONG);
     expect(
       (
         await page.request.post(`${CHAT}/rewrite`, {

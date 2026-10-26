@@ -138,6 +138,32 @@ quality in [inference](../inference.md#retained-acceptance-limits).
   changed, no model requests, no sends.
 - 2026-10-26: the owner removed the option length limit for every set, which
   closed the plan's only open question; ADR 25 and CONTEXT record it.
+- 2026-10-26, Phase 1 delivered: `e13e51b` with the profile journey fix
+  `853d5aa` and the runbook fix `baac42a`. `./scripts/check` passed on the
+  task branch (3,929 backend tests, 58 phone-size web journeys, 307 Jest
+  tests). On the S9+ with the development login, the full Android run passed
+  its first eleven flows, then stopped in `ai-controls.yaml`, whose Add note
+  the longer profile left below the screen; with the flow scrolling to it, the
+  run from that flow on passed (20 min). `main` and `origin/main` named
+  `baac42a`, the task worktree and branch were removed, and `baac42a`
+  deployed healthy (`/health` ready). The Saved Build
+  `enloq-0.1.0-baac42a.apk` replaced the pinned message in place.
+- 2026-10-26, Phase 1 live check: the routes matched the adopted MiMo, Muse
+  Spark 1.3 and Decider V1.2 (`pplx-decider-v1.2-20261016`) rates. Remember
+  this chat was On in the Maya chat, switched On on 2026-10-25 at 17:28 UTC
+  outside any agent session; it was switched Off for each run (nothing was
+  waiting to be learned) and On again afterwards. Friendly draft, Friendly
+  bracketed and Professional draft sets were ready; the Professional
+  bracketed set failed visibly (`provider`) when its decision-model labels
+  call ended with an unknown outcome. A continuation from that set, keeping
+  the original start, had Professional bracketed, both Idioms sets and the
+  long draft ready. In total: 16 model requests, $0.0139 counted (the unknown
+  at its $0.01 reservation), 9.5 minutes from the first start, no sends, no
+  bracketed text in any option, Undo restored every draft, and the chat's
+  Automatic suggestions and Friendly Style were restored. Long-draft options
+  ran 227–330 characters. Wording is Low quality
+  ([inference](../inference.md#retained-acceptance-limits)): the Friendly
+  bracketed set began each option with "not yet:".
 
 ## Open findings
 
