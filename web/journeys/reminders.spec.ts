@@ -221,6 +221,35 @@ test("Add reminder chooses the account, then the person with New Message's picke
     ).toBe(200);
 });
 
+test("a long Message Idea shortens in the bar, keeping Dismiss on screen", async ({
+  page,
+}) => {
+  const idea =
+    "Ask how the long weekend trip to the mountains went and whether the night train back arrived on time [warmly]";
+  const answer = await page.request.post("/api/test/reminders", {
+    data: { idea },
+    headers,
+  });
+  expect(answer.status()).toBe(200);
+  try {
+    await page.goto("/?account=1#130");
+    const bar = page.getByRole("region", { name: "Reminders" });
+    const dismiss = bar.getByRole("button", {
+      name: `Dismiss reminder: ${idea}`,
+    });
+    await expect(dismiss).toBeVisible();
+    // Inside the phone's width, not past its edge.
+    const box = (await dismiss.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    const row = bar.getByRole("button", { name: /^Edit reminder: Ask how/ });
+    expect((await row.boundingBox())!.x).toBeGreaterThanOrEqual(0);
+    await dismiss.tap();
+    await expect(bar).toHaveCount(0);
+  } finally {
+    await fixture(page, "cleanup");
+  }
+});
+
 test("a member-scoped reminders URL opens without an account query", async ({
   page,
 }) => {

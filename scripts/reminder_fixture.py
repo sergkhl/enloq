@@ -1,7 +1,8 @@
 """Authored reminders for phone/web journeys, offline fixture only (ADR 58).
 
-`setup` gives the fixture chat one pending reminder with a Message Idea and
-one upcoming check-in, and lets the offline engine prepare their set.
+`setup` gives the fixture chat one pending reminder with a Message Idea (or
+the request's `idea`) and one upcoming check-in, and lets the offline engine
+prepare their set.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -71,7 +72,7 @@ def register(app):
                 delivery="exact",
                 time=due.strftime("%H:%M"),
                 language="English",
-                idea=IDEA,
+                idea=body.get("idea") or IDEA,
             ),
         )
         conversation.reminders.create(

@@ -276,6 +276,9 @@
 /* The Reminder Bar above the suggestions (Q13). */
 .reminder-bar {
   display: grid;
+  /* A long Message Idea shortens with an ellipsis instead of widening the
+     bar past the phone's edge, which would push Dismiss off screen. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0 8px 6px;
 }
