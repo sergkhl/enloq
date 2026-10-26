@@ -15,13 +15,16 @@ import {
 // New Message (ADR 51 Q7, Q15-Q18), opened from the pencil on the Private
 // tab: the account's private chats of any age, then its contacts, and for
 // three typed characters Telegram's people search. Choosing someone opens
-// their private chat, ready to write (the app's `app/new-message.tsx`).
+// their private chat, ready to write (the app's `app/new-message.tsx`); for
+// Add reminder (ADR 58 Q7), the reminder editor for them.
 export function NewMessageScreen({
   account,
+  title = "New message",
   onBack,
   onOpened,
 }: {
   account: number;
+  title?: string;
   onBack: () => void;
   onOpened: (chat: Chat) => void;
 }) {
@@ -65,7 +68,7 @@ export function NewMessageScreen({
 
   const sections = peopleSections(found);
   return (
-    <ScreenFrame title="New message" onBack={onBack}>
+    <ScreenFrame title={title} onBack={onBack}>
       <input
         className="people-search"
         type="search"

@@ -1,4 +1,6 @@
-# ADR 58: combined reminders, first review, cached reopening and manual insertion.
+# ADR 58: the Reminders tab's chat-like rows; a pending reminder's chat with
+# its Reminder Bar and set, a choice with Undo and Dismiss; the reminder
+# editor's Repeat, day grid and native time picker; Remove's question.
 appId: ${APP_ID}
 ---
 - runScript:
@@ -7,23 +9,53 @@ appId: ${APP_ID}
       ROUTE: /fixture/reminders
 - tapOn: "Reminders"
 - extendedWaitUntil:
-    visible: "Reminder fixture"
+    visible: "Daily digest · 09:00"
     timeout: 20000
 - assertVisible: "All accounts"
-- tapOn: "Review reminder"
+- tapOn: "Reminder fixture, .*Ask how the trip went, Due .*"
 - extendedWaitUntil:
     visible: "Acknowledge: Thank you for telling me\\."
     timeout: 20000
-- tapOn: "Back to conversations"
-- tapOn: "Reminders"
-- tapOn: "Review reminder"
-- extendedWaitUntil:
-    visible: "Acknowledge: Thank you for telling me\\."
-    timeout: 15000
+- assertVisible: "Edit reminder: Ask how the trip went.*"
 - tapOn: "Acknowledge: Thank you for telling me\\."
+- extendedWaitUntil:
+    visible:
+      text: "Undo suggestion"
+      enabled: true
+    timeout: 15000
 - tapOn: "Undo suggestion"
+- tapOn: "Dismiss reminder: Ask how the trip went"
+- extendedWaitUntil:
+    notVisible: "Edit reminder: Ask how the trip went.*"
+    timeout: 15000
 - tapOn: "Back to conversations"
-- tapOn: "Reminders"
-- tapOn: "Dismiss"
-- assertNotVisible: "Review reminder"
+# The check-in comes first: its next delivery is the nearer one.
+- tapOn: "More for Reminder fixture"
+- tapOn: "Edit"
+- extendedWaitUntil:
+    visible: "Edit reminder"
+    timeout: 15000
+- tapOn: "Monthly"
+- tapOn: "Day 15"
+- tapOn: "Exact time"
+- tapOn: "Time: .*"
+# Android's own time dialog keeps the time it shows.
+- tapOn: "OK|Ok|Done|Set|SET"
+- scrollUntilVisible:
+    element: "Save reminder"
+- extendedWaitUntil:
+    visible: "Monthly on the 15th · .* · next .*"
+    timeout: 15000
+- tapOn: "Save reminder"
+- extendedWaitUntil:
+    visible: "Monthly on the 15th · .*"
+    timeout: 15000
+- tapOn: "Reminder fixture, .*Check in, Next .*"
+- scrollUntilVisible:
+    element: "Remove reminder"
+- tapOn: "Remove reminder"
+- tapOn: "Remove|REMOVE"
+- extendedWaitUntil:
+    notVisible: "Monthly on the 15th · .*"
+    timeout: 15000
 - tapOn: "Private"

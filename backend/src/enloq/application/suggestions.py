@@ -27,7 +27,7 @@ from ..domain.suggestions import (
     SuggestionsView,
 )
 from ..inference.base import ProviderRefused
-from ..storage.store import blank_draft
+from ..storage.store import RETENTION, blank_draft
 from ..storage.suggestions import settle
 from . import context, decision_state
 
@@ -36,6 +36,9 @@ _LOG = logging.getLogger("enloq.suggestions")
 # The incoming request's enriched-text cap plus the four fresh image meanings
 # (at most 2,000 characters each) that replace image bytes in this request.
 PACKET_BYTES = 32000 + 4 * 6000
+# A reminder set reads the 20 newest cached messages of the 30-day cache
+# (ADR 58 Q6), within a wider byte bound than an ordinary manual request.
+REMINDER_CONTEXT_BYTES = 12000
 
 
 def prepared(source, fresh):
@@ -167,10 +170,12 @@ class Suggestions:
         )
 
     def manual_current(self, key, record, db=None):
-        if record.get("reminder") and not self.app.reminders.current(
-            key, record["reminder"], db
-        ):
-            return False
+        if record.get("reminders") is not None:
+            if db is None:
+                with self.store.transaction() as db:
+                    return self.manual_current(key, record, db)
+            if not self.reminder_fits(key, record, db):
+                return False
         rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
         draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
         latest = self.read(
@@ -190,15 +195,26 @@ class Suggestions:
             and self.sources_current(record, db)
         )
 
-    def generate(self, key, revision, *, reminder=None, language=None):
+    def reminder_fits(self, key, record, db):
+        """A reminder set fits while it covers every occurrence of the chat
+        and its Kept Messages are as they were (ADR 58 Q5)."""
+        covered = self.app.reminders.covered(key, db)
+        return [o["id"] for o in covered] == record[
+            "reminders"
+        ] and self.app.reminders.kept_identity(db, record["schedules"]) == (
+            record["kept"]
+        )
+
+    def generate(self, key, revision):
         self.private(key)
         self.app.admit_ai()
         if not self.app.authorized():
             raise Refused("Account is signed out")
+        if self.app.reminders.owns(key):
+            # With reminders pending, the button requests their set (Q5).
+            return self.reminder_set(key, "press", revision)
         now = self.store.clock()
         with self.store.transaction() as db:
-            if reminder and not self.app.reminders.current(key, reminder, db):
-                raise Conflict("This reminder is no longer pending")
             rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
             draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
             if draft["revision"] != revision:
@@ -214,7 +230,7 @@ class Suggestions:
                 previous
                 and previous.get("kind") == "manual"
                 and previous["state"] == "pending"
-                and previous.get("reminder") == reminder
+                and previous.get("reminders") is None
                 and not self.withdrawn(key, previous, db)
             ):
                 return SuggestionsView(
@@ -230,7 +246,7 @@ class Suggestions:
                 self.store, key, reply_id=draft.get("reply_to"), db=db
             )
             messages = captured.pop("messages")
-            if not messages and not draft["text"].strip() and not reminder:
+            if not messages and not draft["text"].strip():
                 raise Refused("Write a draft or wait for conversation context")
             latest = self.read(
                 "SELECT coalesce(max(message_id),0) AS identity FROM messages WHERE chat_key=?",
@@ -240,7 +256,6 @@ class Suggestions:
             attempt = uuid.uuid4().hex
             record = {
                 "kind": "manual",
-                "reminder": reminder,
                 "source": attempt,
                 "attempt": attempt,
                 "source_time": now,
@@ -263,21 +278,10 @@ class Suggestions:
                 "emotion": "unknown",
                 "style": self.automatic(key, db)["style"],
                 "packet": {
-                    "messages": [] if reminder else [prepared(m, {}) for m in messages],
-                    "context": [prepared(m, {}) for m in messages] if reminder else [],
+                    "messages": [prepared(m, {}) for m in messages],
+                    "context": [],
                     "manual": True,
                     "draft": draft["text"],
-                    **(
-                        {
-                            "check_in": {
-                                "intent": "check_in",
-                                "occurrence": reminder,
-                                "fallback_language": language,
-                            }
-                        }
-                        if reminder
-                        else {}
-                    ),
                 },
             }
             record["idioms"] = record["style"] == "idioms"
@@ -294,6 +298,165 @@ class Suggestions:
                 if record["state"] == "pending"
                 else "input_too_large",
             )
+        return self.view(key)
+
+    def reminder_set(self, key, trigger, revision=None):
+        """One manual set covering every occurrence of the chat (ADR 58 Q5,
+        Q6): prepared two minutes before the alert, refreshed after quiet
+        seconds, replaced on opening only when it no longer fits, and
+        requested by the Suggestions button. Only a press resamples an
+        unchanged input; an unchanged failure is never prepared again."""
+        press = trigger == "press"
+        if not press:
+            try:
+                self.private(key)
+                self.app.admit_ai()
+            except (Refused, Conflict):
+                return self.view(key)
+            if not self.app.authorized():
+                return self.view(key)
+        with self.store.transaction() as db:
+            self.prepare_reminder_set(db, key, trigger, revision)
+        return self.view(key)
+
+    def prepare_reminder_set(self, db, key, trigger, revision):
+        press = trigger == "press"
+        now = self.store.clock()
+        covered = self.app.reminders.covered(key, db)
+        if not covered:
+            if press:
+                raise Conflict("Reminders changed; reload the conversation")
+            return
+        rows = self.read("SELECT body FROM drafts WHERE chat_key=?", (key,), db)
+        draft = json.loads(rows[0]["body"]) if rows else blank_draft(key)
+        if revision is not None and draft["revision"] != revision:
+            raise Conflict("Draft changed; keep your edits and reload")
+        busy = draft.get("state") == "rewriting" or sticker_selected(draft)
+        large = len(draft["text"].encode()) > context.TARGET_BYTES
+        if press and busy:
+            raise Conflict("The composer is busy")
+        if press and large:
+            raise Refused(
+                "Draft exceeds the suggestion input bound; your text is retained"
+            )
+        if busy or large:
+            return
+        captured = context.cached_recent(
+            self.store,
+            key,
+            reply_id=draft.get("reply_to"),
+            db=db,
+            since=RETENTION,
+            budget=REMINDER_CONTEXT_BYTES,
+        )
+        messages = captured.pop("messages")
+        schedules = list(dict.fromkeys(o["schedule"] for o in covered))
+        kept, kept_identity = self.app.reminders.kept(db, schedules)
+        latest = self.read(
+            "SELECT coalesce(max(message_id),0) AS identity FROM messages WHERE chat_key=?",
+            (key,),
+            db,
+        )[0]["identity"]
+        since = now - RETENTION
+        count = self.read(
+            "SELECT count(*) AS count FROM messages WHERE chat_key=? AND date>=?",
+            (key, since),
+            db,
+        )[0]["count"]
+        identity = hashlib.sha256(
+            json.dumps(
+                [
+                    [o["id"] for o in covered],
+                    draft["revision"],
+                    latest,
+                    count,
+                    captured["inputs"],
+                    captured["transcript_inputs"],
+                    captured["image_inputs"],
+                    kept_identity,
+                ],
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        previous = self.record(key, db)
+        if (
+            previous
+            and previous.get("reminders") is not None
+            and not self.withdrawn(key, previous, db)
+        ):
+            if press and previous["state"] == "pending":
+                # Duplicate requests share the active attempt (ADR 25).
+                return
+            if (
+                not press
+                and previous.get("identity") == identity
+                and previous["state"] != "cancelled"
+            ):
+                self.diagnose(previous, reason="reminder_unchanged", source=trigger)
+                return
+        # Messages that arrived after a reminder fell due are answered;
+        # earlier ones are reference only (Q6).
+        first = covered[0]["due_at"]
+        attempt = uuid.uuid4().hex
+        record = {
+            "kind": "manual",
+            "reminders": [o["id"] for o in covered],
+            "schedules": schedules,
+            "kept": kept_identity,
+            "identity": identity,
+            "trigger": trigger,
+            "source": attempt,
+            "attempt": attempt,
+            "source_time": now,
+            "state": "pending",
+            "failure": None,
+            "refusals": 0,
+            "draft_revision": draft["revision"],
+            "latest_message": latest,
+            "context_since": since,
+            "context_count": count,
+            **captured,
+            "derived": {k: self.app.emotion.derived(k, db) for k in captured["inputs"]},
+            "sources": [m["id"] for m in messages],
+            "emotion": "unknown",
+            "style": self.automatic(key, db)["style"],
+            "packet": {
+                "manual": True,
+                "draft": draft["text"],
+                "reminders": [
+                    {
+                        "intent": "message_idea" if o["idea"].strip() else "check_in",
+                        "idea": o["idea"],
+                        "fallback_language": o["language"],
+                    }
+                    for o in covered
+                ],
+                "messages": [prepared(m, {}) for m in messages if m["date"] >= first],
+                "context": [prepared(m, {}) for m in messages if m["date"] < first],
+                "kept": kept,
+                "fallback_language": covered[0]["language"],
+            },
+        }
+        record["idioms"] = record["style"] == "idioms"
+        db.execute(
+            "UPDATE jobs SET state='superseded',error='Replaced by a reminder set' WHERE role='response_suggestions' AND scope=? AND state='queued'",
+            (key,),
+        )
+        record = self.store_record(db, key, record)
+        if record["state"] == "pending":
+            self.enqueue(db, key, record, attempt, now)
+        self.diagnose(
+            record,
+            reason="requested" if record["state"] == "pending" else "input_too_large",
+            source=trigger,
+        )
+
+    def open_reminders(self, key):
+        """Opening a chat with pending reminders prepares their set when the
+        current one no longer fits (ADR 58 Q5)."""
+        self.private(key)
+        if self.app.reminders.owns(key):
+            return self.reminder_set(key, "open")
         return self.view(key)
 
     def record(self, key, db=None):
@@ -413,6 +576,9 @@ class Suggestions:
             source_time=record["source_time"],
             expires_at=record["source_time"] + EXPIRY,
         )
+        if record.get("reminders") is None and self.app.reminders.owns(key):
+            # A reminder set owns the area while any is pending (ADR 58 Q5).
+            return SuggestionsView(reason="replaced", **times)
         if reason := self.withdrawn(key, record):
             return SuggestionsView(reason=reason, **times)
         if self.suspended(key, record):
@@ -612,6 +778,9 @@ class Suggestions:
             self.diagnose(decision, reason="explicit_or_older_processing")
             return None
         key = block["chat_key"]
+        if self.app.reminders.owns(key, db):
+            self.diagnose(decision, reason="reminder_owns_area")
+            return None
         previous = self.record(key, db)
         if (
             previous
@@ -688,6 +857,10 @@ class Suggestions:
         transaction; it never delays or undoes the assessment."""
         db.execute("SAVEPOINT reaction_suggestions")
         try:
+            if self.app.reminders.owns(key, db):
+                self.diagnose(reason="reminder_owns_area", source="reaction")
+                db.execute("RELEASE reaction_suggestions")
+                return None
             previous = self.record(key, db)
             if (
                 previous
@@ -1088,6 +1261,9 @@ class Suggestions:
                 or self.withdrawn(key, record, db)
                 or self.suspended(key, record, db)
                 or not self.qualifies(key, record, signal, db)
+                or (
+                    record.get("reminders") is None and self.app.reminders.owns(key, db)
+                )
             ):
                 raise Conflict("Suggestions changed; choose from the current set")
             row = db.execute(
@@ -1115,6 +1291,13 @@ class Suggestions:
                 error=None,
                 revision=revision + 1,
             )
+            # A send of a draft that took a reminder set's option completes its
+            # occurrences once Telegram confirms it; edits keep the mark, Undo
+            # and clearing drop it (ADR 58 Q3).
+            if record.get("reminders"):
+                draft["reminders"] = list(record["reminders"])
+            else:
+                draft.pop("reminders", None)
             db.execute(
                 "INSERT OR REPLACE INTO drafts VALUES (?,?)", (key, json.dumps(draft))
             )

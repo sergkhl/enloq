@@ -1,58 +1,315 @@
+/* Reminders in the app's design (ADR 58): the tab's chat-like rows, the
+   reminder editor, the Reminder Bar and their sheets. */
+.reminders-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.reminders-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 8px;
+}
+.reminder-digest-line {
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 8px 0;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: left;
+}
+.reminder-add {
+  flex: none;
+  padding: 8px 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.reminder-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+.reminder-row-main {
+  display: flex;
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 12px;
+  padding: 10px 4px 10px 16px;
+  text-align: left;
+  border-radius: 0;
+}
+.reminder-row-main:hover,
+.reminder-row-main:active {
+  background: var(--panel);
+}
+.reminder-row-main time,
+.reminder-repeat {
+  flex: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+.reminder-row.pending .reminder-row-main time {
+  color: var(--accent);
+  font-weight: 600;
+}
+.reminder-repeat {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.reminder-dismiss {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+.reminder-row-actions {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 2px;
+}
+.reminder-more {
+  position: relative;
+}
+.reminder-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 14%);
+}
+.reminder-menu button {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+/* The editor: five compact Repeat choices fit a phone's width. */
+.reminder-form .choice-segments button {
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 14px;
+}
+.reminder-sheet .choice-segments button[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--paper);
+}
+.reminder-person {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
 .reminder-form {
   display: grid;
   gap: 12px;
 }
-.reminder-form label {
-  display: grid;
-  gap: 5px;
+.reminder-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.reminder-form input,
-.reminder-form select {
-  width: 100%;
+.reminder-field input,
+.reminder-field select {
   min-width: 0;
-  padding: 10px;
+  padding: 8px 10px;
   font: inherit;
   color: inherit;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.reminders-list {
-  padding: 16px;
-  overflow-y: auto;
+.reminder-field input[type="number"] {
+  width: 72px;
 }
-.reminders-list h2 {
-  margin: 0;
-}
-.reminder-scope {
-  margin-top: 4px;
-  opacity: 0.7;
-}
-.reminder-row {
+.reminder-days {
   display: grid;
-  gap: 6px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
 }
-.reminder-row p {
-  margin: 0;
+.reminder-days button {
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.reminder-row > span {
-  opacity: 0.7;
+.reminder-days button[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.reminder-zone-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--accent);
+  text-align: left;
+  border-radius: 0;
+}
+.reminder-idea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+}
+.reminder-kept,
+.reminder-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.reminder-summary {
+  margin: 4px 16px 12px;
 }
 .reminder-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
+  margin: 8px 16px 24px;
 }
-.reminder-actions button,
-.reminder-form button {
-  padding: 10px 12px;
+.reminder-actions button {
+  padding: 12px;
 }
-.reminder-digest {
-  margin: 16px 0;
+.reminder-actions .danger {
+  color: #a3302a;
 }
-.reminder-digest summary {
+
+/* Sheets: the digest, and the timezone and language lists. */
+.reminder-sheet {
+  display: grid;
+  gap: 10px;
+}
+.reminder-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.reminder-search {
+  display: grid;
+  gap: 6px;
+}
+.reminder-search-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.reminder-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+}
+.reminder-choices {
+  display: grid;
+  max-height: 50dvh;
+  overflow-y: auto;
+}
+.reminder-choices button {
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 4px;
+  text-align: left;
+  border-radius: 0;
+}
+.reminder-choices button[aria-selected="true"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The profile's Reminder section. */
+.profile-reminders {
+  display: grid;
+  gap: 4px;
+}
+.profile-reminder {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  width: 100%;
   padding: 8px 0;
-  cursor: pointer;
+  text-align: left;
+  border-radius: 0;
+}
+.profile-reminder span,
+.profile-reminder small {
+  color: var(--muted);
+}
+.reminder-add-link {
+  justify-content: flex-start;
+  padding: 10px 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The Reminder Bar above the suggestions (Q13). */
+.reminder-bar {
+  display: grid;
+  gap: 4px;
+  margin: 0 8px 6px;
+}
+.reminder-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.reminder-bar-line {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 6px;
+  padding: 4px 0;
+  text-align: left;
+  font-size: 14px;
+}
+.reminder-bar-line span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.reminder-bar-line small {
+  flex: none;
+  color: var(--muted);
+}
+.reminder-bar-line svg {
+  flex: none;
+  color: var(--accent);
 }

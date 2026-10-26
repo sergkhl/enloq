@@ -623,32 +623,35 @@ but a read of one fails the check. Write new checks in `web/live/` with
 `openMayaChat`. These checks may send real messages, so `./scripts/check`
 never runs them; run one file at a time.
 
-`live/manual-suggestions.spec.ts` makes three authored generations, one per
-Style, with automation Off and no sends. It checks unchanged draft, insertion,
-Undo and restored settings. `live/arrival-notifications.spec.ts` sends three
-authored Maya messages and reads only the service's scoped eligibility and
-screening metadata through Docker, using no second Telegram client. It checks
-early clean eligibility and silent later updates; OS-banner display is a
-separate phone check. Both save private evidence under `.local/live-results/`.
+`live/manual-suggestions.spec.ts` asks for a draft set and a bracketed set in
+each Style, plus one long draft, with automation Off and no sends; its ceiling
+is 20 model requests, 20 minutes and $0.05 counted. It checks that every set
+is ready with no bracketed text in its options, the unchanged draft,
+replacement with Undo and restored settings.
+`live/arrival-notifications.spec.ts` sends three authored Maya messages and
+reads only the service's scoped eligibility and screening metadata through
+Docker, using no second Telegram client. It checks early clean eligibility and
+silent later updates; OS-banner display is a separate phone check. Both save
+private evidence under `.local/live-evidence/`.
 
-`live/reminders.spec.ts` checks the calendar occurrence's first review,
-reopening, all three Styles, draft preservation, insertion/Undo and confirmed
-native sends. It requires the Maya composer to be empty, Remember this chat
-Off, the owner's account AI On, Maya's AI Off, global Automatic suggestions
-On and available Daily Budget. It creates only a temporary exact-time Maya
-schedule, restores its settings and removes that schedule. Its ceiling is 60
-model requests, two authored sends, 30 minutes and $0.10 counted, within the
-unchanged member budget. Route/rate verification precedes each run. Private
-evidence is in `.local/live-evidence/`; actual requests go in TODO.
-
-A bounded continuation after a changed candidate can retain the original
-start with `ENLOQ_REMINDER_ACCEPTANCE_SINCE` (Unix seconds), set
-`ENLOQ_REMINDER_ACCEPTANCE_CONTINUE=1` and
-`ENLOQ_REMINDER_ACCEPTANCE_SENDS=1`. It then tests one fresh empty-draft
-Friendly set and only the remaining send, counting receipts from the original
-start. This never resets the request, cost, time or send ceilings. A confirmed
-send is proved by its native message; the conversation's pending-operation
-projection removes confirmed sends once their native messages are present.
+`live/reminders.spec.ts` checks ADR 58 in the Maya chat. It sends the day's
+authored test message, then saves two exact-time Once reminders due a few
+minutes later: one whose Message Idea names that day and one without an idea.
+Listing makes no model call; the chat's set is prepared before the first alert
+and covers both; a Maya message refreshes it after 30 quiet seconds while no
+client has the chat open; Dismiss leaves one, and opening prepares its set
+again; a send from that set completes it and ends its schedule. When some
+timezone's midnight is at most 22 minutes away, the reminders use it, so the
+idea's day ends within the run and its Kept Messages are copied first. It
+requires the Maya composer to be empty, Remember this chat Off, no Maya
+schedule, the owner's account AI On, Maya's AI Off, global Automatic
+suggestions On and available Daily Budget. It turns the chat's Automatic
+suggestions On for the run, then restores the chat's settings, clears its
+draft and removes any schedule left. Its ceiling is 60 model requests, three
+authored sends, 45 minutes and $0.15 counted, within the unchanged member
+budget. Route/rate verification precedes each run, and Docker reads request
+counts and the set's shape, never message text. Private evidence is in
+`.local/live-evidence/`; actual requests go in TODO.
 
 ### Android push through FCM
 
@@ -969,37 +972,67 @@ qualification.
 
 ## Recurring reminders
 
-[ADR 58](adr/0058-recurring-message-reminders.md) owns the behavior. Schedules,
-one latest pending occurrence per chat and confirmed-outbox watermarks live
-in the account's `reminder_schedules`, `reminder_occurrences` and
-`reminder_outbox` tables. Schema 39 adds empty tables and creates no schedules.
-They survive content expiry and the recent-chat window. Removing local
-account data deletes them; logout hides them and stops alerts.
+[ADR 58](adr/0058-recurring-message-reminders.md) owns the behavior. Each
+account keeps its schedules in `reminder_schedules`, one row per schedule
+with its own id and revision, several per chat; the latest occurrence of each
+in `reminder_occurrences`; confirmed-outbox watermarks per chat in
+`reminder_outbox`; pending refreshes in `reminder_refresh`; and Kept Messages
+in `reminder_kept_days` and `reminder_kept`. Schema 40 moved each schedule of
+schema 39, one per chat, with its pending occurrence to the per-schedule
+tables, keeping its revision; Weekly became Every week from that day and
+Monthly kept its date, and a free-text fallback language became the listed
+language it names, else English. These tables survive content expiry and the
+recent-chat window. Removing local account data deletes them; logout hides
+them and stops alerts.
 
-The service tick runs calendar timing outside AI admission. Schedule and
-digest preference writes use revisions. Global automation changes carry a
-persisted epoch, including Off/On between ticks, so resumption starts at the
-next future occurrence without backfill. Digest preferences live in the
-member's `reminder_digest` setting. A missed digest occurrence waits for the
-next daily slot after recovery; exact alerts recover the latest missed one
-once. A native outgoing timestamp after the due time completes a reminder,
-including external-client sends; an unresolved Send Operation does not.
+The service tick runs calendar timing outside AI admission, every second. It
+creates each occurrence two minutes before its alert, which becomes pending
+at its due time, and then prepares the chat's reminder set through the
+manual suggestion path ([inference](inference.md#reminder-sets)); account AI
+Off or a refusal leaves the occurrence and its alert as they are. New
+content in a chat with an occurrence marks a refresh 30 quiet seconds later.
+Schedule and digest preference writes use revisions. Global automation
+changes carry a persisted epoch, including Off/On between ticks, so
+resumption starts at the next future occurrence without backfill. Digest
+preferences live in the member's `reminder_digest` setting. A missed digest
+occurrence waits for the next daily slot after recovery; exact alerts recover
+the latest missed one once. Without a Message Idea, a native outgoing
+timestamp after the due time completes the occurrence, including
+external-client sends; with one, only the Telegram confirmation of a send
+whose draft took one of its set's options does, which the Send Operation
+carries from the draft's mark. An unresolved Send Operation completes
+nothing, and a Once schedule ends with its completion.
 
-`GET/POST/DELETE /api/accounts/{account}/chats/{peer}/reminder` own schedules;
-`/preview` calculates the next delivery without saving. `/review` and
-`/dismiss` require the exact occurrence. Member-scoped `GET /api/reminders`
-combines accounts, and `GET/POST /api/reminders/settings` own digest time and
-timezone. Review uses the guarded manual suggestion path described in
-[inference](inference.md#recurring-reminder-reviews).
+Kept Messages: saving reads the first explicit date in the Message Idea and
+copies up to 20 of that day's cached messages, newest first, with cached
+transcripts and image meanings, once the day has ended in the schedule's
+timezone; a day still ahead is copied by the tick when it ends, and one that
+ended over 30 days ago has nothing to copy. Every 30 seconds the tick mirrors
+edits, deletions and newer derivatives of originals still cached; the copy
+is deleted with its schedule or when the date leaves the idea.
+
+`GET/POST /api/accounts/{account}/chats/{peer}/reminders` list and create a
+chat's schedules, with the chat's recent language; `/preview` calculates the
+next delivery and what saving would keep, without saving; `/{id}` reads,
+edits (`POST`, with its revision) and removes (`DELETE`) one schedule, and
+`/{id}/dismiss` names its pending occurrence. `/open` prepares the chat's set
+when it no longer fits. Member-scoped `GET /api/reminders` lists every
+schedule across accounts, `GET/POST /api/reminders/settings` own digest time
+and timezone, and `GET /api/reminders/timezones` and `/languages` serve the
+editor's lists.
 
 The registry's `reminder_notices` is a durable outbox into the existing
-browser/phone delivery machinery and permission controls. Each occurrence
-claims one notice; a digest claims one member/calendar-day identity. Repeated
-ticks and restarts reuse those claims, without alerting an old pending
-occurrence again. Editing/removing a schedule, completion, logout and lost
-trust invalidate queued targets before delivery. Digests open `?tab=reminders`;
-exact alerts resolve their current occurrence before review. No message
-content goes into a reminder alert or push payload.
+browser/phone delivery machinery and permission controls. Each exact
+occurrence claims one notice; a digest claims one member/calendar-day
+identity, and occurrences joining that day's digest after it alerted join it
+silently. Repeated ticks and restarts reuse those claims, without alerting an
+old pending occurrence again. Editing/removing a schedule, completion, logout
+and lost trust invalidate queued targets before delivery. A client fetches
+an alert's text with its credential: an exact alert shows the person's name
+and the Message Idea's first line, or "Check in"; a digest shows "Reminders"
+with up to three names and "+N". A tap on an alert naming one pending
+reminder opens its chat's ordinary route; any other opens `?tab=reminders`.
+No message content goes into a push payload.
 
 ## Working and recovery
 

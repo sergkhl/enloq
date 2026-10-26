@@ -31,19 +31,15 @@ function PushTaps() {
       }).then(
         (target) => {
           if (!live) return;
-          if (
-            target.kind === "reminder" &&
-            target.account_id &&
-            target.peer &&
-            target.occurrence
-          ) {
+          // The one pending reminder an alert names opens its chat; others
+          // open the list (ADR 36, ADR 58 Q7).
+          if (target.kind === "reminder" && target.account_id && target.peer) {
             selectAccount(target.account_id);
             router.push({
               pathname: "/chat/[account]/[peer]",
               params: {
                 account: String(target.account_id),
                 peer: target.peer,
-                reminder: target.occurrence,
               },
             });
           } else

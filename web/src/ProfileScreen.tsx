@@ -7,7 +7,7 @@ import type { components } from "./api-schema";
 import { Avatar } from "./Avatar";
 import { chatApi } from "./conversation-api";
 import { MemoryPanel } from "./MemoryPanel";
-import { ReminderEditor } from "./Reminders";
+import { ProfileReminders } from "./Reminders";
 import {
   ChoiceRow,
   Explanation,
@@ -46,6 +46,8 @@ export function ProfileScreen(props: {
   member?: string;
   // Their private chat, opened by Message as New Message does.
   onMessage?: (chat: Chat) => void;
+  // A reminder's editor, or a new one's without `schedule` (ADR 58 Q12).
+  onReminder?: (schedule?: string) => void;
   onBack: () => void;
 }) {
   if (props.member && /^(chat|channel):/.test(props.peer))
@@ -248,6 +250,7 @@ function CorrespondentProfile({
   photoId,
   emotion,
   timezone,
+  onReminder,
   onBack,
 }: {
   account: number;
@@ -256,6 +259,7 @@ function CorrespondentProfile({
   photoId: string | null;
   emotion: EmotionView | null;
   timezone: string;
+  onReminder?: (schedule?: string) => void;
   onBack: () => void;
 }) {
   const { value: profile, error } = useRead<Profile>(account, peer, "/profile");
@@ -294,8 +298,13 @@ function CorrespondentProfile({
       <Section title="Suggestions">
         <SuggestionsChoice account={account} peer={peer} />
       </Section>
-      <Section title="Reminder">
-        <ReminderEditor account={account} peer={peer} />
+      <Section title="Reminders">
+        <ProfileReminders
+          account={account}
+          peer={peer}
+          onEdit={(schedule) => onReminder?.(schedule)}
+          onAdd={() => onReminder?.()}
+        />
       </Section>
       <Section title="Memory">
         <RememberSwitch account={account} peer={peer} />

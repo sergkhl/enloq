@@ -716,31 +716,46 @@ the generation/state/control tests, both composers' tests and phone-size web
 journeys. Cached sets remain readable while Account AI is Off; new manual
 requests still require AI and budget admission.
 
-## Recurring reminder reviews
+## Reminder sets
 
-[ADR 58](adr/0058-recurring-message-reminders.md) extends the manual path
-with a separate `check_in` packet carrying explicit check-in intent, the
-occurrence identity and saved fallback language. Current cached conversation
-is reference context, separate from reply targets; it cannot supply a new
-answer stance for an empty-draft check-in. Draft text remains the user's
-starting idea, and a chosen option replaces it with Undo. Without usable
-current context or enabled memory, a blank draft can request simple
-check-ins; other manual requests retain their empty-input refusal.
+[ADR 58](adr/0058-recurring-message-reminders.md) gives a private chat with
+pending reminder occurrences one manual set covering all of them, which owns
+its suggestion area: no automatic set is prepared while any occurrence of
+the chat exists, and an older automatic or manual set is not shown. The set
+is requested when the timing tick creates an occurrence, two minutes before
+its alert; 30 quiet seconds after new content in the chat; when a client
+opens the chat (`POST /chats/{peer}/reminders/open`); and by the Suggestions
+button, which asks for the same kind of set. The first three prepare only
+when the current set no longer fits: its occurrences, draft revision, cached
+messages, their transcripts and image meanings, and Kept Messages are part
+of its identity, and an unchanged identity is never prepared again, even
+after a failure. Only a press asks afresh on unchanged input; duplicate
+presses share the active attempt. Account AI Off, a signed-out account, a
+busy composer or a draft over the input bound prepare nothing in the
+background.
 
-`POST /api/accounts/{account}/chats/{peer}/reminder/review` carries the exact
-occurrence, draft revision and optional UTF-16 cursor. The first review is
-durably claimed; duplicate reviews share that occurrence's active attempt.
-Reopening returns the current outcome, including changed/expired/failed
-states, without generating. `regenerate: true` is an explicit Generate or
-Retry. Each occurrence gets fresh wording, without a wording archive.
+The writer packet's `reminders` list carries each occurrence's Message Idea,
+or a `check_in` intent without one, and its fallback language. `draft` is
+the chat's draft as further intent. Context is the 20 newest cached messages
+within the 30-day cache, and the draft's cached reply target, within 12,000
+UTF-8 bytes including transcripts and image meanings, split at the earliest
+covered due time: later ones go in `messages`, which the options answer,
+with accept, decline and later variants when they ask for something;
+earlier ones in `context`, reference only. `kept` holds each schedule's Kept
+Messages, and enabled memory is read at dispatch as for every set. The
+fixed `REMINDERS_FRAME` follows the manual instructions; brackets in a draft
+or a Message Idea instruct the writer, and an option with bracketed text
+then fails format. Ideas and Kept Messages also supply typography literals.
 
 The existing Style, MiMo/Muse writers, Decider labels, memory restrictions,
-Daily Budget, capacity, twelve-hour validity, input freshness, replacement,
-Undo and pending-send guards apply. Schedule edits/removal, completion and
-occurrence replacement reject late output. Timing, list reads, previews and
-notification delivery use no model requests and remain available with
-Account AI Off. First review claims survive admission failure, so enabling
-AI later requires explicit Generate/Retry.
+Daily Budget, capacity, twelve-hour validity, replacement, Undo and
+pending-send guards apply. Choosing an option marks the draft with the set's
+occurrences; edits keep the mark, Undo and clearing drop it, and Send
+carries it to the Send Operation, whose Telegram confirmation completes the
+occurrences with a Message Idea. Schedule edits and removal, completion and
+occurrence replacement withdraw the set and reject late output without
+changing drafts. Timing, list reads, previews and alerts make no model
+requests and stay available with Account AI Off.
 
 ## Reaction Assessment
 

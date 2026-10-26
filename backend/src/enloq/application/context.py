@@ -253,12 +253,22 @@ def current(store, packet, *, db=None):
     return True
 
 
-def cached_recent(store, key, *, before=None, reply_id=None, db=None):
+def cached_recent(
+    store,
+    key,
+    *,
+    before=None,
+    reply_id=None,
+    db=None,
+    since=WINDOW,
+    budget=CONTEXT_TOKENS,
+):
     """At most 20 recent cached messages and one cached direct reply.
 
     Explicit suggestions and arrival screening use this snapshot without
     fetching history or preparing media. The entire supporting input, including
-    cached media meanings, fits the usual conservative 6,000-byte bound.
+    cached media meanings, fits the usual conservative 6,000-byte bound; a
+    reminder set reads the whole 30-day cache within a wider one (ADR 58).
     Dependencies let callers discard a result if any used input changes.
     """
     import json
@@ -269,7 +279,7 @@ def cached_recent(store, key, *, before=None, reply_id=None, db=None):
     rows = read(
         "SELECT body FROM messages WHERE chat_key=? AND deleted=0 AND date>=? "
         "AND (? IS NULL OR message_id<?) ORDER BY message_id DESC LIMIT 20",
-        (key, store.clock() - WINDOW, before, before),
+        (key, store.clock() - since, before, before),
     )
     recent = [Message.model_validate_json(r["body"]) for r in rows]
     if reply_id:
@@ -295,7 +305,7 @@ def cached_recent(store, key, *, before=None, reply_id=None, db=None):
         if item["media"] in SPOKEN_MEDIA and derivative.get("transcript"):
             item["transcript"] = derivative["transcript"]
         size = len(json.dumps(item, ensure_ascii=False).encode())
-        if used + size > CONTEXT_TOKENS:
+        if used + size > budget:
             continue
         selected.append((source, item))
         used += size

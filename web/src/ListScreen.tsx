@@ -98,7 +98,8 @@ export function ListScreen({
           disabled={!overview}
           onClick={() => onSheet(true)}
         >
-          {shown && (
+          {/* Reminders are the member's, across accounts (ADR 58 Q7). */}
+          {shown && tab !== "reminders" && (
             <Avatar
               account={shown.account_id}
               peer={`user:${shown.account_id}`}

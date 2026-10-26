@@ -27,10 +27,12 @@ import { BackHeader } from "../src/ui";
 // New Message (ADR 51 Q7, Q15-Q18), opened from the pencil on the Private
 // tab: the account's private chats of any age, then its contacts, and for
 // three typed characters Telegram's people search. Choosing someone opens
-// their private chat, ready to write.
+// their private chat, ready to write; for Add reminder (ADR 58 Q7), the
+// reminder editor for them.
 export default function NewMessageRoute() {
-  const params = useLocalSearchParams<{ account: string }>();
+  const params = useLocalSearchParams<{ account: string; purpose?: string }>();
   const account = Number(params.account);
+  const reminder = params.purpose === "reminder";
   const { connection, api } = useConnection();
   const palette = usePalette();
   const [query, setQuery] = useState("");
@@ -70,10 +72,20 @@ export default function NewMessageRoute() {
     setProblem("");
     try {
       await api(openPath(account, person.peer), { body: {} });
-      router.replace({
-        pathname: "/chat/[account]/[peer]",
-        params: { account: String(account), peer: person.peer },
-      });
+      if (reminder)
+        router.replace({
+          pathname: "/reminder/[account]/[peer]",
+          params: {
+            account: String(account),
+            peer: person.peer,
+            title: person.name,
+          },
+        });
+      else
+        router.replace({
+          pathname: "/chat/[account]/[peer]",
+          params: { account: String(account), peer: person.peer },
+        });
     } catch (error) {
       setProblem(error instanceof Error ? error.message : String(error));
     } finally {
@@ -87,7 +99,7 @@ export default function NewMessageRoute() {
       style={[styles.fill, { backgroundColor: palette.background }]}
     >
       <View style={styles.header}>
-        <BackHeader title="New message" />
+        <BackHeader title={reminder ? "Add reminder" : "New message"} />
         <TextInput
           accessibilityLabel="Search people"
           placeholder="Name or @username"

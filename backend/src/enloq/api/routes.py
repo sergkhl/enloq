@@ -383,6 +383,10 @@ def routes(manager, settings):
                 attempt=None,
                 error=None,
             )
+            # A draft that took a reminder set's option keeps that mark through
+            # edits; clearing it drops the mark (ADR 58 Q3).
+            if not body.text.strip():
+                value.pop("reminders", None)
 
         return manager.get(account_id).store.mutate_draft(
             key(account_id, peer),

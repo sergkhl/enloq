@@ -82,7 +82,6 @@ export function useComposer(
   reload: () => Promise<void>,
   // When the read behind `snapshot` started.
   readAt = 0,
-  reminder?: string,
 ) {
   const { api, connection } = useConnection();
   const path = `accounts/${account}/chats/${encodeURIComponent(peer)}`;
@@ -314,22 +313,15 @@ export function useComposer(
     setCaret: (caret: number | null) => {
       s.caret = caret;
     },
-    generate: (regenerate = true) =>
+    // With pending reminders the service prepares their set (ADR 58 Q5).
+    generate: () =>
       act(
         "generate",
         "The draft changed before generating suggestions. Review it and try again.",
         async () => {
           await api<Schemas["SuggestionsView"]>(
-            reminder
-              ? `${path}/reminder/review`
-              : `${path}/suggestions/generate`,
-            {
-              body: {
-                revision: s.server!.revision,
-                cursor: s.caret,
-                ...(reminder ? { occurrence: reminder, regenerate } : {}),
-              },
-            },
+            `${path}/suggestions/generate`,
+            { body: { revision: s.server!.revision } },
           );
           void reload();
         },

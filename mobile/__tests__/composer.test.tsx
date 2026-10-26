@@ -68,6 +68,7 @@ function message(id: number, text: string, extra = {}) {
 let draft: Draft;
 let operations: Operation[];
 let suggestions: unknown;
+let reminders: unknown[];
 let messages: unknown[];
 let online = true;
 // The service confirms and stores a send before the phone's next read.
@@ -116,9 +117,13 @@ function service() {
           draft,
           operations,
           suggestions,
+          reminders,
           reply_holds: {},
         },
       };
+    // Opening a chat with pending reminders prepares their set (ADR 58 Q5).
+    if (url.endsWith("/reminders/open"))
+      return { status: 200, body: suggestions ?? { state: "none" } };
     if (url.endsWith("/notifications/attention")) {
       attention.push(JSON.parse(init.body!));
       return { status: 200, body: { events: [], sound: false } };
@@ -267,6 +272,7 @@ beforeEach(() => {
   };
   operations = [];
   suggestions = null;
+  reminders = [];
   messages = [message(1, "Are you coming tonight?")];
   mockStore.set("enloq.credential", SAVED);
   mockParams.account = "1";
@@ -690,4 +696,31 @@ test("a refused camera permission says why and attaches nothing", async () => {
     ),
   ).toBeTruthy();
   expect(posts("/images")).toEqual([]);
+});
+
+test("a chat with pending reminders shows the Reminder Bar and opens their set once", async () => {
+  reminders = [
+    {
+      schedule: "c".repeat(32),
+      occurrence: "d".repeat(32),
+      idea: "Ask about the exam\nmore",
+      due_at: 1_700_000_100,
+    },
+  ];
+  await mount();
+  expect(
+    await screen.findByRole("button", {
+      name: /^Edit reminder: Ask about the exam, due /,
+    }),
+  ).toBeTruthy();
+  await waitFor(() => expect(posts("/reminders/open")).toHaveLength(1));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+  expect(posts("/reminders/open")).toHaveLength(1);
+  expect(
+    screen.getByRole("button", {
+      name: "Dismiss reminder: Ask about the exam",
+    }),
+  ).toBeTruthy();
 });

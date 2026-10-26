@@ -109,9 +109,19 @@ def surrogate_pair(match):
 
 
 def instructed(packet):
-    """Whether the owner's own words in a manual request carry bracketed
-    instructions for the writer (ADR 25)."""
-    return bool(packet.get("manual") and bracketed(packet.get("draft")))
+    """Whether the owner's own words in a manual request, its draft or a
+    reminder's Message Idea, carry bracketed instructions (ADR 25, ADR 58)."""
+    return bool(
+        packet.get("manual")
+        and (
+            bracketed(packet.get("draft"))
+            or any(
+                bracketed(reminder.get("idea"))
+                for reminder in packet.get("reminders") or ()
+                if isinstance(reminder, dict)
+            )
+        )
+    )
 
 
 def validate_output(role, response, packet):

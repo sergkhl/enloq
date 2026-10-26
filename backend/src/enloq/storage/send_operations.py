@@ -36,6 +36,7 @@ from ..domain.models import (
     Refused,
     Unavailable,
 )
+from . import reminders
 
 KEPT = " Nothing was sent; your draft is kept."
 NOTHING = " Nothing was sent."
@@ -397,6 +398,11 @@ class SendOperations:
             )
             if group_revision is not None:
                 operation["group_access_revision"] = group_revision
+            # A draft that took a reminder set's option completes those
+            # occurrences once Telegram confirms it (ADR 58 Q3); a sticker
+            # leaves the text, and its mark, as the kept draft.
+            if draft.get("reminders") and not sticker:
+                operation["reminders"] = list(draft["reminders"])
             if selected:
                 operation["media"] = selected
             if images:
@@ -429,6 +435,7 @@ class SendOperations:
                     error=None,
                     revision=revision + 1,
                 )
+                draft.pop("reminders", None)
             db.execute(
                 "UPDATE drafts SET body=? WHERE chat_key=?", (json.dumps(draft), key)
             )
@@ -856,6 +863,10 @@ class SendOperations:
                 "UPDATE operations SET state=?,body=? WHERE id=?",
                 (operation["state"], json.dumps(operation), operation["id"]),
             )
+            if complete:
+                reminders.sent_from_set(
+                    db, operation["chat_key"], operation.get("reminders")
+                )
             row = db.execute(
                 "SELECT body FROM drafts WHERE chat_key=?", (operation["chat_key"],)
             ).fetchone()

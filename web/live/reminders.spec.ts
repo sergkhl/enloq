@@ -9,11 +9,20 @@ import {
   test,
 } from "./maya";
 
-// ADR 58 finite acceptance: <=60 model requests, two authored native sends,
-// 30 minutes and $0.10 counted, under unchanged member budgets. Existing
-// service owner only; Docker reads metadata, never Telegram sessions/content.
+// ADR 58 finite acceptance in the Owner Account's Maya chat: an exact-time
+// reminder whose Message Idea names the day of this run's authored test
+// messages, one without an idea, a Maya message for the refresh, a send from
+// the set and a Dismiss. Bounds: at most 60 model requests, three authored
+// sends, 45 minutes and $0.15 counted, under unchanged member budgets. Docker
+// reads route metadata, request counts and the set's shape, never Telegram
+// sessions or content.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
-const LIMIT = 100_000_000;
+// The same chat from Maya's side, where her sends are outgoing.
+const MAYA_CHAT = `/api/accounts/${MAYA}/chats/user:${OWNER_ACCOUNT}`;
+const REMINDERS = `${CHAT}/reminders`;
+const LIMIT = 150_000_000;
+const REQUESTS = 60;
+const SECONDS = 2700;
 const VERIFY = String.raw`
 import asyncio,json
 from enloq.config import Settings
@@ -47,30 +56,95 @@ key=f"{q['owner']}/user:{q['maya']}"
 rows=db.execute("SELECT r.role,r.status,r.actual FROM model_reservations r WHERE r.account_id=? AND r.created>=? AND (r.scope=? OR r.scope LIKE ?)",(q['owner'],q['since'],key,key+'/%')).fetchall()
 print(json.dumps({'requests':len(rows),'counted':sum(r['actual'] if r['actual'] is not None else 10000000 for r in rows)}))
 `;
+// The set's shape only: how many reminders, answered and reference
+// messages and kept days it carries, never their text.
+const SHAPE = String.raw`
+import json,sqlite3,sys
+from enloq.config import Settings
+s=Settings.load('personal'); q=json.load(sys.stdin)
+if q['owner']!=s.owner_account: raise RuntimeError('Wrong live account')
+from enloq.storage.accounts import AccountRegistry
+r=AccountRegistry(s.data); path=r.path_for(r.get(q['owner'])['directory'])/'rewriting.sqlite3'
+db=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=2)
+row=db.execute("SELECT body FROM suggestion_state WHERE chat_key=?",(f"{q['owner']}/user:{q['maya']}",)).fetchone()
+body=json.loads(row[0]) if row else {}
+packet=body.get('packet') or {}
+print(json.dumps({'reminders':len(body.get('reminders') or []),'trigger':body.get('trigger'),'state':body.get('state'),'answered':len(packet.get('messages') or []),'reference':len(packet.get('context') or []),'kept':[len(d.get('messages') or []) for d in packet.get('kept') or []]}))
+`;
+// Zones whose local midnight may fall inside the run, so the idea's day is
+// kept while it lasts (ADR 58 Q11).
+const ZONES = [
+  "Pacific/Kiritimati",
+  "Pacific/Tongatapu",
+  "Pacific/Chatham",
+  "Pacific/Auckland",
+  "Pacific/Noumea",
+  "Australia/Lord_Howe",
+  "Australia/Sydney",
+  "Australia/Adelaide",
+  "Asia/Tokyo",
+  "Australia/Eucla",
+  "Asia/Shanghai",
+  "Asia/Bangkok",
+  "Asia/Yangon",
+  "Asia/Dhaka",
+  "Asia/Kathmandu",
+  "Asia/Kolkata",
+  "Asia/Karachi",
+  "Asia/Kabul",
+  "Asia/Dubai",
+  "Asia/Tehran",
+  "Europe/Moscow",
+  "Europe/Athens",
+  "Europe/Berlin",
+  "Europe/London",
+  "Atlantic/Azores",
+  "Atlantic/South_Georgia",
+  "America/Sao_Paulo",
+  "America/St_Johns",
+  "America/Halifax",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "Pacific/Marquesas",
+  "Pacific/Honolulu",
+  "Pacific/Pago_Pago",
+  "Etc/GMT+12",
+];
 
-test("recurring reminder review and confirmed manual sends through the live service", async ({
+function local(zone: string, at: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at);
+  const get = (type: string) =>
+    Number(parts.find((part) => part.type === type)!.value);
+  return {
+    day: `${get("year")}-${String(get("month")).padStart(2, "0")}-${String(get("day")).padStart(2, "0")}`,
+    seconds: get("hour") * 3600 + get("minute") * 60 + get("second"),
+    clock: `${String(get("hour")).padStart(2, "0")}:${String(get("minute")).padStart(2, "0")}`,
+  };
+}
+
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+
+test("message reminders through the live service: early sets, refresh, a send from the set and Dismiss", async ({
   page,
 }) => {
-  const continuation = process.env.ENLOQ_REMINDER_ACCEPTANCE_CONTINUE === "1";
-  const began = Number(
-    process.env.ENLOQ_REMINDER_ACCEPTANCE_SINCE || Date.now() / 1000,
-  );
-  const priorSends = Number(process.env.ENLOQ_REMINDER_ACCEPTANCE_SENDS || 0);
-  expect(
-    Number.isFinite(began) &&
-      (continuation ? priorSends === 1 : priorSends === 0),
-  ).toBe(true);
-  test.setTimeout(Math.max(1, 1800 - (Date.now() / 1000 - began)) * 1000);
-  const evidence: Record<string, any> = {
-    began,
-    continuation,
-    routes: null,
-    sets: [],
-    sends: priorSends,
-  };
-  const metadata = () =>
+  test.setTimeout(SECONDS * 1000);
+  const began = Date.now() / 1000;
+  const evidence: Record<string, any> = { began, sets: [], sends: 0 };
+  const metadata = (script = READ) =>
     JSON.parse(
-      execFileSync("docker", ["exec", "-i", "enloq", "python", "-c", READ], {
+      execFileSync("docker", ["exec", "-i", "enloq", "python", "-c", script], {
         input: JSON.stringify({
           owner: OWNER_ACCOUNT,
           maya: MAYA,
@@ -84,6 +158,20 @@ test("recurring reminder review and confirmed manual sends through the live serv
       timeout: 90000,
     }).toString(),
   );
+  // The zone whose local midnight comes soonest, at least six minutes away.
+  const now = new Date();
+  const choice = ZONES.map((zone) => ({
+    zone,
+    until: 86400 - local(zone, now).seconds,
+  }))
+    .filter((item) => item.until >= 360)
+    .sort((a, b) => a.until - b.until)[0]!;
+  const zone = choice.zone;
+  const keepsToday = choice.until <= 22 * 60;
+  const day = local(zone, now).day;
+  const [, month, date] = day.split("-").map(Number);
+  evidence.zone = { zone, minutes_to_midnight: choice.until / 60, keepsToday };
+
   await openMayaChat(page, "owner");
   const initial = await (await page.request.get(CHAT)).json();
   expect(
@@ -91,6 +179,7 @@ test("recurring reminder review and confirmed manual sends through the live serv
       !initial.draft.attachments.length &&
       !initial.draft.selected_media &&
       !initial.draft.reply_to,
+    "The authored check needs an empty Maya composer",
   ).toBe(true);
   expect(
     (await (await page.request.get(`${CHAT}/remember`)).json()).enabled,
@@ -98,11 +187,11 @@ test("recurring reminder review and confirmed manual sends through the live serv
   const settings = await (
     await page.request.get(`${CHAT}/suggestions/settings`)
   ).json();
-  const schedule = await (await page.request.get(`${CHAT}/reminder`)).json();
-  expect(
-    schedule.schedule,
-    "Live acceptance preserves any existing user schedule",
-  ).toBeNull();
+  evidence.settings = settings;
+  const existing = (await (await page.request.get(REMINDERS)).json()).items;
+  expect(existing, "Live acceptance preserves any existing schedule").toEqual(
+    [],
+  );
   const global = await (await page.request.get("/api/settings")).json();
   expect(global.suggestions && !global.budget.reached).toBe(true);
   const accounts = (await (await page.request.get("/api/accounts")).json())
@@ -116,50 +205,39 @@ test("recurring reminder review and confirmed manual sends through the live serv
   ).toBe(false);
   const startedSpend = global.budget.spent;
   const field = page.getByRole("textbox", { name: "Message", exact: true });
-  const seed = "[Enloq authored reminder check] I'd like to check in. ";
   const change = (path: string, data: unknown) =>
     page.request.post(CHAT + path, { data, headers: { Origin: ORIGIN } });
   async function bounds() {
     const counted = metadata();
     const budget = (await (await page.request.get("/api/settings")).json())
       .budget;
-    expect(counted.requests).toBeLessThanOrEqual(60);
+    expect(counted.requests).toBeLessThanOrEqual(REQUESTS);
     expect(counted.counted).toBeLessThanOrEqual(LIMIT);
     expect(budget.spent - startedSpend).toBeLessThanOrEqual(LIMIT);
     expect(budget.reached).toBe(false);
-    expect(Date.now() / 1000 - began).toBeLessThan(1740);
+    expect(evidence.sends).toBeLessThanOrEqual(3);
+    expect(Date.now() / 1000 - began).toBeLessThan(SECONDS - 120);
     return counted;
   }
-  async function createDue() {
+  async function send(text: string, side: "owner" | "maya" = "owner") {
     await bounds();
-    const current = await (await page.request.get(`${CHAT}/reminder`)).json();
-    const target = new Date(Date.now() + 90_000);
-    const answer = await change("/reminder", {
-      revision: current.revision,
-      frequency: "weekly",
-      weekday: (target.getUTCDay() + 6) % 7,
-      month_day: 1,
-      timezone: "UTC",
-      delivery: "exact",
-      time: target.toISOString().slice(11, 16),
-      language: "English",
-    });
-    expect(answer.status()).toBe(200);
-    const saved = await answer.json();
-    expect(saved.next_at - Date.now() / 1000).toBeLessThanOrEqual(95);
-    let occurrence: any;
+    expect(evidence.sends).toBeLessThan(3);
+    evidence.sends++;
+    await page.getByRole("button", { name: "Send", exact: true }).tap();
+    await expect(field).toHaveValue("");
+    const sender = side === "maya" ? MAYA_CHAT : CHAT;
     await expect
       .poll(
-        async () => {
-          occurrence = (
-            await (await page.request.get(`${CHAT}/reminder`)).json()
-          ).occurrence;
-          return !!occurrence;
-        },
-        { timeout: 105000, intervals: [1000] },
+        async () =>
+          (await (await page.request.get(sender)).json()).messages.some(
+            (message: any) =>
+              message.outgoing &&
+              message.message_id > 0 &&
+              message.text === text,
+          ),
+        { timeout: 60000, intervals: [1000] },
       )
       .toBe(true);
-    return occurrence.id as string;
   }
   async function ready(previous: number) {
     let value: any;
@@ -169,59 +247,32 @@ test("recurring reminder review and confirmed manual sends through the live serv
           await bounds();
           value = (await (await page.request.get(CHAT)).json()).suggestions;
           return (
+            value.kind === "manual" &&
             value.source_time > previous &&
             ["ready", "failed"].includes(value.state)
           );
         },
-        { timeout: 600000, intervals: [2000] },
+        { timeout: 600000, intervals: [3000] },
       )
       .toBe(true);
+    const shape = metadata(SHAPE);
+    evidence.sets.push({
+      ...shape,
+      state: value.state,
+      options: value.options,
+    });
     expect(
       value.state,
       "Format/provider reliability is separate from semantic quality",
     ).toBe("ready");
-    evidence.sets.push({
-      style: value.style,
-      options: value.options,
-      attempt: value.attempt,
-    });
-    return value;
+    return { view: value, shape };
   }
-  async function authoredSend(index: number) {
-    await bounds();
-    expect(evidence.sends).toBeLessThan(2);
-    await field.fill(
-      `[Enloq authored reminder acceptance ${index}] Manual delivery check.`,
-    );
-    evidence.sends++;
-    await page.getByRole("button", { name: "Send", exact: true }).tap();
-    await expect(field).toHaveValue("");
-    await expect
-      .poll(
-        async () =>
-          (await (await page.request.get(`${CHAT}/reminder`)).json())
-            .occurrence,
-        { timeout: 30000, intervals: [1000] },
-      )
-      .toBeNull();
-    // Confirmed operations leave the pending-operation projection as soon
-    // as their native messages are stored. Assert on that native evidence.
-    await expect
-      .poll(
-        async () => {
-          const state = await (await page.request.get(CHAT)).json();
-          return state.messages.some(
-            (message: any) =>
-              message.outgoing &&
-              message.message_id > 0 &&
-              message.text ===
-                `[Enloq authored reminder acceptance ${index}] Manual delivery check.`,
-          );
-        },
-        { timeout: 30000, intervals: [1000] },
-      )
-      .toBe(true);
-  }
+  const exact = (minutes: number) => {
+    const at = new Date(Date.now() + minutes * 60000);
+    const value = local(zone, at);
+    return { start: value.day, clock: value.clock };
+  };
+  const ideaDay = `${date} ${MONTHS[month! - 1]}`;
   try {
     expect(
       (
@@ -231,81 +282,149 @@ test("recurring reminder review and confirmed manual sends through the live serv
         })
       ).status(),
     ).toBe(200);
-    const occurrence = await createDue();
-    const beforeList = metadata();
+    // 1. The day's authored test message.
+    const first = `[Enloq authored reminder check ${began.toFixed(0)}] A test message for the day.`;
+    await field.fill(first);
+    await send(first);
+    // 2. An exact reminder whose idea names that day, and a check-in, due
+    // after the day ends when it ends inside the run.
+    const lead = keepsToday ? choice.until / 60 + 3 : 4;
+    const due = exact(lead);
+    const idea = `Ask Maya how the ${ideaDay} Enloq test went [keep it short]`;
+    const withIdea = await change("/reminders", {
+      repeat: "once",
+      start: due.start,
+      timezone: zone,
+      delivery: "exact",
+      time: due.clock,
+      language: "English",
+      idea,
+    });
+    expect(withIdea.status(), await withIdea.text()).toBe(200);
+    const reminder = await withIdea.json();
+    evidence.kept_on_save = reminder.kept;
+    expect(reminder.kept.day).toBe(day);
+    const checkIn = exact(lead + 1);
+    const plain = await change("/reminders", {
+      repeat: "once",
+      start: checkIn.start,
+      timezone: zone,
+      delivery: "exact",
+      time: checkIn.clock,
+      language: "English",
+      idea: "",
+    });
+    expect(plain.status(), await plain.text()).toBe(200);
+    const check = await plain.json();
+    // Listing makes no model call.
+    const listed = metadata().requests;
     await page.goto("/?tab=reminders");
     await expect(
-      page.getByRole("heading", { name: "Reminders", exact: true }),
+      page.getByRole("button", { name: /^Daily digest · / }),
     ).toBeVisible();
-    expect(metadata().requests).toBe(beforeList.requests);
-    const reviewUrl = `/?account=${OWNER_ACCOUNT}&reminder=${occurrence}#${MAYA}`;
-    const previous = initial.suggestions?.source_time || 0;
-    await page.goto(reviewUrl);
+    expect(metadata().requests).toBe(listed);
+    // 3. The idea's day ends in its zone and is kept.
+    if (keepsToday) {
+      await expect
+        .poll(
+          async () =>
+            (
+              await (
+                await page.request.get(`${REMINDERS}/${reminder.id}`)
+              ).json()
+            ).kept,
+          { timeout: (choice.until + 120) * 1000, intervals: [5000] },
+        )
+        .toMatchObject({ day, state: "kept" });
+      evidence.kept = (
+        await (await page.request.get(`${REMINDERS}/${reminder.id}`)).json()
+      ).kept;
+      expect(evidence.kept.count).toBeGreaterThan(0);
+    }
+    // 4. Two minutes before each alert, the chat's set is prepared; the
+    // second replaces the first, which may still be running.
+    let previous = initial.suggestions?.source_time || 0;
     let shown = await ready(previous);
-    await expect(field).toHaveValue("");
-    const reused = metadata().requests;
-    await page.reload();
-    await expect(field).toBeVisible();
-    expect(metadata().requests).toBe(reused);
-    if (continuation) {
-      await authoredSend(2);
-      evidence.result = await bounds();
-      return;
-    }
-    for (const style of ["professional", "idioms"]) {
-      await bounds();
-      expect(Date.now() / 1000 - began).toBeLessThan(1200);
-      expect(metadata().requests).toBeLessThan(50);
-      expect(
-        (
-          await change("/suggestions/settings", { automatic: true, style })
-        ).status(),
-      ).toBe(200);
-      await field.fill(seed);
-      const previous = shown.source_time;
-      await page
-        .getByRole("button", { name: "Generate suggestions", exact: true })
-        .tap();
+    if (shown.shape.reminders < 2) {
+      previous = shown.view.source_time;
       shown = await ready(previous);
-      await expect(field).toHaveValue(seed);
-      if (shown.options.length) {
-        await page.locator(".suggestion-list button").first().tap();
-        expect((await field.inputValue()).startsWith(seed.trimEnd())).toBe(
-          true,
-        );
-        await page
-          .getByRole("button", { name: "Undo suggestion", exact: true })
-          .tap();
-        await expect(field).toHaveValue(seed);
-      }
     }
-    await authoredSend(1);
-    await createDue();
-    await authoredSend(2);
+    expect(shown.shape.reminders).toBe(2);
+    expect(shown.shape.trigger).toBe("prepare");
+    // Prepared before the first alert, so the alert never waits for it.
+    expect(shown.view.source_time).toBeLessThan(reminder.next_at);
+    evidence.lead_seconds = reminder.next_at - shown.view.source_time;
+    if (keepsToday) expect(shown.shape.kept.length).toBe(1);
+    previous = shown.view.source_time;
+    // Both fall due; the bar lists them.
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get(CHAT)).json()).reminders.length,
+        { timeout: 330000, intervals: [5000] },
+      )
+      .toBe(2);
+    // 5. Maya writes; 30 quiet seconds later the set is refreshed in the
+    // background, with no client opening the chat meanwhile.
+    await openMayaChat(page, "maya");
+    const mayas = `[Enloq authored reminder check ${began.toFixed(0)}] Maya's reply: are you free on Friday?`;
+    await field.fill(mayas);
+    await send(mayas, "maya");
+    await page.goto("about:blank");
+    shown = await ready(previous);
+    expect(shown.shape.trigger).toBe("refresh");
+    expect(shown.shape.answered).toBeGreaterThan(0);
+    previous = shown.view.source_time;
+    await openMayaChat(page, "owner");
+    const bar = page.getByRole("region", { name: "Reminders" });
+    await expect(
+      bar.getByRole("button", { name: /^Edit reminder: / }),
+    ).toHaveCount(2);
+    // 6. Dismiss the check-in; opening prepares the set again for the idea.
+    await bar
+      .getByRole("button", { name: "Dismiss reminder: Check-in reminder" })
+      .tap();
+    await expect(
+      bar.getByRole("button", { name: /^Edit reminder: / }),
+    ).toHaveCount(1);
+    await page.reload();
+    shown = await ready(previous);
+    expect(shown.shape.reminders).toBe(1);
+    // 7. A send from the set completes the reminder with an idea, and the
+    // Once schedule ends with its Kept Messages.
+    const option = page
+      .getByRole("region", { name: "Response suggestions" })
+      .locator(".suggestion-list button")
+      .first();
+    await option.tap();
+    const chosen = shown.view.options[0].text;
+    await expect(field).toHaveValue(chosen);
+    await send(chosen);
+    await expect
+      .poll(
+        async () => (await (await page.request.get(REMINDERS)).json()).items,
+        { timeout: 60000, intervals: [2000] },
+      )
+      .toEqual([]);
+    evidence.check_in = check.id;
     evidence.result = await bounds();
   } finally {
     const draft = (await (await page.request.get(CHAT)).json()).draft;
-    if (
-      draft.text === seed ||
-      draft.text.startsWith("[Enloq authored reminder acceptance")
-    ) {
+    if (draft.text)
       await change("/draft", {
         revision: draft.revision,
         text: "",
         reply_to: draft.reply_to,
       });
-    }
-    const current = await (await page.request.get(`${CHAT}/reminder`)).json();
-    if (current.schedule)
-      expect(
-        (
-          await page.request.delete(`${CHAT}/reminder`, {
-            data: { revision: current.revision },
-            headers: { Origin: ORIGIN },
-          })
-        ).status(),
-      ).toBe(200);
+    for (const item of (await (await page.request.get(REMINDERS)).json()).items)
+      await page.request.delete(`${REMINDERS}/${item.id}`, {
+        data: { revision: item.revision },
+        headers: { Origin: ORIGIN },
+      });
     await change("/suggestions/settings", settings);
+    evidence.restored = await (
+      await page.request.get(`${CHAT}/suggestions/settings`)
+    ).json();
     evidence.actual = metadata();
     evidence.elapsed_seconds = Date.now() / 1000 - began;
     mkdirSync("../.local/live-evidence", { recursive: true, mode: 0o700 });

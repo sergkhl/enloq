@@ -164,7 +164,8 @@ export type DailyBriefing = {
   retry: { attempt: string; enabled: boolean; reason: string | null } | null;
 };
 export type ConversationData = {
-  reminder_occurrence?: string | null;
+  // The Reminder Bar's pending occurrences (ADR 58 Q13).
+  reminders?: components["schemas"]["PendingReminder"][];
   briefing_update?: {
     enabled: boolean;
     status: string;

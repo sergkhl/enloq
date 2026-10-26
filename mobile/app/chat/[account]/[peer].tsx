@@ -93,6 +93,8 @@ import { useHourCycle } from "../../../src/time";
 import { useFocused, useFocusedViewing } from "../../../src/viewing";
 import { SettingsLink, STAGE_TARGETS } from "../../../src/settingsLinks";
 import { ChatTitle } from "../../../src/VoiceNote";
+import { ReminderBar } from "../../../src/Reminders";
+import { remindersPath } from "../../../../shared/reminders";
 
 const EMOTIONS: Record<string, [string, string]> = {
   neutral: ["😐", "Neutral"],
@@ -113,7 +115,6 @@ export default function ConversationRoute() {
   const params = useLocalSearchParams<{
     account: string;
     peer: string;
-    reminder?: string;
   }>();
   const account = Number(params.account);
   const peer = String(params.peer ?? "");
@@ -132,12 +133,7 @@ export default function ConversationRoute() {
       peer={peer}
     />
   ) : (
-    <Conversation
-      key={`${account}/${peer}`}
-      account={account}
-      peer={peer}
-      reminder={params.reminder}
-    />
+    <Conversation key={`${account}/${peer}`} account={account} peer={peer} />
   );
 }
 
@@ -145,40 +141,29 @@ export function Conversation({
   account,
   peer,
   embedded = false,
-  reminder,
 }: {
   account: number;
   peer: string;
   // Saved Messages inside its tab, under the list's header (ADR 50 Q2).
   embedded?: boolean;
-  reminder?: string;
 }) {
   const { connection, api } = useConnection();
   const palette = usePalette();
   const { snapshot, live, readAt, captured, error, loadEarlier, reload } =
     useConversation(account, peer);
-  const activeReminder =
-    reminder === snapshot?.reminder_occurrence ? reminder : undefined;
-  const composer = useComposer(
-    account,
-    peer,
-    snapshot,
-    reload,
-    readAt,
-    activeReminder,
-  );
-  const reviewed = useRef<string | null>(null);
+  const composer = useComposer(account, peer, snapshot, reload, readAt);
+  // Opening a chat with pending reminders prepares their set when the
+  // current one no longer fits (ADR 58 Q5); once per opening.
+  const pending = snapshot?.reminders ?? [];
+  const remindersOpened = useRef(false);
   useEffect(() => {
-    if (
-      !activeReminder ||
-      reviewed.current === activeReminder ||
-      !live ||
-      !composer.canGenerate
-    )
-      return;
-    reviewed.current = activeReminder;
-    void composer.generate(false);
-  }, [activeReminder, live, composer.canGenerate]);
+    if (remindersOpened.current || !live || !pending.length) return;
+    remindersOpened.current = true;
+    api(`${remindersPath(account, peer)}/open`, { body: {} }).then(
+      () => void reload(),
+      () => undefined,
+    );
+  }, [api, account, peer, live, pending.length]);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const { view: chosen, choose } = useReadingView();
   // The account's own Saved Messages (ADR 50): originals only, with no AI,
@@ -711,6 +696,18 @@ export function Conversation({
               // The composer keeps its draft while the selection bar takes its
               // place.
               <View style={deletion.active ? styles.hidden : null}>
+                {/* The Reminder Bar sits above the suggestions (ADR 58 Q13). */}
+                {saved || !pending.length ? null : (
+                  <View style={styles.reminders}>
+                    <ReminderBar
+                      account={account}
+                      peer={peer}
+                      title={title}
+                      reminders={pending}
+                      onChange={() => void reload()}
+                    />
+                  </View>
+                )}
                 <ComposerBar
                   composer={composer}
                   snapshot={snapshot}
@@ -1296,6 +1293,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 6 },
   person: { flexDirection: "row", alignItems: "center", gap: 10 },
   hidden: { display: "none" },
+  reminders: { paddingHorizontal: 10, paddingTop: 6 },
   aiOff: {
     fontSize: 12,
     borderWidth: 1,

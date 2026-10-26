@@ -42,7 +42,6 @@ export function Composer({
   chat,
   incoming,
   suggestions,
-  reminder,
   reply,
   refresh,
   onPending,
@@ -62,7 +61,6 @@ export function Composer({
   chat: Chat;
   incoming: Draft;
   suggestions: SuggestionsView;
-  reminder?: string;
   reply: { identity: number | null; nonce: number } | null;
   refresh: () => Promise<void>;
   // Immediate presentation of a submission, replaced by its saved operation;
@@ -331,23 +329,10 @@ export function Composer({
       edit({ reply_to: reply.identity });
     }
   }, [reply, sending, locked, mediaBusy]);
-  const reviewed = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      !reminder ||
-      reviewed.current === reminder ||
-      processing === null ||
-      !visible ||
-      !canGenerate(false)
-    )
-      return;
-    reviewed.current = reminder;
-    void generate(false);
-  }, [reminder, processing, visible, incoming.revision]);
-  async function generate(regenerate = true) {
-    if (action.current || !canGenerate(!reminder || regenerate)) return;
+  // With pending reminders the service prepares their set (ADR 58 Q5).
+  async function generate() {
+    if (action.current || !canGenerate()) return;
     const clicked = current.current;
-    const cursor = caret.current;
     action.current = "generate";
     setWorking(true);
     setError("");
@@ -360,11 +345,9 @@ export function Composer({
       await chatApi<SuggestionsView>(
         account,
         chat.peer,
-        reminder ? "/reminder/review" : "/suggestions/generate",
+        "/suggestions/generate",
         {
           revision: server.current.revision,
-          cursor,
-          ...(reminder ? { occurrence: reminder, regenerate } : {}),
         },
       );
     } catch (e) {
@@ -734,9 +717,9 @@ export function Composer({
   // processing or the provider, holds the button (ADR 25).
   const preparing = suggestions.state === "preparing";
   const held = preparing || suggestions.state === "waiting";
-  function canGenerate(requireAi = true) {
+  function canGenerate() {
     return (
-      (!requireAi || processing) &&
+      processing &&
       !held &&
       nativeAvailable &&
       current.current.selected_media?.kind !== "sticker" &&

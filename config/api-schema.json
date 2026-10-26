@@ -1432,6 +1432,35 @@
         "title": "Chat",
         "type": "object"
       },
+      "ChatReminders": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReminderView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Language"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ChatReminders",
+        "type": "object"
+      },
       "ClientDecision": {
         "additionalProperties": false,
         "properties": {
@@ -2527,6 +2556,77 @@
           "requested_at"
         ],
         "title": "JoinRequest",
+        "type": "object"
+      },
+      "KeptStatus": {
+        "additionalProperties": false,
+        "description": "The editor's Kept Messages status line (ADR 58 Q11).",
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "waiting",
+              "kept",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "state"
+        ],
+        "title": "KeptStatus",
+        "type": "object"
+      },
+      "Language": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "native": {
+            "title": "Native",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "native"
+        ],
+        "title": "Language",
+        "type": "object"
+      },
+      "Languages": {
+        "additionalProperties": false,
+        "properties": {
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/Language"
+            },
+            "title": "Languages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "languages"
+        ],
+        "title": "Languages",
         "type": "object"
       },
       "LoginState": {
@@ -3776,18 +3876,6 @@
             ],
             "default": null,
             "title": "Peer"
-          },
-          "occurrence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Occurrence"
           }
         },
         "required": [
@@ -3873,6 +3961,36 @@
           "label"
         ],
         "title": "PairingStatus",
+        "type": "object"
+      },
+      "PendingReminder": {
+        "additionalProperties": false,
+        "description": "One pending occurrence for the Reminder Bar (ADR 58 Q13).",
+        "properties": {
+          "schedule": {
+            "title": "Schedule",
+            "type": "string"
+          },
+          "occurrence": {
+            "title": "Occurrence",
+            "type": "string"
+          },
+          "idea": {
+            "title": "Idea",
+            "type": "string"
+          },
+          "due_at": {
+            "title": "Due At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "schedule",
+          "occurrence",
+          "idea",
+          "due_at"
+        ],
+        "title": "PendingReminder",
         "type": "object"
       },
       "People": {
@@ -4373,20 +4491,42 @@
       "ReminderEdit": {
         "additionalProperties": false,
         "properties": {
-          "frequency": {
-            "default": "weekly",
+          "repeat": {
+            "default": "weeks",
             "enum": [
-              "weekly",
-              "monthly"
+              "once",
+              "days",
+              "weeks",
+              "monthly",
+              "yearly"
             ],
-            "title": "Frequency",
+            "title": "Repeat",
             "type": "string"
+          },
+          "start": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Start",
+            "type": "string"
+          },
+          "interval": {
+            "default": 1,
+            "maximum": 365,
+            "minimum": 1,
+            "title": "Interval",
+            "type": "integer"
           },
           "weekday": {
             "default": 0,
             "maximum": 6,
             "minimum": 0,
             "title": "Weekday",
+            "type": "integer"
+          },
+          "month": {
+            "default": 1,
+            "maximum": 12,
+            "minimum": 1,
+            "title": "Month",
             "type": "integer"
           },
           "month_day": {
@@ -4423,6 +4563,12 @@
             "title": "Language",
             "type": "string"
           },
+          "idea": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Idea",
+            "type": "string"
+          },
           "revision": {
             "minimum": 0,
             "title": "Revision",
@@ -4430,6 +4576,7 @@
           }
         },
         "required": [
+          "start",
           "timezone",
           "language",
           "revision"
@@ -4440,21 +4587,16 @@
       "ReminderItem": {
         "additionalProperties": false,
         "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "revision": {
-            "default": 0,
             "title": "Revision",
             "type": "integer"
           },
           "schedule": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReminderRule"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
+            "$ref": "#/components/schemas/ReminderRule"
           },
           "next_at": {
             "anyOf": [
@@ -4489,6 +4631,17 @@
             ],
             "default": null
           },
+          "kept": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeptStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "account_id": {
             "title": "Account Id",
             "type": "integer"
@@ -4505,12 +4658,27 @@
             "title": "Title",
             "type": "string"
           },
+          "photo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Photo Id"
+          },
           "ai_enabled": {
             "title": "Ai Enabled",
             "type": "boolean"
           }
         },
         "required": [
+          "id",
+          "revision",
+          "schedule",
           "account_id",
           "account",
           "peer",
@@ -4551,17 +4719,12 @@
           "calendar_date": {
             "title": "Calendar Date",
             "type": "string"
-          },
-          "reviewed": {
-            "title": "Reviewed",
-            "type": "boolean"
           }
         },
         "required": [
           "id",
           "due_at",
-          "calendar_date",
-          "reviewed"
+          "calendar_date"
         ],
         "title": "ReminderOccurrence",
         "type": "object"
@@ -4570,53 +4733,32 @@
         "additionalProperties": false,
         "properties": {
           "next_at": {
-            "title": "Next At",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next At"
+          },
+          "kept": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeptStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
           "next_at"
         ],
         "title": "ReminderPreview",
-        "type": "object"
-      },
-      "ReminderReview": {
-        "additionalProperties": false,
-        "properties": {
-          "occurrence": {
-            "pattern": "^[a-f0-9]{32}$",
-            "title": "Occurrence",
-            "type": "string"
-          },
-          "revision": {
-            "minimum": 0,
-            "title": "Revision",
-            "type": "integer"
-          },
-          "cursor": {
-            "anyOf": [
-              {
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Cursor"
-          },
-          "regenerate": {
-            "default": false,
-            "title": "Regenerate",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "occurrence",
-          "revision"
-        ],
-        "title": "ReminderReview",
         "type": "object"
       },
       "ReminderRevision": {
@@ -4636,21 +4778,44 @@
       },
       "ReminderRule": {
         "additionalProperties": false,
+        "description": "One Reminder Schedule's rule (ADR 58 Q1). ``start`` is Once's date,\nthe first date of Every N days and a date in the start week of Every N\nweeks; Monthly uses ``month_day`` and Yearly ``month`` with it.",
         "properties": {
-          "frequency": {
-            "default": "weekly",
+          "repeat": {
+            "default": "weeks",
             "enum": [
-              "weekly",
-              "monthly"
+              "once",
+              "days",
+              "weeks",
+              "monthly",
+              "yearly"
             ],
-            "title": "Frequency",
+            "title": "Repeat",
             "type": "string"
+          },
+          "start": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Start",
+            "type": "string"
+          },
+          "interval": {
+            "default": 1,
+            "maximum": 365,
+            "minimum": 1,
+            "title": "Interval",
+            "type": "integer"
           },
           "weekday": {
             "default": 0,
             "maximum": 6,
             "minimum": 0,
             "title": "Weekday",
+            "type": "integer"
+          },
+          "month": {
+            "default": 1,
+            "maximum": 12,
+            "minimum": 1,
+            "title": "Month",
             "type": "integer"
           },
           "month_day": {
@@ -4686,9 +4851,16 @@
             "minLength": 1,
             "title": "Language",
             "type": "string"
+          },
+          "idea": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Idea",
+            "type": "string"
           }
         },
         "required": [
+          "start",
           "timezone",
           "language"
         ],
@@ -4698,21 +4870,16 @@
       "ReminderView": {
         "additionalProperties": false,
         "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "revision": {
-            "default": 0,
             "title": "Revision",
             "type": "integer"
           },
           "schedule": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReminderRule"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
+            "$ref": "#/components/schemas/ReminderRule"
           },
           "next_at": {
             "anyOf": [
@@ -4746,8 +4913,24 @@
               }
             ],
             "default": null
+          },
+          "kept": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeptStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
+        "required": [
+          "id",
+          "revision",
+          "schedule"
+        ],
         "title": "ReminderView",
         "type": "object"
       },
@@ -5436,6 +5619,23 @@
           "url"
         ],
         "title": "TextLink",
+        "type": "object"
+      },
+      "Timezones": {
+        "additionalProperties": false,
+        "properties": {
+          "timezones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Timezones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "timezones"
+        ],
+        "title": "Timezones",
         "type": "object"
       },
       "TraitNote": {

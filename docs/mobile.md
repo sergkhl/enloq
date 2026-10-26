@@ -340,29 +340,45 @@ work; it joins the Private list once a message is sent or received there.
 
 ## Reminders
 
-The fourth tab has a clock icon and says **All accounts**. It lists pending
-and upcoming Weekly/Monthly reminders with their account labels, next dates
-and paused/unavailable state (ADR 58). Opening the list starts no AI. Set up
-or edit a schedule in the correspondent's profile: weekday or monthly date,
-saved timezone, Daily digest or Exact time, and fallback language. Check the
-next delivery before Save reminder; Remove reminder changes no draft.
+The fourth tab has a clock icon and says **All accounts** in its header
+(ADR 58). Its first line, **Daily digest · 09:00**, opens a sheet for the
+digest's time and timezone, initially 09:00 and the device's timezone; travel
+changes no saved zone. Each reminder is a chat-like row: the person's photo
+and name, the account with several accounts, the repeat ("Every Monday · 09:00
+digest"), the Message Idea's first line or "Check in", and one date, when it
+fell due or the next delivery. A pending row opens its chat and has a compact
+**Dismiss**; an upcoming one opens the reminder editor, and the row's **⋯**
+holds Edit. **Add reminder** chooses the account when there are several, then
+the person with New Message's picker. Opening the list starts no AI.
 
-Daily digest settings in the tab save the member's time and timezone,
-initially 09:00 and the device's timezone. Travel does not change saved
-zones. Exact alerts stay separate from the digest. Short months use their
-last day without changing the next month's selected date; daylight-saving
-gaps advance to the first valid time, and repeated times occur once.
+The reminder editor is its own screen, opened from the tab, the Correspondent
+Profile's Reminders section (the person's reminders and Add reminder) and the
+Reminder Bar. Repeat is one compact choice: Once on a date, Every N days from
+a first date, Every N weeks on a weekday from a start week, Monthly on a day
+of the 1–31 grid, or Yearly on a month and day. Short months use their last
+day and 29 February the 28th in other years, without moving later dates. The
+alert is the Daily digest or an exact time from the phone's own time picker;
+dates use its date picker. One row holds the timezone and the fallback
+language, each chosen from a searchable list. The Message Idea is optional:
+your words, [instructions] in square brackets, or both; an explicit date in it
+("25 Oct", "25.10", "25 октября") keeps up to 20 of that day's cached messages,
+and the editor says so ("Keeps 12 messages from 25 Oct"). The summary line
+shows the next delivery before **Save reminder**; **Remove reminder** asks
+first.
 
-Review opens the exact account/chat and requests the occurrence's first
-suggestion set. Reopening reuses valid options; Suggestions is the explicit
-action after expiry, context change or failure. A nonempty draft is the
-starting idea, and a chosen option replaces it with Undo. Nothing sends
-automatically. Dismiss
-or any confirmed outgoing Telegram message after the due time completes the
-pending occurrence; incoming messages and opening do not. Either Automatic
-suggestions switch pauses reminders, with future-only resumption; Account
-AI Off permits alerts but blocks generation. Offline, the app's last loaded
-list is read-only and actions wait for the service.
+While a chat has pending reminders, the Reminder Bar above its suggestions
+lists each by its idea's first line, or "Check-in reminder", with when it fell
+due, its **Dismiss** and the way to its editor, and one set of suggestions
+covers all of them. It is prepared two minutes before the alert and refreshed
+30 quiet seconds after new messages; opening the chat prepares a fresh one only
+when it no longer fits. Its options answer messages that arrived after a
+reminder fell due. Nothing sends automatically. Without an idea, any message
+you send after the due time completes a reminder, from any Telegram app; with
+one, only a send whose draft took one of its options does, edited or not.
+Dismiss completes either, and a Once reminder then ends. Either Automatic
+suggestions switch pauses reminders, with future-only resumption; Account AI
+Off permits alerts but blocks suggestions. Offline, the app's last loaded list
+is read-only and actions wait for the service.
 
 ## Composing
 
@@ -440,9 +456,12 @@ file card opens the message's sheet, as holding the message does.
 The players are native modules: expo-audio (its config plugin turns on
 background playback and its Android media service, and asks for no
 microphone), expo-video, expo-image and lottie-react-native. The swipe, zoom
-and carousel use React Native's own PanResponder, Animated and Vibration.
-Adding a native module means rebuilding Enloq Dev and a new Saved Build;
-JavaScript changes need neither.
+and carousel use React Native's own PanResponder, Animated and Vibration. The
+reminder editor's date and time pickers are
+`@react-native-community/datetimepicker`, the version Expo SDK 57 bundles
+(9.1.0): Android's own dialogs, iOS's wheels in a sheet with Done. Adding a
+native module means rebuilding Enloq Dev and a new Saved Build; JavaScript
+changes need neither.
 
 ## Message details
 
@@ -777,10 +796,13 @@ The Maestro flows in `mobile/maestro/` (`journeys.yaml` runs
 `mobile/maestro/flows/` in order) walk the app on the booted simulator (Enloq)
 or the connected phone (Enloq Dev) against that fixture only: pairing by
 pasted link, with the notification ask that follows it dismissed on Android;
-both reading views; a Reply with generation, insertion, Undo and Send whose quote shows in
-the composer and after sending; a group with its Group Profile, Group AI
-processing, Update briefing through the fixture's fake engine, a citation and
-Return to briefing, a Reply and today's new-messages spoiler; Saved; Settings
+both reading views; a Reply with Suggestions, a replacing choice, Undo and
+Send whose quote shows in the composer and after sending; a group with its
+Group Profile, Group AI processing, Update briefing through the fixture's fake
+engine, a citation and Return to briefing, a Reply and today's new-messages
+spoiler; Saved; on Android, reminders (the tab's rows, a pending reminder's
+chat with its Reminder Bar, set, Undo and Dismiss, the editor's Repeat, day
+grid and native time picker, and Remove's question); Settings
 through its menu to Budget, AI, Guidance and Privacy's Pair a phone QR code;
 media (a voice note's speed, a video message taking over, Copy transcript and
 Share from the sheet, a video, a GIF and stickers); the Media Carousel; New
@@ -801,7 +823,7 @@ with `scripts/fixture_seed.py`. Install the development build first, then:
 ```sh
 mobile/scripts/journeys ios
 mobile/scripts/journeys android
-# Pair afresh and run just the recurring reminder checks:
+# Pair afresh and run just the reminder checks:
 mobile/scripts/journeys android maestro/reminders.yaml
 ```
 

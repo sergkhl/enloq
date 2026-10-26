@@ -53,7 +53,7 @@ RETENTION = 30 * 86400
 # Each account's own Saved Messages, shown in the list's third tab (ADR 50).
 SAVED_TITLE = "Saved Messages"
 METADATA = "metadata"
-SCHEMA_VERSION = 39
+SCHEMA_VERSION = 40
 
 
 def forward_merge(prior: Message, message: Message):
@@ -328,6 +328,7 @@ class Store:
                 37,
                 38,
                 39,
+                40,
             ):
                 raise Refused(
                     "Use the fresh rewriting store; legacy content is retired"
@@ -416,11 +417,13 @@ class Store:
             suggestions.migrate_settings(db)
             for trigger in change_triggers("suggestion_settings", "chat_key"):
                 db.execute(trigger)
-            for statement in reminders.DDL:
-                db.execute(statement)
+            # ADR 58: several schedules per chat since schema 40.
+            reminders.initialize(db, self.clock())
             for table in ("reminder_schedules", "reminder_occurrences"):
                 for trigger in change_triggers(table, "chat_key"):
                     db.execute(trigger)
+            for statement in reminders.KEPT_TRIGGERS:
+                db.execute(statement)
             # ADR 26: reaction metadata and dated correspondent evidence.
             reactions.initialize(db, self.clock())
             # ADR 29: results also record the shipped-defaults revision; earlier
@@ -937,6 +940,9 @@ class Store:
                 )
             if old:
                 db.execute("DELETE FROM derivatives WHERE source=?", (message.key,))
+            if chat.kind == "private":
+                # New content refreshes a pending reminder set (ADR 58 Q5).
+                reminders.touched(db, key, self.clock())
             if cursor:
                 db.execute("INSERT OR REPLACE INTO cursors VALUES (?,?)", cursor)
         return True

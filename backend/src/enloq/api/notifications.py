@@ -76,7 +76,6 @@ class NotificationTarget(Model):
     ]
     account_id: int | None = None
     peer: str | None = None
-    occurrence: str | None = None
 
 
 class NotificationStatus(Model):

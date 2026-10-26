@@ -95,7 +95,8 @@ export type BriefingUpdate = {
 };
 
 export type Snapshot = {
-  reminder_occurrence?: string | null;
+  // The Reminder Bar's pending occurrences (ADR 58 Q13).
+  reminders?: Schemas["PendingReminder"][];
   timezone: string;
   chat: Schemas["Chat"];
   messages: NativeMessage[];

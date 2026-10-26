@@ -16,7 +16,7 @@ import { chatKey, readCached } from "../../../src/cache";
 import { useConnection } from "../../../src/connection";
 import type { Snapshot } from "../../../src/conversation";
 import { MemoryPanel } from "../../../src/MemoryPanel";
-import { ReminderEditor } from "../../../src/Reminders";
+import { ProfileReminders } from "../../../src/Reminders";
 import {
   ChoiceRow,
   Explanation,
@@ -326,8 +326,13 @@ function CorrespondentProfile({
           <Section title="Suggestions">
             <SuggestionsChoice account={account} peer={peer} />
           </Section>
-          <Section title="Reminder">
-            <ReminderEditor account={account} peer={peer} />
+          {/* The person's Reminder Schedules and Add reminder (ADR 58 Q12). */}
+          <Section title="Reminders">
+            <ProfileReminders
+              account={account}
+              peer={peer}
+              title={profile?.name || title}
+            />
           </Section>
           <Section title="Memory">
             {/* Off by default (ADR 56 Q9); off, the chat teaches neither

@@ -97,6 +97,10 @@ _REASONS = frozenset(
         "waiting_paused",
         "waiting_budget",
         "no_qualifying_reaction_signal",
+        # ADR 58 Q5: a chat's reminder set owns its area, and one that still
+        # fits, or failed on unchanged input, is never prepared again.
+        "reminder_owns_area",
+        "reminder_unchanged",
     }
 )
 
@@ -110,7 +114,7 @@ def suggestion_fields(record):
     choices = {
         "trigger": {"manual", "automatic"},
         "reason": _REASONS,
-        "source": {"incoming", "reaction"},
+        "source": {"incoming", "reaction", "prepare", "refresh", "open", "press"},
         "style": {"friendly", "professional", "idioms"},
         "emotion": {
             "neutral",

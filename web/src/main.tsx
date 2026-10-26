@@ -96,7 +96,13 @@ import { useGroupProcessing } from "./GroupProcessingControl";
 import { DailyBriefings } from "./DailyBriefings";
 import { useHideBots } from "./HideBots";
 import { ListScreen } from "./ListScreen";
-import { RemindersList } from "./Reminders";
+import {
+  ReminderAccountSheet,
+  ReminderBar,
+  ReminderEditorScreen,
+  RemindersList,
+} from "./Reminders";
+import { remindersPath } from "../../shared/reminders";
 
 // Processing Stage labels, as the app words them (mobile/src/conversation.ts);
 // done shows the rewrite, failed shows its error.
@@ -122,10 +128,10 @@ function Conversation({
   chat,
   retained = false,
   embedded = false,
-  reminder,
   onBack,
   onTarget,
   onProfile,
+  onReminder,
   setNavigationGuard,
   viewingActive,
   visible,
@@ -139,7 +145,6 @@ function Conversation({
   retained?: boolean;
   // Saved Messages inside its tab, under the list's header (ADR 50 Q2).
   embedded?: boolean;
-  reminder?: string;
   onBack: () => void;
   // A budget or pause message opens its Settings section (ADR 45 Q8).
   onTarget: (target: SettingsTarget) => void;
@@ -153,6 +158,8 @@ function Conversation({
     // A group member's profile, from their avatar or name (ADR 51 Q14).
     member?: string;
   }) => void;
+  // The Reminder Bar opens a reminder's editor (ADR 58 Q13).
+  onReminder?: (schedule: string) => void;
   setNavigationGuard: (guard: (() => Promise<boolean>) | null) => void;
   viewingActive: boolean;
   visible: boolean;
@@ -167,6 +174,18 @@ function Conversation({
   const suggestions = useSuggestions(
     group ? undefined : (data?.suggestions ?? undefined),
   );
+  // Opening a chat with pending reminders prepares their set when the
+  // current one no longer fits (ADR 58 Q5); once per opening.
+  const pendingReminders = (!group && !saved && data?.reminders) || [];
+  const reminderOpened = useRef(false);
+  useEffect(() => {
+    if (reminderOpened.current || !pendingReminders.length) return;
+    reminderOpened.current = true;
+    void workspaceApi(`${remindersPath(account, chat.peer)}/open`, {}).then(
+      () => void refresh(),
+      () => undefined,
+    );
+  }, [pendingReminders.length]);
   const groupProcessing = useGroupProcessing(account, chat.peer, group);
   const hideBots = useHideBots();
   // Each composer send; briefing reading opens today's new messages for it.
@@ -945,12 +964,16 @@ function Conversation({
                 <SelectionBar />
                 {data && (
                   <ComposerSlot>
+                    {/* The Reminder Bar sits above the suggestions (ADR 58
+                        Q13). */}
+                    <ReminderBar
+                      account={account}
+                      peer={chat.peer}
+                      reminders={pendingReminders}
+                      onEdit={(schedule) => onReminder?.(schedule)}
+                      onChange={() => void refresh()}
+                    />
                     <Composer
-                      reminder={
-                        reminder === data.reminder_occurrence
-                          ? reminder
-                          : undefined
-                      }
                       account={account}
                       visible={visible}
                       processing={processing}
@@ -1050,7 +1073,8 @@ function Conversation({
 // The application's one destination (ADR 36). Account, tab, chat and list
 // visibility commit together, with the history entry they publish.
 type Route = {
-  reminder?: string;
+  // A chat opened from Reminders goes back to that tab.
+  fromReminders?: boolean;
   account: number;
   tab: ChatTab;
   // The open conversation; leaving it closes it, as in the app (ADR 44 MW1).
@@ -1132,10 +1156,7 @@ function intended(
       // The account's own chat is Saved Messages, its third tab (ADR 50).
       if (intent.peer === `user:${intent.account}`)
         return openList(intent.account, "saved", entry);
-      return {
-        ...openChat(intent.account, peerTab(intent.peer), intent.peer, entry),
-        reminder: intent.occurrence,
-      };
+      return openChat(intent.account, peerTab(intent.peer), intent.peer, entry);
     case "choose":
       return {
         ...openChat(0, peerTab(intent.peer), "", entry),
@@ -1154,7 +1175,7 @@ const routeKey = (route: Route) =>
     route.list,
     route.restore,
     route.problem,
-    route.reminder,
+    route.fromReminders,
   ]);
 
 function App() {
@@ -1244,7 +1265,17 @@ function App() {
     | { kind: "field"; name: string }
     | { kind: "accounts" }
     | { kind: "login"; expected?: Account }
-    | { kind: "new-message"; account: number }
+    // New Message, or its picker for Add reminder (ADR 58 Q7).
+    | { kind: "new-message"; account: number; reminder?: boolean }
+    | { kind: "reminder-account" }
+    // The reminder editor (ADR 58 Q12): a new schedule has none.
+    | {
+        kind: "reminder";
+        account: number;
+        peer: string;
+        title: string;
+        schedule?: string;
+      }
     | {
         kind: "profile";
         account: number;
@@ -1266,20 +1297,18 @@ function App() {
         ? { kind: "guidance" }
         : { kind: "budget", section: target },
     );
-  async function reviewReminder(
-    target: { account_id: number; peer: string; occurrence?: string },
+  // A pending reminder's row, or an alert naming one, opens its chat's
+  // ordinary route (ADR 36, ADR 58 Q7).
+  async function openReminderChat(
+    target: { account_id: number; peer: string },
     notificationCurrent = () => true,
   ) {
     return navigate(async (current) => {
-      const [opened, reminder] = await Promise.all([
-        workspaceApi<Chat>(openPath(target.account_id, target.peer), {}),
-        workspaceApi<{ occurrence?: { id: string } | null }>(
-          `accounts/${target.account_id}/chats/${encodeURIComponent(target.peer)}/reminder`,
-        ),
-      ]);
+      const opened = await workspaceApi<Chat>(
+        openPath(target.account_id, target.peer),
+        {},
+      );
       if (!current() || !notificationCurrent()) return false;
-      if (!target.occurrence || reminder.occurrence?.id !== target.occurrence)
-        throw new Error("This reminder is no longer pending.");
       if (!(await navigationAllowed(() => current() && notificationCurrent())))
         return false;
       setOpenedChats((entries) => [
@@ -1299,7 +1328,7 @@ function App() {
           target.peer,
           destination.current.problem === "notification" ? "replace" : "push",
         ),
-        reminder: target.occurrence,
+        fromReminders: true,
       });
     });
   }
@@ -1524,12 +1553,7 @@ function App() {
         : route.list || !peer
           ? { kind: "list", account: accountId, tab: kind }
           : peerFragment(peer)
-            ? {
-                kind: "chat",
-                account: accountId,
-                peer,
-                occurrence: route.reminder,
-              }
+            ? { kind: "chat", account: accountId, peer }
             : null;
   const addressKey = address ? JSON.stringify(address) : "";
   useEffect(() => {
@@ -1685,13 +1709,9 @@ function App() {
             ),
           ),
         );
-      if (target.account_id && target.peer && target.occurrence)
-        await reviewReminder(
-          {
-            account_id: target.account_id,
-            peer: target.peer,
-            occurrence: target.occurrence,
-          },
+      if (target.account_id && target.peer)
+        await openReminderChat(
+          { account_id: target.account_id, peer: target.peer },
           current,
         );
     },
@@ -1846,7 +1866,6 @@ function App() {
     <main className="rewriting-app">
       {conversationShown ? (
         <Conversation
-          reminder={route.reminder}
           key={`${accountId}/${peer}`}
           account={accountId}
           accountName={account?.name || `Account ${accountId}`}
@@ -1860,7 +1879,7 @@ function App() {
               commit(
                 openList(
                   accountId,
-                  route.reminder ? "reminders" : kind,
+                  route.fromReminders ? "reminders" : kind,
                   "push",
                 ),
               );
@@ -1869,6 +1888,15 @@ function App() {
           onTarget={openTarget}
           onProfile={(profile) =>
             open({ kind: "profile", account: accountId, peer, ...profile })
+          }
+          onReminder={(schedule) =>
+            open({
+              kind: "reminder",
+              account: accountId,
+              peer,
+              title: chat.title,
+              schedule,
+            })
           }
           setNavigationGuard={setNavigationGuard}
           viewingActive={!top && !navigating}
@@ -1900,24 +1928,31 @@ function App() {
           onNewMessage={() => open({ kind: "new-message", account: accountId })}
           reminders={
             <RemindersList
-              onReview={(item) =>
-                void reviewReminder({
-                  account_id: item.account_id,
-                  peer: item.peer,
-                  occurrence: item.occurrence?.id,
-                }).catch((e) => setError(e.message))
+              several={(overview?.accounts.length ?? 0) > 1}
+              onOpen={(item) =>
+                void openReminderChat(item).catch((e) => setError(e.message))
               }
               onEdit={(item) =>
                 open({
-                  kind: "profile",
+                  kind: "reminder",
                   account: item.account_id,
                   peer: item.peer,
                   title: item.title,
-                  photoId: null,
-                  emotion: null,
-                  timezone: item.schedule?.timezone || "UTC",
+                  schedule: item.id,
                 })
               }
+              onAdd={() => {
+                const signedIn = (overview?.accounts || []).filter(
+                  (a) => a.state === "authorized",
+                );
+                if (signedIn.length > 1) open({ kind: "reminder-account" });
+                else if (signedIn[0])
+                  open({
+                    kind: "new-message",
+                    account: signedIn[0].account_id,
+                    reminder: true,
+                  });
+              }}
             />
           }
           saved={
@@ -2009,20 +2044,65 @@ function App() {
           photoId={top.photoId}
           emotion={top.emotion}
           timezone={top.timezone}
+          onReminder={(schedule) =>
+            open({
+              kind: "reminder",
+              account: top.account,
+              peer: top.peer,
+              title: top.title,
+              schedule,
+            })
+          }
           onBack={back}
         />
       )}
       {top?.kind === "new-message" && (
         <NewMessageScreen
           account={top.account}
+          title={top.reminder ? "Add reminder" : undefined}
           onBack={back}
           onOpened={(opened) => {
             remember(opened);
+            if (top.reminder) {
+              // Add reminder: the person's editor replaces the picker.
+              setScreens((stack) => [
+                ...stack.slice(0, -1),
+                {
+                  kind: "reminder",
+                  account: top.account,
+                  peer: opened.peer,
+                  title: opened.title,
+                },
+              ]);
+              return;
+            }
             back();
             void navigate(() =>
               commit(openChat(top.account, "private", opened.peer, "push")),
             );
           }}
+        />
+      )}
+      {top?.kind === "reminder-account" && overview && (
+        <ReminderAccountSheet
+          accounts={overview.accounts.filter((a) => a.state === "authorized")}
+          onChoose={(id) =>
+            setScreens((stack) => [
+              ...stack.slice(0, -1),
+              { kind: "new-message", account: id, reminder: true },
+            ])
+          }
+          onClose={back}
+        />
+      )}
+      {top?.kind === "reminder" && (
+        <ReminderEditorScreen
+          key={`${top.account}/${top.peer}/${top.schedule ?? ""}`}
+          account={top.account}
+          peer={top.peer}
+          title={top.title}
+          schedule={top.schedule}
+          onBack={back}
         />
       )}
       {top?.kind === "accounts" && overview && (

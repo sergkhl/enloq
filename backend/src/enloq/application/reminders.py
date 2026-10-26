@@ -1,27 +1,83 @@
-"""Calendar timing and member digests; no inference is admitted by a tick."""
+"""Calendar timing and member digests; no inference is admitted by a tick.
+
+A chat may have several Reminder Schedules (ADR 58). Each keeps its latest
+occurrence, created two minutes before its alert so that the chat's reminder
+set can be prepared in time, and pending once due. Listing, timing and alerts
+make no model calls; reminder sets go through Response Suggestions.
+"""
 
 import hashlib
 import json
 import threading
 import time
+import unicodedata
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from ..domain.models import Conflict, Refused
+from ..domain.models import Chat, Conflict, Message, Refused
 from ..domain.reminders import (
+    KEPT,
+    LEAD,
+    ChatReminders,
     DigestSettings,
+    KeptStatus,
+    PendingReminder,
     ReminderOccurrence,
     ReminderRule,
     ReminderView,
+    day_bounds,
+    first_line,
+    latest_occurrence,
+    named_day,
     next_digest,
     next_occurrence,
-    occurrences,
 )
-from ..domain.suggestions import SuggestionsView
-from ..storage.store import blank_draft
+from ..storage import reminders as storage
+from ..storage.store import RETENTION
 
 SUBJECT = "reminder:"
+# Kept copies follow their cached originals at most this often (Q11).
+MIRROR_SECONDS = 30
+
+
+def recent_language(texts):
+    """The chat's recent language when its scripts tell it, else None: a
+    new schedule's initial fallback language (ADR 58 Q1). Latin text alone
+    names no language."""
+    counts = {}
+    for text in texts:
+        for character in text:
+            if not character.isalpha():
+                continue
+            name = unicodedata.name(character, "")
+            for script, language in (
+                ("CYRILLIC", "Russian"),
+                ("GREEK", "Greek"),
+                ("HEBREW", "Hebrew"),
+                ("ARABIC", "Arabic"),
+                ("HIRAGANA", "Japanese"),
+                ("KATAKANA", "Japanese"),
+                ("HANGUL", "Korean"),
+                ("CJK", "Chinese"),
+                ("THAI", "Thai"),
+                ("GEORGIAN", "Georgian"),
+                ("ARMENIAN", "Armenian"),
+                ("DEVANAGARI", "Hindi"),
+                ("LATIN", None),
+            ):
+                if name.startswith(script):
+                    counts[language] = counts.get(language, 0) + 1
+                    break
+    if not counts:
+        return None
+    language = max(counts, key=counts.get)
+    joined = "".join(texts)
+    if language == "Russian" and any(c in joined for c in "іїєґІЇЄҐ"):
+        return "Ukrainian"
+    if language == "Chinese" and counts.get("Japanese"):
+        return "Japanese"
+    return language
 
 
 class Reminders:
@@ -30,204 +86,462 @@ class Reminders:
         self.preferences = lambda: DigestSettings()
         self.global_epoch = lambda: "0"
         self.lock = threading.RLock()
+        self.mirrored = 0.0
 
     def private(self, key):
         self.app.suggestions.private(key)
-
-    def read(self, key, db):
-        return db.execute(
-            "SELECT * FROM reminder_schedules WHERE chat_key=?", (key,)
-        ).fetchone()
 
     def control(self, key, epoch, enabled, db):
         automatic = self.app.suggestions.automatic(key, db)["automatic"]
         return f"{epoch}:{int(enabled)}:{int(automatic)}", not (enabled and automatic)
 
+    # ---- timing ----------------------------------------------------------
+
     def tick(self):
+        """Advance every schedule, create occurrences two minutes before their
+        alerts, copy Kept Messages whose day has ended, then prepare the sets
+        of chats whose occurrences or conversation changed."""
+        settings = self.preferences()
+        epoch, enabled = self.global_epoch(), self.app.suggestions.enabled()
+        now = self.store.clock()
+        prepare, refresh = set(), set()
+        with self.lock, self.store.transaction() as db:
+            for row in db.execute("SELECT * FROM reminder_schedules").fetchall():
+                if self.advance(db, row, settings, epoch, enabled, now):
+                    prepare.add(row["chat_key"])
+            for row in db.execute(
+                "SELECT chat_key FROM reminder_refresh WHERE due<=?", (now,)
+            ).fetchall():
+                db.execute(
+                    "DELETE FROM reminder_refresh WHERE chat_key=?", (row["chat_key"],)
+                )
+                refresh.add(row["chat_key"])
+            self.copy_due(db, now)
+            if now - self.mirrored >= MIRROR_SECONDS:
+                self.mirrored = now
+                storage.mirror(db)
+        for key in sorted(prepare):
+            self.app.suggestions.reminder_set(key, "prepare")
+        for key in sorted(refresh - prepare):
+            self.app.suggestions.reminder_set(key, "refresh")
+
+    def advance(self, db, row, settings, epoch, enabled, now):
+        """One schedule's tick; True when it created an occurrence."""
+        key, schedule = row["chat_key"], row["id"]
+        rule = ReminderRule.model_validate_json(row["body"])
+        control, paused = self.control(key, epoch, enabled, db)
+        if control != row["control"] or paused != bool(row["paused"]):
+            # Pausing keeps the schedule; On resumes at the next future
+            # delivery, without backfill (Q4).
+            upcoming = next_occurrence(rule, now, settings) or (None, None)
+            db.execute("DELETE FROM reminder_occurrences WHERE schedule=?", (schedule,))
+            db.execute(
+                "UPDATE reminder_schedules SET next_at=?,next_date=?,paused=?,control=?,digest_revision=? WHERE id=?",
+                (*upcoming, int(paused), control, settings.revision, schedule),
+            )
+            return False
+        if paused:
+            return False
+        if row["digest_revision"] != settings.revision and rule.delivery == "digest":
+            upcoming = next_occurrence(rule, now, settings) or (None, None)
+            db.execute(
+                "UPDATE reminder_schedules SET next_at=?,next_date=?,digest_revision=? WHERE id=?",
+                (*upcoming, settings.revision, schedule),
+            )
+            # A pending occurrence waits for the new digest time; one being
+            # prepared for the old time is made again for the new one.
+            db.execute(
+                "DELETE FROM reminder_occurrences WHERE schedule=? AND due_at>?",
+                (schedule, now),
+            )
+            db.execute(
+                "UPDATE reminder_occurrences SET notify_at=? WHERE schedule=? AND notice IS NULL",
+                (next_digest(now, settings), schedule),
+            )
+            return False
+        if row["next_at"] is None or row["next_at"] - LEAD > now:
+            return False
+        if row["next_at"] > now:
+            due, day = row["next_at"], row["next_date"]
+            notify = due
+        else:
+            # After downtime the latest missed occurrence waits for the next
+            # digest; an exact alert recovers it once (Q3).
+            latest = latest_occurrence(rule, now, settings)
+            due, day = latest or (row["next_at"], row["next_date"])
+            notify = (
+                next_digest(now, settings)
+                if rule.delivery == "digest" and now - due > 60
+                else due
+            )
+        sent = db.execute(
+            "SELECT last_sent FROM reminder_outbox WHERE chat_key=?", (key,)
+        ).fetchone()
+        created = False
+        if rule.idea or not sent or sent[0] <= due:
+            db.execute("DELETE FROM reminder_occurrences WHERE schedule=?", (schedule,))
+            db.execute(
+                "INSERT INTO reminder_occurrences VALUES (?,?,?,?,?,?,?,NULL,?)",
+                (
+                    schedule,
+                    uuid.uuid4().hex,
+                    key,
+                    row["revision"],
+                    due,
+                    day,
+                    notify,
+                    now,
+                ),
+            )
+            created = True
+        upcoming = next_occurrence(rule, max(due, now), settings) or (None, None)
+        db.execute(
+            "UPDATE reminder_schedules SET next_at=?,next_date=? WHERE id=?",
+            (*upcoming, schedule),
+        )
+        return created
+
+    # ---- Kept Messages (Q11) -----------------------------------------------
+
+    def name_day(self, db, schedule, key, rule, previous, next_at, now):
+        """Keep the day the idea names: copy it now when it has ended, or
+        when it ends; a changed date or timezone starts afresh."""
+        due = (
+            datetime.fromtimestamp(next_at, ZoneInfo(rule.timezone)).date()
+            if next_at
+            else datetime.fromtimestamp(now, ZoneInfo(rule.timezone)).date()
+        )
+        day = named_day(rule.idea, due)
+        current = db.execute(
+            "SELECT day FROM reminder_kept_days WHERE schedule=?", (schedule,)
+        ).fetchone()
+        if day is None:
+            storage.forget_kept(db, schedule)
+            return
+        if (
+            current
+            and current["day"] == day.isoformat()
+            and previous is not None
+            and previous.timezone == rule.timezone
+        ):
+            return
+        storage.forget_kept(db, schedule)
+        start, end = day_bounds(day, rule.timezone)
+        state = "waiting"
+        if end <= now - RETENTION:
+            state = "expired"
+        elif end <= now:
+            storage.keep(db, schedule, key, start, end, KEPT)
+            state = "kept"
+        db.execute(
+            "INSERT INTO reminder_kept_days VALUES (?,?,?,?)",
+            (schedule, day.isoformat(), state, now if state == "kept" else None),
+        )
+
+    def copy_due(self, db, now):
+        for row in db.execute(
+            "SELECT k.schedule,k.day,s.chat_key,s.body FROM reminder_kept_days k "
+            "JOIN reminder_schedules s ON s.id=k.schedule WHERE k.state='waiting'"
+        ).fetchall():
+            rule = ReminderRule.model_validate_json(row["body"])
+            start, end = day_bounds(date.fromisoformat(row["day"]), rule.timezone)
+            if end > now:
+                continue
+            storage.keep(db, row["schedule"], row["chat_key"], start, end, KEPT)
+            db.execute(
+                "UPDATE reminder_kept_days SET state='kept',copied=? WHERE schedule=?",
+                (now, row["schedule"]),
+            )
+
+    def preview(self, key, rule, settings):
+        """The next delivery and what saving would keep (Q11, Q12)."""
+        self.private(key)
+        now = self.store.clock()
+        upcoming = next_occurrence(rule, now, settings)
+        due = (
+            date.fromisoformat(upcoming[1])
+            if upcoming
+            else datetime.fromtimestamp(now, ZoneInfo(rule.timezone)).date()
+        )
+        day = named_day(rule.idea, due)
+        kept = None
+        if day is not None:
+            start, end = day_bounds(day, rule.timezone)
+            state, count = "waiting", 0
+            if end <= now - RETENTION:
+                state = "expired"
+            elif end <= now:
+                state = "kept"
+                count = self.store.rows(
+                    "SELECT count(*) AS count FROM (SELECT 1 FROM messages WHERE chat_key=? "
+                    "AND deleted=0 AND date>=? AND date<? LIMIT ?)",
+                    (key, start, end, KEPT),
+                )[0]["count"]
+            kept = KeptStatus(day=day.isoformat(), state=state, count=count)
+        return {"next_at": upcoming[0] if upcoming else None, "kept": kept}
+
+    def kept(self, db, schedules):
+        """The Kept Messages of these schedules for a reminder set, and their
+        identity: a mirrored edit makes the set no longer fit."""
+        storage.mirror(db)
+        result, identity = [], []
+        for schedule in schedules:
+            day = db.execute(
+                "SELECT day FROM reminder_kept_days WHERE schedule=? AND state='kept'",
+                (schedule,),
+            ).fetchone()
+            if not day:
+                continue
+            messages, rows = storage.kept(db, schedule)
+            if messages:
+                result.append({"day": day["day"], "messages": messages})
+                identity.append([schedule, rows])
+        digest = hashlib.sha256(
+            json.dumps(identity, sort_keys=True).encode()
+        ).hexdigest()
+        return result, digest
+
+    def kept_identity(self, db, schedules):
+        rows = []
+        for schedule in schedules:
+            if not db.execute(
+                "SELECT 1 FROM reminder_kept_days WHERE schedule=? AND state='kept'",
+                (schedule,),
+            ).fetchone():
+                continue
+            messages, kept = storage.kept(db, schedule)
+            if messages:
+                rows.append([schedule, kept])
+        return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+
+    # ---- reading -----------------------------------------------------------
+
+    def view(self, db, row, now=None):
+        now = self.store.clock() if now is None else now
+        occurrence = db.execute(
+            "SELECT * FROM reminder_occurrences WHERE schedule=?", (row["id"],)
+        ).fetchone()
+        due = bool(
+            occurrence
+            and occurrence["due_at"] <= now
+            and occurrence["schedule_revision"] == row["revision"]
+            and not row["paused"]
+        )
+        kept = db.execute(
+            "SELECT day,state FROM reminder_kept_days WHERE schedule=?", (row["id"],)
+        ).fetchone()
+        count = (
+            db.execute(
+                "SELECT count(*) FROM reminder_kept WHERE schedule=?", (row["id"],)
+            ).fetchone()[0]
+            if kept
+            else 0
+        )
+        return ReminderView(
+            id=row["id"],
+            revision=row["revision"],
+            schedule=ReminderRule.model_validate_json(row["body"]),
+            # An occurrence being prepared is the next delivery until due.
+            next_at=occurrence["due_at"]
+            if occurrence and occurrence["due_at"] > now
+            else row["next_at"],
+            status="paused" if row["paused"] else "active",
+            occurrence=ReminderOccurrence(
+                id=occurrence["id"],
+                due_at=occurrence["due_at"],
+                calendar_date=occurrence["calendar_date"],
+            )
+            if due
+            else None,
+            kept=KeptStatus(day=kept["day"], state=kept["state"], count=count)
+            if kept
+            else None,
+        )
+
+    def chat(self, key):
+        """A chat's schedules, oldest first, and its recent language."""
+        self.private(key)
+        with self.store.transaction() as db:
+            items = [
+                self.view(db, row)
+                for row in db.execute(
+                    "SELECT * FROM reminder_schedules WHERE chat_key=? ORDER BY created,rowid",
+                    (key,),
+                ).fetchall()
+            ]
+            texts = []
+            for row in db.execute(
+                "SELECT body FROM messages WHERE chat_key=? AND deleted=0 AND date>=? "
+                "ORDER BY message_id DESC LIMIT 20",
+                (key, self.store.clock() - RETENTION),
+            ).fetchall():
+                message = Message.model_validate_json(row["body"])
+                texts.append(message.text)
+        return ChatReminders(items=items, language=recent_language(texts))
+
+    def get(self, key, identity):
+        self.private(key)
+        with self.store.transaction() as db:
+            row = self.schedule(db, key, identity)
+            return self.view(db, row)
+
+    def schedule(self, db, key, identity):
+        row = db.execute(
+            "SELECT * FROM reminder_schedules WHERE id=? AND chat_key=?",
+            (identity, key),
+        ).fetchone()
+        if not row:
+            raise Conflict("This reminder was removed; reload the reminders")
+        return row
+
+    def pending(self, key, db=None):
+        """The chat's pending occurrences, for its Reminder Bar (Q13)."""
+        sql = (
+            "SELECT o.*,s.body FROM reminder_occurrences o JOIN reminder_schedules s ON s.id=o.schedule "
+            "WHERE o.chat_key=? AND o.due_at<=? AND s.paused=0 AND o.schedule_revision=s.revision "
+            "ORDER BY o.due_at,o.id"
+        )
+        args = (key, self.store.clock())
+        rows = db.execute(sql, args).fetchall() if db else self.store.rows(sql, args)
+        return [
+            PendingReminder(
+                schedule=row["schedule"],
+                occurrence=row["id"],
+                idea=ReminderRule.model_validate_json(row["body"]).idea,
+                due_at=row["due_at"],
+            )
+            for row in rows
+        ]
+
+    def covered(self, key, db):
+        """Every occurrence of the chat a reminder set covers: the pending
+        ones and any being prepared, earliest first (Q5)."""
+        rows = db.execute(
+            "SELECT o.id,o.schedule,o.due_at,s.body FROM reminder_occurrences o "
+            "JOIN reminder_schedules s ON s.id=o.schedule "
+            "WHERE o.chat_key=? AND s.paused=0 AND o.schedule_revision=s.revision "
+            "ORDER BY o.due_at,o.id",
+            (key,),
+        ).fetchall()
+        result = []
+        for row in rows:
+            rule = ReminderRule.model_validate_json(row["body"])
+            result.append(
+                {
+                    "id": row["id"],
+                    "schedule": row["schedule"],
+                    "due_at": row["due_at"],
+                    "idea": rule.idea,
+                    "language": rule.language,
+                }
+            )
+        return result
+
+    def owns(self, key, db=None):
+        """While any schedule has an occurrence, the chat's suggestion area is
+        its reminder set's and no automatic set is prepared (Q5)."""
+        sql = (
+            "SELECT 1 FROM reminder_occurrences o JOIN reminder_schedules s ON s.id=o.schedule "
+            "WHERE o.chat_key=? AND s.paused=0 AND o.schedule_revision=s.revision LIMIT 1"
+        )
+        return bool(
+            db.execute(sql, (key,)).fetchone() if db else self.store.rows(sql, (key,))
+        )
+
+    # ---- changes ------------------------------------------------------------
+
+    def create(self, key, rule):
+        self.private(key)
+        settings = self.preferences()
+        epoch, enabled = self.global_epoch(), self.app.suggestions.enabled()
+        now = self.store.clock()
+        identity = uuid.uuid4().hex
+        with self.lock, self.store.transaction() as db:
+            upcoming = next_occurrence(rule, now, settings)
+            if upcoming is None:
+                raise Refused("Choose a date and time still ahead")
+            control, paused = self.control(key, epoch, enabled, db)
+            db.execute(
+                "INSERT INTO reminder_schedules VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (
+                    identity,
+                    key,
+                    1,
+                    rule.model_dump_json(),
+                    *upcoming,
+                    int(paused),
+                    control,
+                    settings.revision,
+                    now,
+                ),
+            )
+            self.name_day(db, identity, key, rule, None, upcoming[0], now)
+            return self.view(db, self.schedule(db, key, identity))
+
+    def edit(self, key, identity, revision, rule):
+        """Edits begin at the next future delivery: a pending occurrence and
+        its options leave, drafts stay as they are (Q1, Q5)."""
+        self.private(key)
         settings = self.preferences()
         epoch, enabled = self.global_epoch(), self.app.suggestions.enabled()
         now = self.store.clock()
         with self.lock, self.store.transaction() as db:
-            for row in db.execute(
-                "SELECT * FROM reminder_schedules WHERE body IS NOT NULL"
-            ).fetchall():
-                key = row["chat_key"]
-                rule = ReminderRule.model_validate_json(row["body"])
-                control, paused = self.control(key, epoch, enabled, db)
-                if control != row["control"] or paused != bool(row["paused"]):
-                    due, day = next_occurrence(rule, now, settings)
-                    db.execute(
-                        "DELETE FROM reminder_occurrences WHERE chat_key=?", (key,)
-                    )
-                    db.execute(
-                        "UPDATE reminder_schedules SET next_at=?,next_date=?,paused=?,control=?,digest_revision=? WHERE chat_key=?",
-                        (due, day, int(paused), control, settings.revision, key),
-                    )
-                    continue
-                if paused:
-                    continue
-                if (
-                    row["digest_revision"] != settings.revision
-                    and rule.delivery == "digest"
-                ):
-                    due, day = next_occurrence(rule, now, settings)
-                    db.execute(
-                        "UPDATE reminder_schedules SET next_at=?,next_date=?,digest_revision=? WHERE chat_key=?",
-                        (due, day, settings.revision, key),
-                    )
-                    db.execute(
-                        "UPDATE reminder_occurrences SET notify_at=? WHERE chat_key=? AND notice IS NULL",
-                        (next_digest(now, settings), key),
-                    )
-                    continue
-                if row["next_at"] > now:
-                    continue
-                due, day = max(
-                    item for item in occurrences(rule, now, settings) if item[0] <= now
-                )
-                sent = db.execute(
-                    "SELECT last_sent FROM reminder_outbox WHERE chat_key=?", (key,)
-                ).fetchone()
-                db.execute("DELETE FROM reminder_occurrences WHERE chat_key=?", (key,))
-                if not sent or sent[0] <= due:
-                    # A late digest waits for its next future daily slot, never
-                    # an immediate restart alert. Exact alerts remain separate.
-                    notify = (
-                        next_digest(now, settings)
-                        if rule.delivery == "digest" and now - due > 60
-                        else due
-                    )
-                    db.execute(
-                        "INSERT INTO reminder_occurrences (chat_key,id,schedule_revision,due_at,calendar_date,notify_at) VALUES (?,?,?,?,?,?)",
-                        (key, uuid.uuid4().hex, row["revision"], due, day, notify),
-                    )
-                future, future_day = next_occurrence(rule, now, settings)
-                db.execute(
-                    "UPDATE reminder_schedules SET next_at=?,next_date=? WHERE chat_key=?",
-                    (future, future_day, key),
-                )
-
-    def identity(self, key):
-        rows = self.store.rows(
-            "SELECT o.id FROM reminder_occurrences o JOIN reminder_schedules s USING(chat_key) WHERE o.chat_key=? AND o.schedule_revision=s.revision AND s.paused=0 AND s.body IS NOT NULL",
-            (key,),
-        )
-        return rows[0]["id"] if rows else None
-
-    def view(self, key):
-        self.private(key)
-        with self.store.transaction() as db:
-            row = self.read(key, db)
-            if not row:
-                return ReminderView()
-            occurrence = db.execute(
-                "SELECT * FROM reminder_occurrences WHERE chat_key=?", (key,)
-            ).fetchone()
-            return ReminderView(
-                revision=row["revision"],
-                schedule=ReminderRule.model_validate_json(row["body"])
-                if row["body"]
-                else None,
-                next_at=row["next_at"],
-                status="paused" if row["paused"] else "active",
-                occurrence=ReminderOccurrence(
-                    **{
-                        k: occurrence[k]
-                        for k in ("id", "due_at", "calendar_date", "reviewed")
-                    }
-                )
-                if occurrence
-                else None,
-            )
-
-    def edit(self, key, revision, rule):
-        self.private(key)
-        settings = self.preferences()
-        epoch, enabled = self.global_epoch(), self.app.suggestions.enabled()
-        with self.lock, self.store.transaction() as db:
-            row = self.read(key, db)
-            if (row["revision"] if row else 0) != revision:
+            row = self.schedule(db, key, identity)
+            if row["revision"] != revision:
                 raise Conflict("Reminder changed; reload its schedule")
+            upcoming = next_occurrence(rule, now, settings)
+            if upcoming is None:
+                raise Refused("Choose a date and time still ahead")
             control, paused = self.control(key, epoch, enabled, db)
-            due, day = (
-                next_occurrence(rule, self.store.clock(), settings)
-                if rule
-                else (None, None)
-            )
-            db.execute("DELETE FROM reminder_occurrences WHERE chat_key=?", (key,))
+            db.execute("DELETE FROM reminder_occurrences WHERE schedule=?", (identity,))
             db.execute(
-                "INSERT INTO reminder_schedules VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(chat_key) DO UPDATE SET revision=excluded.revision,body=excluded.body,next_at=excluded.next_at,next_date=excluded.next_date,paused=excluded.paused,control=excluded.control,digest_revision=excluded.digest_revision",
+                "UPDATE reminder_schedules SET revision=?,body=?,next_at=?,next_date=?,paused=?,control=?,digest_revision=? WHERE id=?",
                 (
-                    key,
                     revision + 1,
-                    rule.model_dump_json() if rule else None,
-                    due,
-                    day,
+                    rule.model_dump_json(),
+                    *upcoming,
                     int(paused),
                     control,
                     settings.revision,
+                    identity,
                 ),
             )
-        return self.view(key)
+            previous = ReminderRule.model_validate_json(row["body"])
+            self.name_day(db, identity, key, rule, previous, upcoming[0], now)
+            return self.view(db, self.schedule(db, key, identity))
 
-    def current(self, key, identity, db=None):
-        sql = (
-            "SELECT o.* FROM reminder_occurrences o JOIN reminder_schedules s USING(chat_key) "
-            "WHERE o.chat_key=? AND o.id=? AND o.schedule_revision=s.revision AND s.body IS NOT NULL AND s.paused=0"
-        )
-        return (
-            bool(db.execute(sql, (key, identity)).fetchone())
-            if db
-            else bool(self.store.rows(sql, (key, identity)))
-        )
-
-    def dismiss(self, key, identity):
+    def remove(self, key, identity, revision):
         self.private(key)
         with self.lock, self.store.transaction() as db:
-            if not self.current(key, identity, db):
-                raise Conflict("This reminder is no longer pending")
-            db.execute(
-                "DELETE FROM reminder_occurrences WHERE chat_key=? AND id=?",
-                (key, identity),
-            )
-        return self.view(key)
+            row = self.schedule(db, key, identity)
+            if row["revision"] != revision:
+                raise Conflict("Reminder changed; reload its schedule")
+            storage.end(db, identity)
+        return self.chat(key)
 
-    def review(self, key, identity, revision, cursor=None, regenerate=False):
+    def dismiss(self, key, identity, occurrence):
+        """Dismiss completes the pending occurrence either way (Q3)."""
         self.private(key)
-        self.tick()
-        with self.lock:
-            reuse = False
-            with self.store.transaction() as db:
-                if not self.current(key, identity, db):
-                    raise Conflict("This reminder is no longer pending")
-                occurrence = db.execute(
-                    "SELECT reviewed FROM reminder_occurrences WHERE id=?", (identity,)
-                ).fetchone()
-                if occurrence[0] and not regenerate:
-                    record = self.app.suggestions.record(key, db)
-                    reuse = True
-                else:
-                    row = db.execute(
-                        "SELECT body FROM drafts WHERE chat_key=?", (key,)
-                    ).fetchone()
-                    draft = json.loads(row[0]) if row else blank_draft(key)
-                    if draft["revision"] != revision:
-                        raise Conflict("Draft changed; keep your edits and reload")
-                    # A failed first admission still needs explicit Retry.
-                    db.execute(
-                        "UPDATE reminder_occurrences SET reviewed=1 WHERE id=?",
-                        (identity,),
-                    )
-                    rule = ReminderRule.model_validate_json(self.read(key, db)["body"])
-            if reuse:
-                return (
-                    self.app.suggestions.view(key)
-                    if record and record.get("reminder") == identity
-                    else SuggestionsView(kind="manual", reason="changed")
-                )
-            return self.app.suggestions.generate(
-                key, revision, reminder=identity, language=rule.language
-            )
+        with self.lock, self.store.transaction() as db:
+            row = self.schedule(db, key, identity)
+            current = db.execute(
+                "SELECT 1 FROM reminder_occurrences WHERE schedule=? AND id=? AND due_at<=? AND schedule_revision=?",
+                (identity, occurrence, self.store.clock(), row["revision"]),
+            ).fetchone()
+            if not current or row["paused"]:
+                raise Conflict("This reminder is no longer pending")
+            storage.complete(db, occurrence)
+        return self.chat(key)
+
+    def current(self, key, occurrence, db=None):
+        sql = (
+            "SELECT 1 FROM reminder_occurrences o JOIN reminder_schedules s ON s.id=o.schedule "
+            "WHERE o.chat_key=? AND o.id=? AND o.schedule_revision=s.revision AND s.paused=0 AND o.due_at<=?"
+        )
+        args = (key, occurrence, self.store.clock())
+        return bool(
+            db.execute(sql, args).fetchone() if db else self.store.rows(sql, args)
+        )
 
 
 class ReminderClock:
@@ -269,6 +583,8 @@ class ReminderClock:
         return value
 
     def items(self, member):
+        """The member's schedules as rows: pending first by when they fell
+        due, then upcoming by their next delivery (Q7)."""
         result = []
         for entry in self.registry.accounts(member):
             runtime = self.manager.runtimes.get(entry["account_id"])
@@ -279,31 +595,43 @@ class ReminderClock:
             try:
                 if available:
                     runtime.assistant.reminders.tick()
-                for row in store.rows(
-                    "SELECT chat_key FROM reminder_schedules WHERE body IS NOT NULL"
-                ):
-                    if available:
-                        chat = store.chat(row["chat_key"])
-                        view = runtime.assistant.reminders.view(row["chat_key"])
-                        peer, title = chat.peer, chat.title
-                    else:
-                        # Logout hides correspondence; only the account and
-                        # the existence of an unavailable reminder remain.
-                        view, peer, title = (
-                            ReminderView(status="unavailable"),
-                            "",
-                            "Unavailable chat",
+                with store.transaction() as db:
+                    rows = db.execute(
+                        "SELECT * FROM reminder_schedules ORDER BY created,rowid"
+                    ).fetchall()
+                    for row in rows:
+                        if available:
+                            view = runtime.assistant.reminders.view(db, row)
+                            chat = Chat.model_validate_json(
+                                db.execute(
+                                    "SELECT body FROM chats WHERE key=?",
+                                    (row["chat_key"],),
+                                ).fetchone()["body"]
+                            )
+                            peer, title, photo = chat.peer, chat.title, chat.photo_id
+                        else:
+                            # Logout hides correspondence; only the account and
+                            # the existence of an unavailable reminder remain.
+                            view = ReminderView(
+                                id=row["id"],
+                                revision=row["revision"],
+                                schedule=ReminderRule.model_validate_json(
+                                    row["body"]
+                                ).model_copy(update={"idea": ""}),
+                                status="unavailable",
+                            )
+                            peer, title, photo = "", "Unavailable chat", None
+                        result.append(
+                            {
+                                **view.model_dump(),
+                                "account_id": entry["account_id"],
+                                "account": entry["name"],
+                                "peer": peer,
+                                "title": title,
+                                "photo_id": photo,
+                                "ai_enabled": bool(entry["ai_enabled"]),
+                            }
                         )
-                    result.append(
-                        {
-                            **view.model_dump(),
-                            "account_id": entry["account_id"],
-                            "account": entry["name"],
-                            "peer": peer,
-                            "title": title,
-                            "ai_enabled": bool(entry["ai_enabled"]),
-                        }
-                    )
             finally:
                 if not available:
                     store.close()
@@ -311,7 +639,9 @@ class ReminderClock:
             result,
             key=lambda item: (
                 item["occurrence"] is None,
-                item["next_at"] or float("inf"),
+                (item["occurrence"] or {}).get("due_at")
+                or item["next_at"]
+                or float("inf"),
                 item["title"],
             ),
         )
@@ -325,8 +655,8 @@ class ReminderClock:
                 continue
             app.reminders.tick()
             for row in app.store.rows(
-                "SELECT o.*,s.body FROM reminder_occurrences o JOIN reminder_schedules s USING(chat_key) WHERE s.paused=0 AND o.notice IS NULL AND o.notify_at<=?",
-                (now,),
+                "SELECT o.*,s.body FROM reminder_occurrences o JOIN reminder_schedules s ON s.id=o.schedule WHERE s.paused=0 AND o.notice IS NULL AND o.notify_at<=? AND o.due_at<=?",
+                (now, now),
             ):
                 rule = ReminderRule.model_validate_json(row["body"])
                 settings = self.settings(runtime.member)
@@ -352,12 +682,37 @@ class ReminderClock:
                 }
                 for _, app, row in entries
             ]
-            body = {"exact": group.startswith("exact:"), "targets": targets}
             with self.registry.transaction() as db:
-                db.execute(
-                    "INSERT OR IGNORE INTO reminder_notices VALUES (?,?,?,?)",
-                    (identity, member, json.dumps(body), now + 300),
-                )
+                existing = db.execute(
+                    "SELECT body FROM reminder_notices WHERE id=?", (identity,)
+                ).fetchone()
+                if existing:
+                    # A digest delivered once already alerts no more today;
+                    # later occurrences of the same day join it unseen.
+                    body = json.loads(existing["body"])
+                    known = {t["occurrence"] for t in body["targets"]}
+                    body["targets"] += [
+                        t for t in targets if t["occurrence"] not in known
+                    ]
+                    db.execute(
+                        "UPDATE reminder_notices SET body=? WHERE id=?",
+                        (json.dumps(body), identity),
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO reminder_notices VALUES (?,?,?,?)",
+                        (
+                            identity,
+                            member,
+                            json.dumps(
+                                {
+                                    "exact": group.startswith("exact:"),
+                                    "targets": targets,
+                                }
+                            ),
+                            now + 300,
+                        ),
+                    )
             for _, app, row in entries:
                 with app.store.transaction() as db:
                     db.execute(
@@ -383,6 +738,8 @@ class ReminderClock:
                     db.execute("DELETE FROM reminder_notices WHERE id=?", (row["id"],))
 
     def notice(self, identity, member):
+        """A notice's targets still pending in signed-in accounts, each with
+        its person's name and its Message Idea's first line."""
         rows = self.registry.rows(
             "SELECT * FROM reminder_notices WHERE id=? AND member=?", (identity, member)
         )
@@ -396,19 +753,52 @@ class ReminderClock:
                 continue
             try:
                 app = self.manager.get(target["account_id"])
+                key = f"{target['account_id']}/{target['peer']}"
                 app.reminders.tick()
-                if app.reminders.current(
-                    f"{target['account_id']}/{target['peer']}", target["occurrence"]
-                ):
-                    targets.append(target)
+                found = app.store.rows(
+                    "SELECT s.body FROM reminder_occurrences o JOIN reminder_schedules s ON s.id=o.schedule "
+                    "WHERE o.chat_key=? AND o.id=? AND o.schedule_revision=s.revision AND s.paused=0 AND o.due_at<=?",
+                    (key, target["occurrence"], app.store.clock()),
+                )
+                if found:
+                    targets.append(
+                        {
+                            **target,
+                            "name": app.store.chat(key).title,
+                            "idea": first_line(
+                                ReminderRule.model_validate_json(found[0]["body"]).idea
+                            ),
+                            "account": app.store.account_id,
+                        }
+                    )
             except Refused:
                 pass
-        return {**row, **body, "targets": targets} if targets else None
+        return {**row, **body, "targets": targets}
 
     def event(self, identity, member):
+        """The alert's fetched text (ADR 58 Q2): an exact alert shows the
+        person's name and its idea's first line, or "Check in"; a digest
+        shows "Reminders" with up to three names and "+N"."""
         notice = self.notice(identity, member)
-        if not notice or notice["expires"] <= self.clock():
+        if not notice or not notice["targets"] or notice["expires"] <= self.clock():
             return None
+        targets = notice["targets"]
+        if notice["exact"]:
+            sender, text = targets[0]["name"], targets[0]["idea"] or "Check in"
+            account = next(
+                (
+                    entry["name"]
+                    for entry in self.registry.accounts(member)
+                    if entry["account_id"] == targets[0]["account_id"]
+                ),
+                "",
+            )
+        else:
+            names = list(dict.fromkeys(target["name"] for target in targets))
+            text = ", ".join(names[:3]) + (
+                f" +{len(names) - 3}" if len(names) > 3 else ""
+            )
+            sender, account = "Reminders", "All accounts"
         return {
             "id": identity,
             "member": member,
@@ -416,19 +806,22 @@ class ReminderClock:
             "peer": None,
             "subject": SUBJECT + identity,
             "kind": "reminders",
-            "sender": "Enloq",
-            "account": "All accounts",
-            "count": len(notice["targets"]),
-            "text": "Review your message reminders.",
+            "sender": sender[:100],
+            "account": account,
+            "count": len(targets),
+            "text": text[:200],
             "expires": notice["expires"],
         }
 
     def target(self, identity, member):
+        """A tap opens the chat of the one reminder an alert names while it is
+        pending; otherwise the Reminders list (ADR 36)."""
         notice = self.notice(identity, member)
-        if not notice:
-            return {"kind": "unavailable"}
-        return (
-            {"kind": "reminder", **notice["targets"][0]}
-            if notice["exact"]
-            else {"kind": "reminders"}
-        )
+        targets = notice["targets"] if notice else []
+        if len(targets) == 1:
+            return {
+                "kind": "reminder",
+                "account_id": targets[0]["account_id"],
+                "peer": targets[0]["peer"],
+            }
+        return {"kind": "reminders"}

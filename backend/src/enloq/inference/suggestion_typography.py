@@ -164,6 +164,13 @@ def _literal_values(packet, generated):
     sources = [*packet.get("messages", []), *packet.get("context", [])]
     if packet.get("manual") and isinstance(packet.get("draft"), str):
         sources.append({"text": packet["draft"]})
+    # A reminder set's Message Ideas and Kept Messages (ADR 58).
+    for reminder in packet.get("reminders") or []:
+        if isinstance(reminder, dict) and isinstance(reminder.get("idea"), str):
+            sources.append({"text": reminder["idea"]})
+    for day in packet.get("kept") or []:
+        if isinstance(day, dict) and isinstance(day.get("messages"), list):
+            sources.extend(day["messages"])
     if isinstance(packet.get("direct_reply"), dict):
         sources.append(packet["direct_reply"])
     for source in sources:

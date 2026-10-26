@@ -590,6 +590,16 @@ export interface components {
        */
       photo_id: string | null;
     };
+    /** ChatReminders */
+    ChatReminders: {
+      /** Items */
+      items: components["schemas"]["ReminderView"][];
+      /**
+       * Language
+       * @default null
+       */
+      language: string | null;
+    };
     /** ClientDecision */
     ClientDecision: {
       /**
@@ -1103,6 +1113,38 @@ export interface components {
       phone: string;
       /** Requested At */
       requested_at: number;
+    };
+    /**
+     * KeptStatus
+     * @description The editor's Kept Messages status line (ADR 58 Q11).
+     */
+    KeptStatus: {
+      /** Day */
+      day: string;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "waiting" | "kept" | "expired";
+      /**
+       * Count
+       * @default 0
+       */
+      count: number;
+    };
+    /** Language */
+    Language: {
+      /** Code */
+      code: string;
+      /** Name */
+      name: string;
+      /** Native */
+      native: string;
+    };
+    /** Languages */
+    Languages: {
+      /** Languages */
+      languages: components["schemas"]["Language"][];
     };
     /** LoginState */
     LoginState: {
@@ -1627,11 +1669,6 @@ export interface components {
        * @default null
        */
       peer: string | null;
-      /**
-       * Occurrence
-       * @default null
-       */
-      occurrence: string | null;
     };
     /** OutdatedMemory */
     OutdatedMemory: {
@@ -1672,6 +1709,20 @@ export interface components {
        * @enum {string}
        */
       approver: "server" | "browser";
+    };
+    /**
+     * PendingReminder
+     * @description One pending occurrence for the Reminder Bar (ADR 58 Q13).
+     */
+    PendingReminder: {
+      /** Schedule */
+      schedule: string;
+      /** Occurrence */
+      occurrence: string;
+      /** Idea */
+      idea: string;
+      /** Due At */
+      due_at: number;
     };
     /** People */
     People: {
@@ -1874,16 +1925,28 @@ export interface components {
     /** ReminderEdit */
     ReminderEdit: {
       /**
-       * Frequency
-       * @default weekly
+       * Repeat
+       * @default weeks
        * @enum {string}
        */
-      frequency: "weekly" | "monthly";
+      repeat: "once" | "days" | "weeks" | "monthly" | "yearly";
+      /** Start */
+      start: string;
+      /**
+       * Interval
+       * @default 1
+       */
+      interval: number;
       /**
        * Weekday
        * @default 0
        */
       weekday: number;
+      /**
+       * Month
+       * @default 1
+       */
+      month: number;
       /**
        * Month Day
        * @default 1
@@ -1904,18 +1967,21 @@ export interface components {
       time: string;
       /** Language */
       language: string;
+      /**
+       * Idea
+       * @default
+       */
+      idea: string;
       /** Revision */
       revision: number;
     };
     /** ReminderItem */
     ReminderItem: {
-      /**
-       * Revision
-       * @default 0
-       */
+      /** Id */
+      id: string;
+      /** Revision */
       revision: number;
-      /** @default null */
-      schedule: components["schemas"]["ReminderRule"] | null;
+      schedule: components["schemas"]["ReminderRule"];
       /**
        * Next At
        * @default null
@@ -1929,6 +1995,8 @@ export interface components {
       status: "active" | "paused" | "unavailable";
       /** @default null */
       occurrence: components["schemas"]["ReminderOccurrence"] | null;
+      /** @default null */
+      kept: components["schemas"]["KeptStatus"] | null;
       /** Account Id */
       account_id: number;
       /** Account */
@@ -1937,6 +2005,11 @@ export interface components {
       peer: string;
       /** Title */
       title: string;
+      /**
+       * Photo Id
+       * @default null
+       */
+      photo_id: string | null;
       /** Ai Enabled */
       ai_enabled: boolean;
     };
@@ -1953,49 +2026,49 @@ export interface components {
       due_at: number;
       /** Calendar Date */
       calendar_date: string;
-      /** Reviewed */
-      reviewed: boolean;
     };
     /** ReminderPreview */
     ReminderPreview: {
       /** Next At */
-      next_at: number;
-    };
-    /** ReminderReview */
-    ReminderReview: {
-      /** Occurrence */
-      occurrence: string;
-      /** Revision */
-      revision: number;
-      /**
-       * Cursor
-       * @default null
-       */
-      cursor: number | null;
-      /**
-       * Regenerate
-       * @default false
-       */
-      regenerate: boolean;
+      next_at: number | null;
+      /** @default null */
+      kept: components["schemas"]["KeptStatus"] | null;
     };
     /** ReminderRevision */
     ReminderRevision: {
       /** Revision */
       revision: number;
     };
-    /** ReminderRule */
+    /**
+     * ReminderRule
+     * @description One Reminder Schedule's rule (ADR 58 Q1). ``start`` is Once's date,
+     *     the first date of Every N days and a date in the start week of Every N
+     *     weeks; Monthly uses ``month_day`` and Yearly ``month`` with it.
+     */
     ReminderRule: {
       /**
-       * Frequency
-       * @default weekly
+       * Repeat
+       * @default weeks
        * @enum {string}
        */
-      frequency: "weekly" | "monthly";
+      repeat: "once" | "days" | "weeks" | "monthly" | "yearly";
+      /** Start */
+      start: string;
+      /**
+       * Interval
+       * @default 1
+       */
+      interval: number;
       /**
        * Weekday
        * @default 0
        */
       weekday: number;
+      /**
+       * Month
+       * @default 1
+       */
+      month: number;
       /**
        * Month Day
        * @default 1
@@ -2016,16 +2089,19 @@ export interface components {
       time: string;
       /** Language */
       language: string;
+      /**
+       * Idea
+       * @default
+       */
+      idea: string;
     };
     /** ReminderView */
     ReminderView: {
-      /**
-       * Revision
-       * @default 0
-       */
+      /** Id */
+      id: string;
+      /** Revision */
       revision: number;
-      /** @default null */
-      schedule: components["schemas"]["ReminderRule"] | null;
+      schedule: components["schemas"]["ReminderRule"];
       /**
        * Next At
        * @default null
@@ -2039,6 +2115,8 @@ export interface components {
       status: "active" | "paused" | "unavailable";
       /** @default null */
       occurrence: components["schemas"]["ReminderOccurrence"] | null;
+      /** @default null */
+      kept: components["schemas"]["KeptStatus"] | null;
     };
     /** Removed */
     Removed: {
@@ -2362,6 +2440,11 @@ export interface components {
       length: number;
       /** Url */
       url: string;
+    };
+    /** Timezones */
+    Timezones: {
+      /** Timezones */
+      timezones: string[];
     };
     /** TraitNote */
     TraitNote: {

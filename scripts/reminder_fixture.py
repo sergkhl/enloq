@@ -1,6 +1,10 @@
-"""Authored reminder occurrences for phone/web journeys, offline fixture only."""
+"""Authored reminders for phone/web journeys, offline fixture only (ADR 58).
 
-from datetime import datetime, timezone
+`setup` gives the fixture chat one pending reminder with a Message Idea and
+one upcoming check-in, and lets the offline engine prepare their set.
+"""
+
+from datetime import datetime, timedelta, timezone
 
 from enloq.domain.models import Chat
 from enloq.domain.reminders import ReminderRule
@@ -10,6 +14,7 @@ from fastapi import Request
 # (129), which run earlier in the shared browser fixture.
 PEER = "user:130"
 KEY = "1/" + PEER
+IDEA = "Ask how the trip went"
 
 
 def register(app):
@@ -41,23 +46,50 @@ def register(app):
             )
         )
         conversation.suggestions.set_settings(KEY, True, "friendly")
-        current = conversation.reminders.view(KEY)
+        for item in conversation.reminders.chat(KEY).items:
+            conversation.reminders.remove(KEY, item.id, item.revision)
+        draft = store.draft(KEY)
+        if draft["text"]:
+            store.mutate_draft(
+                KEY,
+                draft["revision"],
+                lambda d: (d.update(text="", undo=None), d.pop("reminders", None)),
+            )
         if body.get("action") == "cleanup":
-            return conversation.reminders.edit(KEY, current.revision, None)
+            return conversation.reminders.chat(KEY)
         now = datetime.fromtimestamp(store.clock(), timezone.utc)
-        rule = ReminderRule(
-            frequency="weekly",
-            weekday=now.weekday(),
-            timezone="UTC",
-            delivery="exact",
-            time=now.strftime("%H:%M"),
-            language="English",
+        today = now.date()
+        # Weekly at the minute just past, so its latest occurrence fell due now.
+        due = now - timedelta(minutes=1)
+        pending = conversation.reminders.create(
+            KEY,
+            ReminderRule(
+                repeat="weeks",
+                start=due.date().isoformat(),
+                weekday=due.weekday(),
+                timezone="UTC",
+                delivery="exact",
+                time=due.strftime("%H:%M"),
+                language="English",
+                idea=IDEA,
+            ),
         )
-        conversation.reminders.edit(KEY, current.revision, rule)
+        conversation.reminders.create(
+            KEY,
+            ReminderRule(
+                repeat="weeks",
+                start=today.isoformat(),
+                weekday=(today.weekday() + 3) % 7,
+                timezone="UTC",
+                language="English",
+            ),
+        )
+        # The first one fell due a minute ago: the tick creates its pending
+        # occurrence and prepares the chat's set.
         with store.transaction() as db:
             db.execute(
-                "UPDATE reminder_schedules SET next_at=? WHERE chat_key=?",
-                (now.replace(second=0, microsecond=0).timestamp(), KEY),
+                "UPDATE reminder_schedules SET next_at=? WHERE id=?",
+                (now.timestamp() - 60, pending.id),
             )
         conversation.reminders.tick()
-        return conversation.reminders.view(KEY)
+        return conversation.reminders.chat(KEY)

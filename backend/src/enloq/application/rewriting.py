@@ -787,5 +787,7 @@ class Rewriting:
             draft.update(
                 text=draft["undo"], undo=None, state="idle", attempt=None, error=None
             )
+            # Undo drops a reminder set's mark with the option (ADR 58 Q3).
+            draft.pop("reminders", None)
 
         return self.store.mutate_draft(key, revision, restore)

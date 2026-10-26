@@ -1,18 +1,21 @@
-"""Account-owned schedules/actions and the member's combined reminders."""
+"""Per-schedule reminder routes and the member's combined reminders (ADR 58)."""
 
 from fastapi import APIRouter, Request
 
 from ..domain.reminders import (
+    LANGUAGES,
+    ChatReminders,
     DigestSettings,
+    Languages,
     ReminderAction,
     ReminderEdit,
     ReminderList,
     ReminderPreview,
-    ReminderReview,
     ReminderRevision,
     ReminderRule,
     ReminderView,
-    next_occurrence,
+    Timezones,
+    timezones,
 )
 from ..domain.suggestions import SuggestionsView
 from .scope import MEMBER_ACCOUNT
@@ -21,7 +24,7 @@ from .scope import MEMBER_ACCOUNT
 def reminder_routes(manager):
     router = APIRouter()
     account = APIRouter(
-        prefix="/api/accounts/{account_id}/chats/{peer}/reminder",
+        prefix="/api/accounts/{account_id}/chats/{peer}/reminders",
         dependencies=MEMBER_ACCOUNT,
     )
 
@@ -29,62 +32,95 @@ def reminder_routes(manager):
         app = manager.get(account_id)
         return app, f"{account_id}/{peer}"
 
-    @account.get("", response_model=ReminderView)
-    def read(account_id: int, peer: str):
+    def settings(request, rule):
+        """The member's digest settings, first saved with an initial
+        timezone when a digest schedule is."""
+        value = manager.reminders.settings(request.state.member, rule.timezone)
+        if rule.delivery == "digest":
+            manager.reminders.save_settings(
+                request.state.member, value, initialize=True
+            )
+        return value
+
+    @account.get("", response_model=ChatReminders)
+    def chat(account_id: int, peer: str):
         app, key = target(account_id, peer)
         app.reminders.tick()
-        return app.reminders.view(key)
+        return app.reminders.chat(key)
 
     @account.post("/preview", response_model=ReminderPreview)
     def preview(account_id: int, peer: str, body: ReminderRule, request: Request):
+        """The next delivery and what saving would keep, before saving."""
         app, key = target(account_id, peer)
-        app.reminders.private(key)
-        settings = manager.reminders.settings(request.state.member, body.timezone)
-        return {"next_at": next_occurrence(body, app.store.clock(), settings)[0]}
+        value = manager.reminders.settings(request.state.member, body.timezone)
+        return app.reminders.preview(key, body, value)
 
     @account.post("", response_model=ReminderView)
-    def save(account_id: int, peer: str, body: ReminderEdit, request: Request):
+    def create(account_id: int, peer: str, body: ReminderRule, request: Request):
         app, key = target(account_id, peer)
         app.reminders.private(key)
-        settings = manager.reminders.settings(request.state.member, body.timezone)
-        if body.delivery == "digest":
-            manager.reminders.save_settings(
-                request.state.member, settings, initialize=True
-            )
-        return app.reminders.edit(
-            key, body.revision, ReminderRule(**body.model_dump(exclude={"revision"}))
-        )
+        settings(request, body)
+        return app.reminders.create(key, body)
 
-    @account.delete("", response_model=ReminderView)
-    def remove(account_id: int, peer: str, body: ReminderRevision):
+    @account.post("/open", response_model=SuggestionsView)
+    def open_chat(account_id: int, peer: str):
+        """Opening a chat with pending reminders prepares its set when the
+        current one no longer fits; never an unchanged failure again (Q5)."""
         app, key = target(account_id, peer)
-        return app.reminders.edit(key, body.revision, None)
+        return app.suggestions.open_reminders(key)
 
-    @account.post("/dismiss", response_model=ReminderView)
-    def dismiss(account_id: int, peer: str, body: ReminderAction):
+    @account.get("/{schedule}", response_model=ReminderView)
+    def read(account_id: int, peer: str, schedule: str):
         app, key = target(account_id, peer)
         app.reminders.tick()
-        return app.reminders.dismiss(key, body.occurrence)
+        return app.reminders.get(key, schedule)
 
-    @account.post("/review", response_model=SuggestionsView)
-    def review(account_id: int, peer: str, body: ReminderReview):
+    @account.post("/{schedule}", response_model=ReminderView)
+    def edit(
+        account_id: int, peer: str, schedule: str, body: ReminderEdit, request: Request
+    ):
         app, key = target(account_id, peer)
-        return app.reminders.review(
-            key, body.occurrence, body.revision, body.cursor, body.regenerate
-        )
+        app.reminders.private(key)
+        rule = ReminderRule(**body.model_dump(exclude={"revision"}))
+        settings(request, rule)
+        return app.reminders.edit(key, schedule, body.revision, rule)
+
+    @account.delete("/{schedule}", response_model=ChatReminders)
+    def remove(account_id: int, peer: str, schedule: str, body: ReminderRevision):
+        app, key = target(account_id, peer)
+        return app.reminders.remove(key, schedule, body.revision)
+
+    @account.post("/{schedule}/dismiss", response_model=ChatReminders)
+    def dismiss(account_id: int, peer: str, schedule: str, body: ReminderAction):
+        app, key = target(account_id, peer)
+        app.reminders.tick()
+        return app.reminders.dismiss(key, schedule, body.occurrence)
 
     @router.get("/api/reminders", response_model=ReminderList)
     def listing(request: Request):
         return {"items": manager.reminders.items(request.state.member)}
 
     @router.get("/api/reminders/settings", response_model=DigestSettings)
-    def settings(request: Request):
+    def digest(request: Request):
         return manager.reminders.settings(request.state.member)
 
     @router.post("/api/reminders/settings", response_model=DigestSettings)
-    def save_settings(body: DigestSettings, request: Request):
+    def save_digest(body: DigestSettings, request: Request):
         manager.reminders.tick()
         return manager.reminders.save_settings(request.state.member, body)
+
+    @router.get("/api/reminders/timezones", response_model=Timezones)
+    def zones():
+        return {"timezones": timezones()}
+
+    @router.get("/api/reminders/languages", response_model=Languages)
+    def languages():
+        return {
+            "languages": [
+                {"code": code, "name": name, "native": native}
+                for code, name, native in LANGUAGES
+            ]
+        }
 
     router.include_router(account)
     return router

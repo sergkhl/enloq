@@ -53,6 +53,21 @@ jest.mock("expo-camera", () => ({
 
 jest.mock("expo-device", () => ({ modelName: "Pixel 9" }));
 
+// The native date and time picker (ADR 58 Q12): each shown picker's props,
+// so a test can answer it as the platform dialog would.
+export const mockPickers: {
+  mode: string;
+  value: Date;
+  onChange: (event: { type: string }, value?: Date) => void;
+}[] = [];
+jest.mock("@react-native-community/datetimepicker", () => ({
+  __esModule: true,
+  default: (props: (typeof mockPickers)[number]) => {
+    mockPickers.push(props);
+    return null;
+  },
+}));
+
 // FCM through expo-notifications (ADR 38): the token
 // the phone would get from Google, the notices it showed, the token listeners
 // and the push task it defined.
@@ -447,6 +462,29 @@ function fallback(url: string) {
     return { status: 200, body: { tone: "neutral" } };
   if (url.endsWith("/reactions/options"))
     return { status: 200, body: mockPalette };
+  // Reminders (ADR 58): none, at the default digest, unless a test says.
+  if (/\/chats\/[^/]+\/reminders$/.test(url))
+    return { status: 200, body: { items: [], language: null } };
+  if (url.endsWith("/api/reminders/settings"))
+    return {
+      status: 200,
+      body: { revision: 0, time: "09:00", timezone: "UTC" },
+    };
+  if (url.endsWith("/api/reminders/timezones"))
+    return {
+      status: 200,
+      body: { timezones: ["UTC", "Asia/Tokyo", "Europe/Berlin"] },
+    };
+  if (url.endsWith("/api/reminders/languages"))
+    return {
+      status: 200,
+      body: {
+        languages: [
+          { code: "en", name: "English", native: "English" },
+          { code: "ru", name: "Russian", native: "Русский" },
+        ],
+      },
+    };
   return null;
 }
 
@@ -501,5 +539,6 @@ export function reset() {
   mockPhotos.camera = true;
   mockPhotos.resizes.length = 0;
   mockEventSources.length = 0;
+  mockPickers.length = 0;
   for (const key of Object.keys(mockParams)) delete mockParams[key];
 }

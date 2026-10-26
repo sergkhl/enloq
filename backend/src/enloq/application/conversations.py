@@ -195,7 +195,10 @@ class Conversations:
             unread_sources=unread,
             emotion=None if group else self.emotion.view(key).model_dump(),
             suggestions=None if group else self.suggestions.view(key).model_dump(),
-            reminder_occurrence=None if group else self.reminders.identity(key),
+            # ADR 58 Q13: the Reminder Bar's pending occurrences.
+            reminders=[]
+            if group
+            else [item.model_dump() for item in self.reminders.pending(key)],
             # ADR 53: the profile's switch, kept with the app's snapshot.
             calming=None if group else self.calming.on(key),
             group_processing=self.group_processing(key).model_dump() if group else None,
@@ -234,6 +237,7 @@ class Conversations:
             unread_sources=[],
             emotion=None,
             suggestions=None,
+            reminders=[],
             calming=None,
             group_processing=None,
             retained=False,

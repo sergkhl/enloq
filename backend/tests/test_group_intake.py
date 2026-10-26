@@ -567,7 +567,7 @@ def test_schema29_additive_upgrade_keeps_real_content_settings_and_spending(tmp_
         store.path, account_id=1, clock=lambda: 2e9, shared_path=registry.path
     )
     assert (
-        upgraded.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 39
+        upgraded.rows("PRAGMA user_version")[0]["user_version"] == SCHEMA_VERSION == 40
     )
 
     def legacy_rows(owner, table):
