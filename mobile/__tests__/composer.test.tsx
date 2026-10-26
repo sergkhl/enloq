@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import React from "react";
+import { Alert } from "react-native";
 import {
   mockEventSources,
   mockFiles,
@@ -157,7 +158,13 @@ function service() {
         attempt: null,
       });
     if (url.endsWith("/suggestions/insert")) {
-      const text = `${draft.text.slice(0, body.cursor ?? undefined)} Sounds good!`;
+      // A manual option replaces the draft's text; an automatic one is
+      // inserted at the caret (ADR 25 Q8).
+      const manual =
+        (suggestions as { kind?: string } | null)?.kind === "manual";
+      const text = manual
+        ? "Sounds good!"
+        : `${draft.text.slice(0, body.cursor ?? undefined)} Sounds good!`;
       next({ text, undo: draft.text, state: "inserted" });
       return { status: 200, body: { draft, caret: text.length } };
     }
@@ -296,11 +303,11 @@ test("a draft typed offline stays on the phone and is saved when the server answ
   expect(keptDraft()).toBeUndefined();
 });
 
-test("manual generation keeps the draft editable; selection inserts and Undo restores", async () => {
+test("manual generation keeps the draft editable; a choice replaces it and Undo restores", async () => {
   draft = { ...draft, revision: 3, text: "can u come" };
   await mount();
   await screen.findByDisplayValue("can u come");
-  await fireEvent.press(screen.getByLabelText("Generate suggestions"));
+  await fireEvent.press(screen.getByLabelText("Suggestions"));
   await waitFor(() => expect(posts("/suggestions/generate")).toHaveLength(1));
   expect(posts("/suggestions/generate")[0]).toMatchObject({ revision: 3 });
   expect(screen.getByLabelText("Message").props.value).toBe("can u come");
@@ -309,9 +316,64 @@ test("manual generation keeps the draft editable; selection inserts and Undo res
   await fireEvent.press(
     await screen.findByRole("button", { name: /Sounds good!/ }),
   );
-  await waitFor(() => expect(draft.text).toContain("Sounds good!"));
+  await waitFor(() => expect(draft.text).toBe("Sounds good!"));
+  expect(await screen.findByDisplayValue("Sounds good!")).toBeTruthy();
   await fireEvent.press(screen.getByLabelText("Undo suggestion"));
   expect(await screen.findByDisplayValue("can u come")).toBeTruthy();
+});
+
+test("Suggestions is held while a set is prepared, and without its spinner while one waits", async () => {
+  suggestions = {
+    state: "preparing",
+    reason: "running",
+    kind: "automatic",
+    style: "friendly",
+    attempt: SUGGESTED,
+    options: [],
+    folded: false,
+  };
+  const shown = await mount();
+  const button = await screen.findByLabelText("Suggestions");
+  expect(button.props.accessibilityState).toEqual({
+    disabled: true,
+    busy: true,
+  });
+  await shown.unmount();
+  suggestions = {
+    ...(suggestions as object),
+    state: "waiting",
+    reason: "budget",
+  };
+  await mount();
+  expect(
+    (await screen.findByLabelText("Suggestions")).props.accessibilityState,
+  ).toEqual({ disabled: true, busy: false });
+  expect(screen.getByText("Suggestions wait for budget")).toBeTruthy();
+});
+
+test("Send asks first while the draft still has bracketed instructions", async () => {
+  draft = { ...draft, revision: 2, text: "See you then [add the time]" };
+  const answers: string[] = [];
+  const alert = jest
+    .spyOn(Alert, "alert")
+    .mockImplementation((_title, _message, buttons) => {
+      const choice = answers.shift();
+      buttons?.find((button) => button.text === choice)?.onPress?.();
+    });
+  await mount();
+  await screen.findByDisplayValue("See you then [add the time]");
+  answers.push("Keep editing");
+  await fireEvent.press(screen.getByLabelText("Send"));
+  expect(alert).toHaveBeenCalledWith(
+    "Send with brackets?",
+    expect.stringContaining("[bracketed]"),
+    expect.any(Array),
+  );
+  expect(posts("/send")).toHaveLength(0);
+  answers.push("Send");
+  await fireEvent.press(screen.getByLabelText("Send"));
+  await waitFor(() => expect(posts("/send")).toEqual([{ revision: 2 }]));
+  alert.mockRestore();
 });
 
 test("Send shows the message at once as sent, clears the draft, and its sheet offers Cancel", async () => {
@@ -531,7 +593,7 @@ test("Reply from a long press sets the target; Remove clears it", async () => {
 
 test("generation is available with an empty draft, with no outgoing rewrite controls", async () => {
   await mount();
-  const generate = await screen.findByLabelText("Generate suggestions");
+  const generate = await screen.findByLabelText("Suggestions");
   expect(generate.props.accessibilityState.disabled).toBe(false);
   expect(screen.queryByLabelText("Rewrite tone")).toBeNull();
   expect(screen.queryByLabelText("Rewrite")).toBeNull();

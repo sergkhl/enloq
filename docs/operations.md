@@ -1089,13 +1089,17 @@ original quiet deadline; resuming reconciles cached unread targets without
 resetting native cursors or rereading old history. Incoming rewrites have no
 individual Stop. See [streaming and speech recovery](inference.md#provisional-streaming).
 
-A private composer has separate, always-visible **Generate suggestions** and
-**Send** buttons. Generation preserves the draft, attachments and reply target.
-With a blank draft it offers messages to continue the conversation; with text
-it offers additions at the captured cursor, following that text's intent.
-Selection inserts without sending, and **Undo suggestion** restores the prior
-text. New draft or source changes withdraw the set without regenerating.
-Groups and Saved Messages have ordinary Send and no generation. Enter adds a
+A private composer has separate, always-visible **Suggestions** and **Send**
+buttons. Generation preserves the draft, attachments and reply target. With a
+blank draft it offers messages to continue the conversation; with text, the
+draft is the starting idea that complete messages develop, and its
+[bracketed] text instructs the writer. A manual choice replaces the draft's
+text without sending, keeping images, a GIF and the reply target; an
+automatic one is inserted at the caret; **Undo suggestion** restores the prior
+draft. Suggestions stays disabled while a set for the chat is being prepared
+or waits, and Send asks first while [bracketed] text remains. New draft or
+source changes withdraw the set without regenerating. Groups and Saved
+Messages have ordinary Send and no Suggestions button. Enter adds a
 new line. Outgoing Rewrite, tone controls, draft streaming and Stop are removed.
 
 Web URLs, Telegram links, usernames and native named links are tappable in

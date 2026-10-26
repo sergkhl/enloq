@@ -13,7 +13,8 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: ".*Saved fixture: bring the charger.*"
     timeout: 15000
-- assertNotVisible: "Generate suggestions"
+- assertNotVisible:
+    id: "suggestions-button"
 - assertNotVisible: "Undo suggestion"
 - evalScript: ${output.saved = 'Saved fixture note ' + new Date().getTime()}
 - tapOn: "Message.*"

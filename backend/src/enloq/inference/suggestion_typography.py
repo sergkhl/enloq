@@ -8,8 +8,11 @@ read from a store, the network or guidance, and this module is not a validator.
 
 import re
 
-from ..domain.suggestions import OPTION_CHARACTERS, OPTIONS
+from ..domain.suggestions import OPTIONS
 
+# The longest supplied literal, and the widest window around a quotation, that
+# literal recognition reads. Options themselves have no length limit (ADR 25).
+LITERAL_CHARACTERS = 280
 REPLACEMENTS = {
     "—": "-",
     "–": "-",
@@ -129,14 +132,14 @@ def _quoted_values(text):
     for opening, closing in _QUOTES.items():
         start = 0
         while (start := text.find(opening, start)) != -1:
-            end = text.find(closing, start + 1, start + OPTION_CHARACTERS + 2)
+            end = text.find(closing, start + 1, start + LITERAL_CHARACTERS + 2)
             if end == -1:
                 start += 1
                 continue
             inner = text[start + 1 : end]
             if inner and "\n" not in inner:
                 yield inner
-                window = max(0, start - OPTION_CHARACTERS)
+                window = max(0, start - LITERAL_CHARACTERS)
                 prefix = re.search(r"([^\W\d_]\w*)\s+$", text[window:start])
                 if prefix and prefix[1][0].isupper():
                     yield text[window + prefix.start() : end + 1]
@@ -153,7 +156,7 @@ def _literal_values(packet, generated):
     def keep(value):
         if (
             isinstance(value, str)
-            and 1 < len(value) <= OPTION_CHARACTERS
+            and 1 < len(value) <= LITERAL_CHARACTERS
             and any(character in REPLACEMENTS for character in value)
         ):
             values.add(value)
@@ -284,10 +287,10 @@ def _normalize(text, literals):
 def normalize_suggestions(content, packet):
     """Copy parsed new options before their existing final schema validation.
 
-    Invalid shapes and lengths pass through unchanged to that validator; this
-    does not coerce, truncate, filter or retry an option. The output work is
-    bounded by the existing three-option/280-character contract. Cached domain
-    models and authored drafts never call this function.
+    Invalid shapes pass through unchanged to that validator; this does not
+    coerce, truncate, filter or retry an option. The output work is bounded by
+    the three-option contract and the request's output-token bound. Cached
+    domain models and authored drafts never call this function.
     """
     if (
         not isinstance(content, dict)
@@ -298,18 +301,12 @@ def normalize_suggestions(content, packet):
     generated = [
         option["text"]
         for option in content["options"]
-        if isinstance(option, dict)
-        and isinstance(option.get("text"), str)
-        and len(option["text"]) <= OPTION_CHARACTERS
+        if isinstance(option, dict) and isinstance(option.get("text"), str)
     ]
     literals = _literal_values(packet, generated)
     options = []
     for option in content["options"]:
-        if (
-            isinstance(option, dict)
-            and isinstance(option.get("text"), str)
-            and len(option["text"]) <= OPTION_CHARACTERS
-        ):
+        if isinstance(option, dict) and isinstance(option.get("text"), str):
             option = {**option, "text": _normalize(option["text"], literals)}
         options.append(option)
     return {**content, "options": options}

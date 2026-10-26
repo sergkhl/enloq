@@ -1,5 +1,6 @@
-# Composing (MC3): Swipe to Reply, Generate suggestions, insert, Undo and Send.
-# Generation preserves the draft; Undo restores it after inserting an option.
+# Composing (MC3): Swipe to Reply, Suggestions, a choice, Undo and Send.
+# Generation preserves the draft; a manual choice replaces it and Undo
+# restores it (ADR 25 Q8).
 # Each run sends its own wording, since the fixture keeps earlier sends. The
 # send is a Reply, so the composer and the sent message quote the message it
 # answers (ADR 41).
@@ -15,7 +16,8 @@ appId: ${APP_ID}
 - evalScript: ${output.note = 'Bringing the board game ' + new Date().getTime()}
 - tapOn: "Message.*"
 - inputText: ${output.note}
-- tapOn: "Generate suggestions"
+- tapOn:
+    id: "suggestions-button"
 - extendedWaitUntil:
     visible: "Acknowledge: Thank you for telling me[.]"
     timeout: 20000
@@ -26,6 +28,7 @@ appId: ${APP_ID}
       text: "Undo suggestion"
       enabled: true
     timeout: 20000
+- assertNotVisible: "${output.note}"
 - tapOn: "Undo suggestion"
 - assertVisible: "${output.note}"
 - tapOn: "Send"

@@ -354,9 +354,10 @@ last day without changing the next month's selected date; daylight-saving
 gaps advance to the first valid time, and repeated times occur once.
 
 Review opens the exact account/chat and requests the occurrence's first
-suggestion set. Reopening reuses valid options; Generate suggestions is the
-explicit action after expiry, context change or failure. A nonempty draft
-gets additions at its cursor with Undo. Nothing sends automatically. Dismiss
+suggestion set. Reopening reuses valid options; Suggestions is the explicit
+action after expiry, context change or failure. A nonempty draft is the
+starting idea, and a chosen option replaces it with Undo. Nothing sends
+automatically. Dismiss
 or any confirmed outgoing Telegram message after the due time completes the
 pending occurrence; incoming messages and opening do not. Either Automatic
 suggestions switch pauses reminders, with future-only resumption; Account
@@ -365,13 +366,20 @@ list is read-only and actions wait for the service.
 
 ## Composing
 
-A private composer has separate **Generate suggestions** and **Send** buttons.
-A blank draft requests messages to continue the conversation; a nonblank draft
-requests additions at the captured cursor. Generation keeps the draft editable
-and sends nothing. Selecting an option inserts it, preserving attachments and
-the reply target; **Undo suggestion** restores the prior text. The per-chat
-Style applies to manual and automatic sets. Groups and Saved Messages have no
-generation button. Return inserts a newline. A long press offers Reply and
+A private composer has separate **Suggestions** and **Send** buttons. A blank
+draft requests messages to continue the conversation; a nonblank draft is the
+starting idea, which every option develops into a complete message, and text
+in square brackets instructs the writer without appearing in any option.
+Generation keeps the draft editable and sends nothing. Choosing a manual
+option replaces the draft's text, keeping photos, a GIF and the reply target,
+with the caret at its end; an automatic option is inserted at the caret.
+**Undo suggestion** restores the prior draft. Suggestions is disabled with its
+spinner while any set for the chat is being prepared, and without it while
+one waits for budget, AI processing or the provider; a draft edit that
+withdraws a manual set frees it. Send asks first while the draft still has
+[bracketed] text. The per-chat Style applies to manual and automatic sets.
+Groups and Saved Messages have no Suggestions button. Return inserts a
+newline. A long press offers Reply and
 Copy; in AI reading, Reply answers the block's latest source.
 Swiping a message from right to left past a threshold shows a reply arrow with
 a light vibration and replies the same way, wherever the sheet offers Reply;
@@ -713,14 +721,17 @@ The app has no Help screen; this is what a Help screen would explain.
   also stands in while that is uncertain, pending, changed or older than 12
   hours.
 - **Suggestions**: automatic sets appear for a current emotional or useful
-  incoming block; reactions still need both signals. **Generate suggestions**
-  works with automation Off and after your own message or an ended exchange.
-  A current manual set stays until replaced or withdrawn by a draft/source
-  change or its 12-hour request-time expiry. Style changes apply to the next
-  generation, without starting work. Selection inserts, Undo restores, and
+  incoming block; reactions still need both signals. **Suggestions** works
+  with automation Off and after your own message or an ended exchange; your
+  draft is the idea its complete messages develop, and [bracketed] text tells
+  the writer what to do. A current manual set stays until replaced or
+  withdrawn by a draft/source change or its 12-hour request-time expiry.
+  Style changes apply to the next generation, without starting work. A manual
+  choice replaces the draft, an automatic one is inserted, Undo restores, and
   Send remains separate.
-- **Writing.** Write, attach or reply, then press Send. Manual generation
-  offers optional wording and never replaces or sends the draft. Outgoing
+- **Writing.** Write, attach or reply, then press Send. Generating
+  suggestions never changes or sends the draft; only choosing one replaces
+  it, with Undo. Send asks first while [bracketed] text remains. Outgoing
   Rewrite and its tone controls are removed.
 - **Groups** list basic groups and supergroups active in the last seven days.
   Group AI processing starts Off; turn it on in the group's ⋮. Groups offer

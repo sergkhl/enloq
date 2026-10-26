@@ -397,7 +397,8 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
         "decline",
         "later",
     ]
-    assert option["properties"]["text"]["maxLength"] == 280
+    # No character limit (ADR 25 Q1): only the output-token bound applies.
+    assert "maxLength" not in option["properties"]["text"]
     assert set(option["required"]) == {"purpose", "text"}
     # The proxy route names its provider; no OpenRouter routing is sent.
     assert suggestion["model"] == MODEL and "provider" not in suggestion

@@ -86,6 +86,13 @@ def register(app):
                 app_.suggestions.fail(db, key, attempt, "format")
             elif state_name == "preparing":
                 app_.suggestions.enqueue(db, key, record, attempt, time.time() + 3600)
+            elif state_name == "waiting":
+                # Queued behind the Daily Budget: held without a spinner.
+                app_.suggestions.enqueue(db, key, record, attempt, time.time() + 3600)
+                db.execute(
+                    "UPDATE jobs SET error='Daily budget reached' WHERE id=?",
+                    (attempt,),
+                )
         return attempt
 
     async def setup(state_name, *, options, text, code):

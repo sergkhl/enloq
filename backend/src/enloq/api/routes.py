@@ -201,6 +201,8 @@ class SuggestionSettings(Model):
 
 
 class SuggestionGenerate(Revision):
+    # Earlier clients still send their caret; a manual option is a complete
+    # message replacing the draft (ADR 25 Q8), so none is used.
     cursor: int | None = Field(default=None, ge=0, le=65536)
 
 
@@ -397,7 +399,7 @@ def routes(manager, settings):
     @router.post("/chats/{peer}/suggestions/generate", response_model=SuggestionsView)
     def generate_suggestions(account_id: int, peer: str, body: SuggestionGenerate):
         return manager.get(account_id).suggestions.generate(
-            key(account_id, peer), body.revision, body.cursor
+            key(account_id, peer), body.revision
         )
 
     @router.get("/chats/{peer}/suggestions/settings", response_model=SuggestionSettings)

@@ -75,9 +75,10 @@ appId: ${APP_ID}
 - tapOn: "Back"
 - assertNotVisible: "Hide suggestions"
 - assertVisible:
-    text: "Generate suggestions"
+    id: "suggestions-button"
     enabled: true
-- tapOn: "Generate suggestions"
+- tapOn:
+    id: "suggestions-button"
 - extendedWaitUntil:
     visible: "Acknowledge: Thank you for telling me[.]"
     timeout: 20000

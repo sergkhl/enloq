@@ -5250,7 +5250,6 @@
             "type": "string"
           },
           "text": {
-            "maxLength": 280,
             "minLength": 1,
             "title": "Text",
             "type": "string"

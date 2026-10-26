@@ -3,7 +3,8 @@
 Automatic input comes from a validated incoming result; manual input captures
 the draft and bounded cached conversation on request. Neither path reads
 Telegram or prepares media. Both read enabled memory at dispatch, use the
-chat's captured Style and insert only on selection.
+chat's captured Style and change the draft only on selection: a manual option
+replaces its text, an automatic one is inserted at the caret.
 """
 
 import asyncio
@@ -189,7 +190,7 @@ class Suggestions:
             and self.sources_current(record, db)
         )
 
-    def generate(self, key, revision, cursor=None, *, reminder=None, language=None):
+    def generate(self, key, revision, *, reminder=None, language=None):
         self.private(key)
         self.app.admit_ai()
         if not self.app.authorized():
@@ -254,7 +255,6 @@ class Suggestions:
                     (key, now - 7 * 86400),
                     db,
                 )[0]["count"],
-                "cursor": cursor,
                 **captured,
                 "derived": {
                     k: self.app.emotion.derived(k, db) for k in captured["inputs"]
@@ -267,7 +267,6 @@ class Suggestions:
                     "context": [prepared(m, {}) for m in messages] if reminder else [],
                     "manual": True,
                     "draft": draft["text"],
-                    "cursor": cursor,
                     **(
                         {
                             "check_in": {
@@ -1065,7 +1064,10 @@ class Suggestions:
     # ---- owner selection -------------------------------------------------
 
     def insert(self, key, revision, attempt, index, cursor=None):
-        """Insert one current option into the current draft revision.
+        """Put one current option into the current draft revision: a manual
+        option, a complete message, replaces the draft's text, keeping its
+        images, GIF and reply target, with the caret at its end; an automatic
+        one is inserted at the caret (ADR 25 Q8).
 
         Validity, the chat's own record and the draft revision are checked in
         the mutation transaction, so a stale tab can neither use another
@@ -1098,11 +1100,11 @@ class Suggestions:
                 raise Conflict("Stop or undo this rewrite before editing or sending")
             if draft["revision"] != revision:
                 raise Conflict("Draft changed; keep your edits and reload")
-            text, caret = splice(
-                draft["text"],
-                record["options"][index]["text"],
-                record.get("cursor") if record.get("kind") == "manual" else cursor,
-            )
+            option = record["options"][index]["text"]
+            if record.get("kind") == "manual":
+                text, caret = option, len(option.encode("utf-16-le")) // 2
+            else:
+                text, caret = splice(draft["text"], option, cursor)
             if len(text) > 65536:
                 raise Refused("The draft would exceed its length limit")
             draft.update(

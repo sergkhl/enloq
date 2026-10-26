@@ -1,11 +1,12 @@
-"""Optional reply wording for the latest qualifying incoming block (ADR 25).
+"""Optional reply wording for a private chat (ADR 25).
 
-Suggestions are bounded message wording the owner may insert and edit; they
-are never sent, never a profile and never a substitute for the owner's answer.
+Suggestions are complete messages the owner may choose and edit; they are
+never sent, never a profile and never a substitute for the owner's answer.
 ADR 49 lets them answer a question, a decision or a request. The owner chooses
-what to insert; a set may offer one answer stance or several.
+what to use; a set may offer one answer stance or several.
 """
 
+import re
 from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -24,7 +25,6 @@ Purpose = Literal[
 # ADR 49 Q4, Q8: answer stances, any of which may stand alone.
 ANSWERS = frozenset({"accept", "decline", "later"})
 OPTIONS = 3
-OPTION_CHARACTERS = 280
 EXPIRY = LIFETIME  # The existing 12-hour source-time lifetime.
 # ADR 56: independent per-chat automation and a style shared by both paths.
 Style = Literal["friendly", "professional", "idioms"]
@@ -33,6 +33,13 @@ IDIOMS_WRITER: Literal["mimo", "muse"] = "muse"
 # usefulness alone only from 0.7, so a borderline answer that closes the
 # owner's own question (0.545 in every check) gets no set.
 CALM_USEFULNESS = 0.7
+# ADR 25: square-bracketed draft text instructs the writer and is never
+# message text; Send asks first while a draft still holds some.
+BRACKETED = re.compile(r"\[[^\[\]]*[^\s\[\]][^\[\]]*\]")
+
+
+def bracketed(text):
+    return bool(isinstance(text, str) and BRACKETED.search(text))
 
 
 def split_draft(text, cursor):
@@ -49,7 +56,9 @@ def split_draft(text, cursor):
 
 class SuggestionOption(Model):
     purpose: Purpose
-    text: str = Field(min_length=1, max_length=OPTION_CHARACTERS)
+    # No character limit (ADR 25 Q1): the request's output-token bound is the
+    # only one, and Send refuses what Telegram would.
+    text: str = Field(min_length=1)
 
     @field_validator("text")
     @classmethod

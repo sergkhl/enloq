@@ -32,7 +32,7 @@ async function answers(page: Page) {
   await page.getByRole("button", { name: /^Suggestion fixture/ }).tap();
 }
 
-test("answer stances fold for every client, reopen and insert into the draft with Undo", async ({
+test("answer stances fold for every client, reopen and go into the draft with Undo", async ({
   page,
 }) => {
   await answers(page);
@@ -60,6 +60,33 @@ test("answer stances fold for every client, reopen and insert into the draft wit
   await expect(field).toHaveValue("Sorry, I can't make it this time.");
   await page.getByRole("button", { name: "Undo suggestion" }).tap();
   await expect(field).toHaveValue("");
+});
+
+test("Suggestions is held with its spinner while a set is prepared, and without it while one waits", async ({
+  page,
+}) => {
+  const setup = (state: string) =>
+    page.request.post("/api/test/suggestions", {
+      data: { action: "setup", state },
+      headers: { Origin: ORIGIN },
+    });
+  expect((await setup("preparing")).status()).toBe(200);
+  await page.getByRole("button", { name: /^Suggestion fixture/ }).tap();
+  const button = page.getByRole("button", { name: "Suggestions", exact: true });
+  await expect(button).toBeDisabled();
+  await expect(button.locator(".work-spinner")).toBeVisible();
+  await expect(page.getByText("Preparing suggestions…")).toBeVisible();
+  expect((await setup("waiting")).status()).toBe(200);
+  await expect(page.getByText("Suggestions wait for budget")).toBeVisible();
+  await expect(button).toBeDisabled();
+  await expect(button.locator(".work-spinner")).toHaveCount(0);
+  expect((await setup("ready")).status()).toBe(200);
+  await expect(
+    page
+      .getByRole("region", { name: "Response suggestions" })
+      .getByRole("button", { name: /^Acknowledge/ }),
+  ).toBeVisible();
+  await expect(button).toBeEnabled();
 });
 
 test("the profile controls Automatic suggestions separately from shared Style", async ({
@@ -97,7 +124,7 @@ test("the profile controls Automatic suggestions separately from shared Style", 
     // while it is still valid.
     await expect(area).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Generate suggestions" }),
+      page.getByRole("button", { name: "Suggestions", exact: true }),
     ).toBeEnabled();
     await profile.tap();
     await automatic.tap();

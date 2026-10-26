@@ -6,10 +6,13 @@ import logging
 
 import pytest
 from enloq.domain.models import Conflict, Refused
+from enloq.domain.suggestions import bracketed
+from enloq.inference.base import EngineResponse, InvalidOutput
+from enloq.inference.work import validate_output
 from enloq.logs import SafeFormatter
 from enloq.storage.accounts import AccountRegistry
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import attach, fixture, message
 from backend.tests.test_suggestion_generation import Engine
 
 KEY = "1/user:42"
@@ -20,18 +23,24 @@ async def finish(app):
         await app.process_due()
 
 
-async def test_manual_draft_only_ignores_automation_and_preserves_cursor_and_undo(
+async def test_manual_draft_only_ignores_automation_and_choice_replaces_with_undo(
     tmp_path,
 ):
     app = fixture(tmp_path)
     app.suggestions.enabled = lambda: False
     app.suggestions.set_settings(KEY, False, "professional")
-    app.store.mutate_draft(KEY, 0, lambda d: d.update(text="Friday does not work."))
+    app.sync.ingest(message(app, text="Authored question about Friday"))
+    attach(app)
+    app.store.mutate_draft(
+        KEY,
+        app.store.draft(KEY)["revision"],
+        lambda d: d.update(text="Friday does not work. [offer Saturday]", reply_to=1),
+    )
     before = app.store.draft(KEY)
-    first = app.suggestions.generate(KEY, before["revision"], 20)
+    first = app.suggestions.generate(KEY, before["revision"])
     assert first.state == "preparing" and first.kind == "manual"
     assert (
-        app.suggestions.generate(KEY, before["revision"], 20).source_time
+        app.suggestions.generate(KEY, before["revision"]).source_time
         == first.source_time
     )
     assert (
@@ -43,13 +52,70 @@ async def test_manual_draft_only_ignores_automation_and_preserves_cursor_and_und
     assert view.state == "ready" and view.style == "professional"
     assert app.store.draft(KEY) == before
     packet = next(p for role, p in app.engine.calls if role == "response_suggestions")
-    assert packet["draft"] == before["text"] and packet["cursor"] == 20
+    # The whole draft is the starting idea; no caret is captured (ADR 25).
+    assert packet["draft"] == before["text"] and "cursor" not in packet
     assert packet["style"] == "professional" and packet["manual"] is True
-    selected = app.suggestions.insert(KEY, before["revision"], view.attempt, 0)
-    assert selected["draft"]["text"].startswith(before["text"][:20])
-    assert selected["draft"]["text"].endswith(before["text"][20:])
-    assert selected["draft"]["undo"] == before["text"]
+    option = view.options[0].text
+    chosen = app.suggestions.insert(KEY, before["revision"], view.attempt, 0, 3)
+    # A manual choice replaces the text, caret at its end, and keeps the
+    # images and reply target (Q8).
+    assert chosen["draft"]["text"] == option
+    assert chosen["caret"] == len(option.encode("utf-16-le")) // 2
+    assert chosen["draft"]["undo"] == before["text"]
+    assert chosen["draft"]["attachments"] == before["attachments"]
+    assert chosen["draft"]["reply_to"] == 1
+    undone = app.rewriting.undo(KEY, chosen["draft"]["revision"])
+    assert undone["text"] == before["text"] and undone["reply_to"] == 1
+    assert undone["attachments"] == before["attachments"]
     assert not app.store.rows("SELECT id FROM operations")
+
+
+async def test_automatic_choice_still_inserts_at_the_caret(tmp_path):
+    from backend.tests.test_suggestion_state import ready
+
+    app = fixture(tmp_path)
+    app.sync.ingest(message(app, 1, text="Authored worry"))
+    record = await ready(app)
+    draft = app.store.mutate_draft(KEY, 0, lambda d: d.update(text="First. Last."))
+    chosen = app.suggestions.insert(KEY, draft["revision"], record["attempt"], 0, 6)
+    assert chosen["draft"]["text"] == "First. That sounds like a lot today. Last."
+    assert chosen["draft"]["undo"] == "First. Last."
+
+
+async def test_the_set_states_that_hold_the_button(tmp_path):
+    """Preparing while queued or running; waiting for budget, AI processing or
+    the provider; a draft edit withdraws a manual set and frees the button."""
+    app = fixture(tmp_path)
+    app.sync.ingest(message(app, outgoing=True))
+    app.suggestions.generate(KEY, 0)
+    assert app.suggestions.view(KEY).model_dump(include={"state", "reason"}) == {
+        "state": "preparing",
+        "reason": "queued",
+    }
+    from enloq.domain.models import ProcessingPaused
+
+    def paused():
+        raise ProcessingPaused("AI processing is Off for this account")
+
+    app.admit_ai = paused
+    assert app.suggestions.view(KEY).model_dump(include={"state", "reason"}) == {
+        "state": "waiting",
+        "reason": "paused",
+    }
+    app.admit_ai = lambda: None
+    app.store.mutate_draft(KEY, 0, lambda d: d.update(text="A new idea."))
+    assert app.suggestions.view(KEY).model_dump(include={"state", "reason"}) == {
+        "state": "none",
+        "reason": "changed",
+    }
+    app.engine = Engine()
+    AccountRegistry(tmp_path).set_budget(0)
+    app.suggestions.generate(KEY, 1)
+    await finish(app)
+    assert app.suggestions.view(KEY).model_dump(include={"state", "reason"}) == {
+        "state": "waiting",
+        "reason": "budget",
+    }
 
 
 async def test_manual_after_outgoing_fresh_attempts_and_style_snapshot(tmp_path):
@@ -286,3 +352,76 @@ async def test_debug_log_explains_scheduling_and_outcome_without_correspondence(
         "canary" not in line and "user:42" not in line and "chat_key" not in line
         for line in lines
     )
+
+
+def written(text, packet):
+    content = {"options": [{"purpose": "clarify", "text": text}]}
+    return (
+        validate_output(
+            "response_suggestions", EngineResponse(json.dumps(content)), packet
+        )
+        .options[0]
+        .text
+    )
+
+
+@pytest.mark.parametrize(
+    "text,found",
+    [
+        ("[offer Saturday]", True),
+        ("Monday works. [ask about Tuesday] Thanks", True),
+        ("[[nested]]", True),
+        ("[]", False),
+        ("[  ]", False),
+        ("[unclosed", False),
+        ("no brackets", False),
+    ],
+)
+def test_bracketed_text_is_square_brackets_around_words(text, found):
+    assert bracketed(text) is found
+
+
+def test_bracketed_instructions_never_reach_an_option():
+    packet = {"manual": True, "draft": "Friday does not work. [offer Saturday]"}
+    for echoed in (
+        "Friday doesn't work for me. [offer Saturday]",
+        "Friday doesn't work. [Saturday?]",
+    ):
+        with pytest.raises(InvalidOutput, match="^bracketed_text$"):
+            written(echoed, packet)
+    developed = "Friday doesn't work for me. Would Saturday suit you?"
+    assert written(developed, packet) == developed
+    # Without instructions in the draft, square brackets are ordinary wording.
+    for packet in ({"manual": True, "draft": "The list is ready."}, {}):
+        assert written("The list is ready: [1, 2].", packet) == (
+            "The list is ready: [1, 2]."
+        )
+
+
+async def test_a_long_draft_gets_whole_long_options_and_send_keeps_its_limit(
+    tmp_path,
+):
+    app = fixture(tmp_path)
+    idea = "An authored long idea about the trip. " * 60
+    app.store.mutate_draft(KEY, 0, lambda d: d.update(text=idea))
+    reply = "An authored long reply about the trip. " * 120
+    writer = app.engine.generate
+
+    async def long(role, packet):
+        if role == "response_suggestions":
+            app.engine.calls.append((role, packet))
+            return {"options": [{"purpose": "acknowledge", "text": reply}]}
+        return await writer(role, packet)
+
+    app.engine.generate = long
+    app.suggestions.generate(KEY, 1)
+    await finish(app)
+    view = app.suggestions.view(KEY)
+    assert view.state == "ready" and view.options[0].text == reply
+    assert len(reply) > 4096
+    chosen = app.suggestions.insert(KEY, 1, view.attempt, 0)["draft"]
+    assert chosen["text"] == reply and chosen["undo"] == idea
+    # Telegram's 4,096 units: Send refuses visibly and keeps the draft.
+    with pytest.raises(Refused, match="4,096"):
+        await app.delivery.submit(KEY, chosen["revision"])
+    assert app.store.draft(KEY)["text"] == reply

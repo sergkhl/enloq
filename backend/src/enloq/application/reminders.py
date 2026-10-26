@@ -226,7 +226,7 @@ class Reminders:
                     else SuggestionsView(kind="manual", reason="changed")
                 )
             return self.app.suggestions.generate(
-                key, revision, cursor, reminder=identity, language=rule.language
+                key, revision, reminder=identity, language=rule.language
             )
 
 

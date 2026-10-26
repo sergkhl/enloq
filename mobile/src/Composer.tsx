@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Platform,
@@ -17,6 +18,7 @@ import type { Schemas } from "./api";
 import { useConnection } from "./connection";
 import { participantLabel } from "../../shared/participantLabel";
 import { replyQuoteText } from "../../shared/replyQuote";
+import { hasBracketed, SEND_BRACKETED } from "../../shared/suggestions";
 import type { NativeMessage, Snapshot } from "./conversation";
 import type { Composer } from "./drafts";
 import { MediaPicker, type PickerKind } from "./MediaPicker";
@@ -98,8 +100,26 @@ export function ComposerBar({
     composer.action !== "undo";
   const undoLabel = "Undo suggestion";
   const busy = !!composer.action || streaming;
-  const generatable = composer.canGenerate && aiEnabled && nativeAvailable;
+  // Any set for the chat being prepared, or waiting for budget, AI
+  // processing or the provider, holds the button (ADR 25).
+  const preparing = snapshot.suggestions?.state === "preparing";
+  const held = preparing || snapshot.suggestions?.state === "waiting";
+  const generatable =
+    composer.canGenerate && aiEnabled && nativeAvailable && !held;
   const sendable = composer.canSend && nativeAvailable;
+
+  // Bracketed text instructs Suggestions; Send asks first (ADR 25).
+  function send() {
+    if (sticker || !hasBracketed(composer.text))
+      return void composer.send().then(onSent);
+    Alert.alert(SEND_BRACKETED.title, SEND_BRACKETED.message, [
+      { text: SEND_BRACKETED.cancel, style: "cancel" },
+      {
+        text: SEND_BRACKETED.confirm,
+        onPress: () => void composer.send().then(onSent),
+      },
+    ]);
+  }
 
   function pickAfterSheet() {
     const source = picking.current;
@@ -206,14 +226,15 @@ export function ComposerBar({
         )}
         {rewrite && !group ? (
           <Pressable
+            testID="suggestions-button"
             accessibilityRole="button"
-            accessibilityLabel="Generate suggestions"
-            accessibilityState={{ disabled: !generatable }}
+            accessibilityLabel="Suggestions"
+            accessibilityState={{ disabled: !generatable, busy: preparing }}
             disabled={!generatable}
             onPress={() => void composer.generate()}
             style={[styles.rewrite, { opacity: generatable ? 1 : 0.5 }]}
           >
-            {composer.action === "generate" ? (
+            {composer.action === "generate" || preparing ? (
               <ActivityIndicator size="small" color={palette.accent} />
             ) : (
               <Ionicons name="pencil" size={16} color={palette.accent} />
@@ -222,7 +243,7 @@ export function ComposerBar({
               numberOfLines={1}
               style={[styles.label, { color: palette.accent }]}
             >
-              Generate suggestions
+              Suggestions
             </Text>
           </Pressable>
         ) : null}
@@ -244,7 +265,7 @@ export function ComposerBar({
           }
           accessibilityState={{ disabled: !sendable }}
           disabled={!sendable}
-          onPress={() => void composer.send().then(onSent)}
+          onPress={send}
           style={[
             styles.send,
             {
@@ -584,9 +605,10 @@ function ReplyTarget({
   );
 }
 
-// Up to three response options for the latest incoming block (ADR 25);
-// choosing one inserts it at the caret. A folded set stays folded on every
-// client until the next one arrives (ADR 56 Q12 B).
+// Up to three response options (ADR 25): choosing a manual one replaces the
+// draft's text, an automatic one is inserted at the caret, both with Undo. A
+// folded set stays folded on every client until the next one arrives (ADR 56
+// Q12 B).
 function SuggestionArea({
   view,
   folded,
@@ -633,7 +655,7 @@ function SuggestionArea({
       </Pressable>
     );
   return (
-    <View accessibilityLabel="Suggestions" style={styles.suggestions}>
+    <View accessibilityLabel="Response suggestions" style={styles.suggestions}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Hide suggestions"

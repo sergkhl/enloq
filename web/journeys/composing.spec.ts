@@ -17,12 +17,14 @@ async function replyTo(page: Page, text: string) {
 async function suggestUndoSend(page: Page, note: string) {
   const field = page.getByRole("textbox", { name: "Message" });
   await field.fill(note);
-  await page.getByRole("button", { name: "Generate suggestions" }).tap();
+  await page.getByRole("button", { name: "Suggestions", exact: true }).tap();
   await expect(field).toHaveValue(note);
   await page
     .getByRole("region", { name: "Response suggestions" })
     .getByRole("button", { name: /^Acknowledge/ })
     .tap();
+  // A manual choice is a complete message replacing the draft (ADR 25 Q8).
+  await expect(field).toHaveValue("Thank you for telling me.");
   const undo = page.getByRole("button", { name: "Undo suggestion" });
   await expect(undo).toBeEnabled({ timeout: 20000 });
   await undo.tap();
@@ -33,7 +35,7 @@ async function suggestUndoSend(page: Page, note: string) {
   ).toBeVisible({ timeout: 20000 });
 }
 
-test("a private chat generates, inserts, undoes and sends a reply; Enter adds a line", async ({
+test("a private chat generates, replaces, undoes and sends a reply; Enter adds a line", async ({
   page,
 }) => {
   await page.getByRole("button", { name: /^Alex · weekend plans/ }).tap();
@@ -83,7 +85,7 @@ test("a group sends a reply without suggestion or outgoing rewrite controls", as
     0,
   );
   await expect(
-    page.getByRole("button", { name: "Generate suggestions" }),
+    page.getByRole("button", { name: "Suggestions", exact: true }),
   ).toHaveCount(0);
   await replyTo(page, "I will bring the printed agenda.");
   const note = `Group note ${Date.now()}`;
@@ -175,4 +177,35 @@ test("swiping a message to the left replies to it, as the sheet's Reply", async 
   await expect(bubble.locator(".swipe-reply-arrow")).toHaveCount(0);
   await page.getByRole("button", { name: "Remove reply target" }).tap();
   await expect(target).toHaveCount(0);
+});
+
+test("a bracketed draft gets complete messages, its choice has Undo and Send asks first", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: /^Alex · weekend plans/ }).tap();
+  const field = page.getByRole("textbox", { name: "Message" });
+  const idea = `Saturday works [ask what time] ${Date.now()}`;
+  await field.fill(idea);
+  await page.getByRole("button", { name: "Suggestions", exact: true }).tap();
+  const area = page.getByRole("region", { name: "Response suggestions" });
+  await area.getByRole("button", { name: /^Acknowledge/ }).tap();
+  await expect(field).toHaveValue("Thank you for telling me.");
+  await page.getByRole("button", { name: "Undo suggestion" }).tap();
+  await expect(field).toHaveValue(idea);
+  // The brackets are instructions for Suggestions: Send asks before sending.
+  const asked: string[] = [];
+  page.once("dialog", (dialog) => {
+    asked.push(dialog.message());
+    void dialog.dismiss();
+  });
+  await page.getByRole("button", { name: "Send", exact: true }).tap();
+  await expect.poll(() => asked.length).toBe(1);
+  expect(asked[0]).toContain("[bracketed]");
+  await expect(field).toHaveValue(idea);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Send", exact: true }).tap();
+  await expect(
+    page.locator("article.app-bubble").filter({ hasText: idea }),
+  ).toBeVisible({ timeout: 20000 });
+  await expect(field).toHaveValue("");
 });

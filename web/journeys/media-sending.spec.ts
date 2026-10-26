@@ -111,7 +111,7 @@ test("stickers narrow locally, and a sticker sends on its own with the draft kep
   await expect(staged.getByText("Draft kept")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Message" })).toBeHidden();
   await expect(
-    page.getByRole("button", { name: "Generate suggestions", exact: true }),
+    page.getByRole("button", { name: "Suggestions", exact: true }),
   ).toBeDisabled();
   await expect(staged.getByText("Preparing sticker…")).toBeHidden({
     timeout: 15000,

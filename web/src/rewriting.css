@@ -288,11 +288,8 @@ small {
   }
 }
 @container app (max-width: 400px) {
-  .rewrite-button svg {
-    display: none;
-  }
   .rewrite-controls button {
-    gap: 0;
+    gap: 4px;
     padding: 0 7px;
   }
   .composer-actions select {
@@ -343,9 +340,6 @@ small {
 @container app (max-width: 350px) {
   .composer-actions select {
     max-width: 83px;
-  }
-  .rewrite-button svg {
-    display: block;
   }
 }
 .image-tray {

@@ -12,7 +12,7 @@ from ..application.capacity import Capacity
 from ..domain.briefing_contract import GROUP_ROLES, BriefingError, validate_group_output
 from ..domain.group_filtering import FILTER_ROLES, RULES_HASH
 from ..domain.models import Refused
-from ..domain.suggestions import ResponseSuggestions
+from ..domain.suggestions import ResponseSuggestions, bracketed
 from ..storage.members import OWNER, account_member, account_setting
 from . import decider
 from .base import EngineResponse, InvalidOutput, ProviderRefused
@@ -27,7 +27,6 @@ from .openrouter import (
     has_target_text,
 )
 from .streaming import cost_nanos
-from .suggestion_insertions import normalize_insertions
 from .suggestion_typography import normalize_suggestions
 
 # ADR 15: counted spending is receipts plus a rough flat estimate per call whose
@@ -109,6 +108,12 @@ def surrogate_pair(match):
     return f"\\u{0xD800 + high:04x}\\u{0xDC00 + low:04x}"
 
 
+def instructed(packet):
+    """Whether the owner's own words in a manual request carry bracketed
+    instructions for the writer (ADR 25)."""
+    return bool(packet.get("manual") and bracketed(packet.get("draft")))
+
+
 def validate_output(role, response, packet):
     if role in DECIDED:
         # Decision answers, not generated text (ADR 30).
@@ -142,7 +147,6 @@ def validate_output(role, response, packet):
         except BriefingError as failure:
             raise InvalidOutput(failure.code) from None
     if role == "response_suggestions":
-        content = normalize_insertions(content, packet)
         content = normalize_suggestions(content, packet)
     model = {
         "incoming_rewrite": IncomingRewrite,
@@ -161,6 +165,10 @@ def validate_output(role, response, packet):
                 # Text the owner may send carries no control characters.
                 if any(ord(c) < 32 and c != "\n" for c in option.text):
                     raise InvalidOutput("invalid_text")
+                # ADR 25: bracketed draft text instructs the writer and never
+                # appears in an option, which Send would otherwise question.
+                if instructed(packet) and bracketed(option.text):
+                    raise InvalidOutput("bracketed_text")
     except ValidationError as failure:
         if role == "chat_memory":
             codes = {

@@ -215,7 +215,6 @@ def test_final_contract_rejects_normalization_collisions():
     "content",
     [
         body(" "),
-        body("x" * 280 + "—"),
         body("1", "2", "3", "4"),
         {"options": [{"purpose": "advice", "text": "‘hello’"}]},
         {"options": [{"purpose": "clarify", "text": ["‘hello’"]}]},
@@ -228,9 +227,10 @@ def test_normalizer_does_not_repair_an_invalid_output_contract(content):
         validate_output("response_suggestions", EngineResponse(content), {})
 
 
-def test_280_character_bound_empty_result_and_original_parse_failures_remain():
-    raw = "x" * 277 + " — "
-    assert len(raw) == 280 and normalized(raw) == "x" * 277 + " - "
+def test_long_options_map_empty_result_and_original_parse_failures_remain():
+    # Options have no length limit (ADR 25 Q1); long ones map like short ones.
+    raw = "x" * 4000 + " — ‘later’ works."
+    assert normalized(raw) == "x" * 4000 + " - 'later' works."
     assert (
         validate_output("response_suggestions", EngineResponse(body()), {}).options
         == []

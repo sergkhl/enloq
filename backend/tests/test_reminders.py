@@ -196,7 +196,7 @@ async def test_first_review_empty_context_style_language_and_reopen(tmp_path, st
     assert app.reminders.view(KEY).occurrence.id == identity
 
 
-async def test_draft_additions_undo_and_changed_context_requires_explicit_generation(
+async def test_draft_replacement_undo_and_changed_context_requires_explicit_generation(
     tmp_path,
 ):
     app, now = scheduled(tmp_path)
@@ -208,8 +208,8 @@ async def test_draft_additions_undo_and_changed_context_requires_explicit_genera
     await finish(app)
     view = app.suggestions.view(KEY)
     inserted = app.suggestions.insert(KEY, 1, view.attempt, 0)
-    assert inserted["draft"]["text"].startswith("My ")
-    assert inserted["draft"]["text"].endswith("authored intent.")
+    # A reminder set is manual: its complete message replaces the draft.
+    assert inserted["draft"]["text"] == view.options[0].text
     assert inserted["draft"]["undo"] == "My authored intent."
     calls = len(app.engine.calls)
     assert app.reminders.review(KEY, identity, 2).reason == "changed"

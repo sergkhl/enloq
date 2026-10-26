@@ -567,7 +567,7 @@ describe("writing in a group (AG6)", () => {
   test("a group has Send and no suggestion generation or rewrite controls", async () => {
     await mount();
     expect(await screen.findByLabelText("Send")).toBeTruthy();
-    expect(screen.queryByLabelText("Generate suggestions")).toBeNull();
+    expect(screen.queryByLabelText("Suggestions")).toBeNull();
     expect(screen.queryByLabelText("Rewrite")).toBeNull();
     expect(screen.queryByLabelText("Rewrite tone")).toBeNull();
     expect(posts.some((post) => post.path === "tone")).toBe(false);

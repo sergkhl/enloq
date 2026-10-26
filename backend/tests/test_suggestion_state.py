@@ -437,10 +437,12 @@ async def test_oversized_prepared_input_fails_without_retaining_it(tmp_path):
 
 def test_output_contract_allows_empty_and_rejects_padding_or_blank_options():
     assert ResponseSuggestions.model_validate({"options": []}).options == []
+    # No character limit (ADR 25 Q1).
+    long = {"options": [{"purpose": "support", "text": "x" * 5000}]}
+    assert len(ResponseSuggestions.model_validate(long).options[0].text) == 5000
     for body in (
         {"options": [{"purpose": "support", "text": " "}]},
         {"options": [{"purpose": "advice", "text": "Do this"}]},
-        {"options": [{"purpose": "support", "text": "x" * 281}]},
         {"options": [{"purpose": "support", "text": "Same"}] * 2},
         {"options": [{"purpose": "support", "text": f"{n}"} for n in range(4)]},
         {"options": [], "extra": True},

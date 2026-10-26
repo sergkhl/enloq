@@ -634,7 +634,8 @@ source-time lifetime withdraw them. The shared projection checks validity for
 reading, dispatch and insertion.
 
 **Manual generation.** `POST /chats/{peer}/suggestions/generate` names the
-exact saved draft revision and an optional UTF-16 cursor. It bypasses incoming,
+exact saved draft revision; a cursor that earlier clients still send is
+ignored. It bypasses incoming,
 unanswered, emotion and usefulness gates, including after an own message or an
 ended exchange. A draft alone suffices. A blank draft with no usable cached
 conversation is refused. Input captures at most 20 same-chat messages from the
@@ -644,28 +645,32 @@ There is no history fetch, media preparation or reply chain. Draft text has a
 24,000-byte bound; the complete prepared packet has the existing 56,000-byte
 bound. No draft, attachment, reply target or send changes during generation.
 
-A blank draft requests complete messages. A nonblank draft requests additions
-at its captured cursor, using the whole draft as intent, without repeating or
-replacing it. Each explicit press requests fresh alternatives; duplicate taps
-while the current manual request is pending reuse it. A current manual set
-owns the suggestion area, so finishing automatic work cannot overwrite it.
+Every manual option is a complete message. A blank draft requests messages
+grounded in the conversation; a nonblank draft is the starting idea, which
+options develop beyond its own words, keeping its stance, feelings and facts
+and inventing none. Square-bracketed draft text is the owner's instruction to
+the writer: it never appears in an option and never chooses the language,
+which the draft's plain wording supplies. Each explicit press requests fresh
+alternatives; duplicate requests while the current manual request is pending
+reuse it, and both clients keep Suggestions disabled while any set for the
+chat is queued, running or waiting. A current manual set owns the suggestion
+area, so finishing automatic work cannot overwrite it.
 Manual sets expire 12 hours after the request and withdraw on a draft revision,
 new message or used source, attribution or derivative change. Nothing
 regenerates on withdrawal. Settings changed during a call apply next time.
 
 **Output and selection.** The writer returns zero to three distinct nonblank
-options, each at most 280 characters. For a nonblank manual draft, an exact
-copy of its prefix and suffix around the captured cursor is removed from a
-completed-draft output before option validation and typography normalization.
-Only its new insertion is offered; an echo with no addition fails format
-without resampling. Ordinary fragments stay intact, and changed draft wording
-is never applied as a replacement. Draft literals also protect copied exact
-values during typography normalization. One decision-model `suggestion_labels`
-call labels a nonempty set as acknowledge, support, clarify, celebrate,
+options with no character limit; the request's 16,384-token output bound is
+the only bound, and a chosen option longer than Telegram's 4,096 characters
+meets Send's visible refusal. When the manual draft holds square-bracketed
+text, an option with any square-bracketed text fails format without
+resampling. Draft literals protect copied exact values during typography
+normalization. One decision-model `suggestion_labels` call labels a nonempty
+set as acknowledge, support, clarify, celebrate,
 accept, decline or later. Any answer stance may stand alone or repeat across
 distinct options, for automatic and manual generation in every Style. A
-nonblank manual draft supplies intent that its additions follow; all factual
-constraints persist. With no supplied intent, options invent no facts,
+nonblank manual draft supplies intent that its complete messages follow; all
+factual constraints persist. With no supplied intent, options invent no facts,
 feelings, fault or commitments.
 Idioms retain ADR 56's adopted advice and common-expression exceptions.
 
@@ -678,22 +683,24 @@ content otherwise follows 30-day retention. Memory is read at dispatch under
 Remember this chat and is never part of the source identity.
 
 Old failed sets keep their failure: their discarded options cannot be recovered.
-A deliberate Generate suggestions press requests a new attempt under the
-current rule; deployment and reads never regenerate them.
+A deliberate Suggestions press requests a new attempt under the current rule;
+deployment and reads never regenerate them.
 
-Selection posts attempt, option index and draft revision to
-`/suggestions/insert`. Manual additions use the captured cursor; automatic
-options use the selection's caret. Insertion preserves every existing draft
-character, adds separating spaces where words would join, retains attachments
-and reply target and stores the previous text for **Undo suggestion**. It
-never sends. Later expiry cannot remove inserted text. Folding remains shared
-through `/suggestions/fold` until the next set arrives.
+Selection posts attempt, option index, draft revision and the caret to
+`/suggestions/insert`. A manual option replaces the draft's text, with the
+caret at its end; an automatic option is inserted at the caret, preserving
+every existing draft character and adding separating spaces where words would
+join. Both retain images, a GIF and the reply target and store the previous
+text for **Undo suggestion**. Neither sends; Send asks first while the draft
+still holds square-bracketed text. Later expiry cannot remove chosen text.
+Folding remains shared through `/suggestions/fold` until the next set arrives.
 
 Typography normalization applies only to new generated options: typographic
 sentence dashes, quotes and apostrophes become keyboard forms while supplied
-literals and uncertain values stay intact. Emoji escapes of the form
-`\u0001XXXX` are decoded before parsing; other control characters fail. Limits
-and duplicate checks apply after normalization. Drafts and cached reads remain
+literals and uncertain values stay intact; literal recognition reads supplied
+values and quotation windows of at most 280 characters. Emoji escapes of the
+form `\u0001XXXX` are decoded before parsing; other control characters fail.
+Duplicate checks apply after normalization. Drafts and cached reads remain
 verbatim.
 
 **Diagnostics.** DEBUG `enloq.suggestions` events use the fixed
@@ -716,7 +723,7 @@ with a separate `check_in` packet carrying explicit check-in intent, the
 occurrence identity and saved fallback language. Current cached conversation
 is reference context, separate from reply targets; it cannot supply a new
 answer stance for an empty-draft check-in. Draft text remains the user's
-intent. Without usable
+starting idea, and a chosen option replaces it with Undo. Without usable
 current context or enabled memory, a blank draft can request simple
 check-ins; other manual requests retain their empty-input refusal.
 
@@ -728,7 +735,7 @@ states, without generating. `regenerate: true` is an explicit Generate or
 Retry. Each occurrence gets fresh wording, without a wording archive.
 
 The existing Style, MiMo/Muse writers, Decider labels, memory restrictions,
-Daily Budget, capacity, twelve-hour validity, input freshness, insertion,
+Daily Budget, capacity, twelve-hour validity, input freshness, replacement,
 Undo and pending-send guards apply. Schedule edits/removal, completion and
 occurrence replacement reject late output. Timing, list reads, previews and
 notification delivery use no model requests and remain available with

@@ -24,6 +24,7 @@ import {
 import { workspaceApi } from "./accounts";
 import type { components } from "./api-schema";
 import { SuggestionArea, type SuggestionsView } from "./Suggestions";
+import { hasBracketed, SEND_BRACKETED } from "../../shared/suggestions";
 import { ReplyQuote } from "./ReplyQuote";
 import { catalogApi, type CatalogItem } from "./catalog-api";
 import { MediaPicker, type PickerKind } from "./MediaPicker";
@@ -577,6 +578,14 @@ export function Composer({
   }
   async function send() {
     if (action.current || !canSend()) return;
+    // Bracketed text instructs Suggestions; Send asks first (ADR 25).
+    if (
+      current.current.selected_media?.kind !== "sticker" &&
+      hasBracketed(current.current.text) &&
+      !window.confirm(SEND_BRACKETED.message)
+    )
+      return;
+    if (action.current || !canSend()) return;
     action.current = "send";
     setSending(true);
     setError("");
@@ -721,9 +730,14 @@ export function Composer({
       window.removeEventListener("beforeunload", closing);
     };
   }, [sending, attaching, undoing]);
+  // Any set for the chat being prepared, or waiting for budget, AI
+  // processing or the provider, holds the button (ADR 25).
+  const preparing = suggestions.state === "preparing";
+  const held = preparing || suggestions.state === "waiting";
   function canGenerate(requireAi = true) {
     return (
       (!requireAi || processing) &&
+      !held &&
       nativeAvailable &&
       current.current.selected_media?.kind !== "sticker" &&
       current.current.selected_media?.status !== "preparing" &&
@@ -934,11 +948,11 @@ export function Composer({
           <div className="rewrite-controls">
             <button
               className="rewrite-button"
-              aria-label="Generate suggestions"
+              aria-label="Suggestions"
               disabled={!canGenerate()}
               onClick={() => void generate()}
             >
-              {working ? (
+              {working || preparing ? (
                 <LoaderCircle
                   size={16}
                   className="work-spinner"
@@ -947,7 +961,7 @@ export function Composer({
               ) : (
                 <Pencil size={16} aria-hidden="true" />
               )}
-              <span>Generate suggestions</span>
+              <span>Suggestions</span>
             </button>
             <button
               className="undo-button"

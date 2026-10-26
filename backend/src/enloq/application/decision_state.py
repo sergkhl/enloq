@@ -76,5 +76,4 @@ def suggestions(packet, options):
     ]
     if packet.get("manual"):
         state["draft_intent"] = packet.get("draft", "")
-        state["cursor"] = packet.get("cursor")
     return state
