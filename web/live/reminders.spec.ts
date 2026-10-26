@@ -247,7 +247,10 @@ test("message reminders through the live service: early sets, refresh, a send fr
     expect(Date.now() / 1000 - began).toBeLessThan(SECONDS - 120);
     return counted;
   }
+  // Authored messages carry no square brackets, which Send would ask about
+  // (ADR 25).
   async function send(text: string, side: "owner" | "maya" = "owner") {
+    expect(/\[[^[\]]*\S[^[\]]*\]/.test(text)).toBe(false);
     await bounds();
     expect(evidence.sends).toBeLessThan(3);
     evidence.sends++;
@@ -317,7 +320,7 @@ test("message reminders through the live service: early sets, refresh, a send fr
       ).status(),
     ).toBe(200);
     // 1. The day's authored test message.
-    const first = `[Enloq authored reminder check ${began.toFixed(0)}] A test message for the day.`;
+    const first = `(Enloq authored reminder check ${began.toFixed(0)}) A test message for the day.`;
     await field.fill(first);
     await send(first);
     // 2. An exact reminder whose idea names that day, and a check-in, due
@@ -403,7 +406,7 @@ test("message reminders through the live service: early sets, refresh, a send fr
     // 5. Maya writes; 30 quiet seconds later the set is refreshed in the
     // background, with no client opening the chat meanwhile.
     await openMayaChat(page, "maya");
-    const mayas = `[Enloq authored reminder check ${began.toFixed(0)}] Maya's reply: are you free on Friday?`;
+    const mayas = `(Enloq authored reminder check ${began.toFixed(0)}) Maya's reply: are you free on Friday?`;
     await field.fill(mayas);
     await send(mayas, "maya");
     await page.goto("about:blank");
