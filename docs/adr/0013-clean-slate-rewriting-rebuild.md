@@ -41,7 +41,7 @@ Its core is two flows:
 **What it does not do.** No inferred attention or commitment tracking, topic
 classification or "needs reply" marks. Narrow exceptions: user-configured
 Reminders, once or repeating, invite review and manual sending
-([ADR 58](0058-recurring-message-reminders.md)); Response Suggestions offer short editable replies
+([ADR 58](0058-recurring-message-reminders.md)); Response Suggestions offer editable replies
 ([ADR 25](0025-emotion-response-suggestions.md),
 [ADR 49](0049-useful-response-suggestions.md),
 [ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)), and

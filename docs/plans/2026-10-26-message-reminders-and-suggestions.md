@@ -1,8 +1,7 @@
 # Message reminders and full-message suggestions
 
 Last meaningful update: 2026-10-26
-Status: active; implementation awaits the owner's go-ahead and the open
-question below.
+Status: active; implementation awaits the owner's go-ahead.
 
 Deliver the adopted [ADR 58](../adr/0058-recurring-message-reminders.md)
 redesign and [ADR 25](../adr/0025-emotion-response-suggestions.md)'s
@@ -20,7 +19,11 @@ live acceptance; iOS keeps its Mac build and enrollment gates in TODO.
    without inventing facts; bracketed text instructs the writer, never
    appears in options and never chooses the language; plain draft wording
    supplies it. Retire the draft echo stripping for manual sets and keep the
-   other format checks. Bump the shipped-defaults revision.
+   other format checks. Remove the 280-character cap from the prompt,
+   validation and storage for every set, giving typography's literal windows
+   their own bound; the request's existing output-token bound stays, and an
+   option longer than Telegram's 4,096 characters keeps today's visible Send
+   refusal. Bump the shipped-defaults revision.
 2. **Choosing.** A manual choice replaces the draft's text, keeping images, a
    GIF and the reply target, with the caret at its end and Undo restoring the
    previous draft. Automatic choices keep cursor insertion.
@@ -118,8 +121,9 @@ the adopted routes and rates before each run, keep Remember this chat Off in
 the Maya chat, record the chat's settings and draft and restore them, and add
 the actual requests to TODO's allowance.
 
-- **Phase 1:** one draft set and one bracketed set in each Style, no sends:
-  at most 20 model requests, 20 minutes and $0.05 counted.
+- **Phase 1:** one draft set and one bracketed set in each Style, plus one
+  long draft, no sends: at most 20 model requests, 20 minutes and $0.05
+  counted.
 - **Phase 2:** an exact-time Maya reminder whose idea names the day of that
   run's authored test messages, one without an idea, a Maya message for the
   refresh, a send from the set and a Dismiss: at most 60 model requests,
@@ -128,17 +132,12 @@ the actual requests to TODO's allowance.
 Format, delivery and target failures are material; weak wording is Low
 quality in [inference](../inference.md#retained-acceptance-limits).
 
-## Open questions
-
-- **Option length for long drafts.** Options are at most 280 characters
-  today, too short to carry a long draft's whole idea. Proposed: a
-  draft-guided option may run to the draft's length plus 280 characters,
-  capped at Telegram's 4,096. Needs the owner's answer before unit 1.
-
 ## Validation Log
 
 - 2026-10-26: written from the adopted ADR edits in `dcf9220`. No code
   changed, no model requests, no sends.
+- 2026-10-26: the owner removed the option length limit for every set, which
+  closed the plan's only open question; ADR 25 and CONTEXT record it.
 
 ## Open findings
 

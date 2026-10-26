@@ -7,7 +7,7 @@ status: accepted
 ## Context
 
 Answering and continuing a conversation take effort. Response Suggestions
-offer a few short messages the user can insert and edit, automatically or on
+offer a few messages the user can insert and edit, automatically or on
 a manual request. Outgoing Rewrite and its tone controls are removed;
 generation leaves the authored draft intact. Suggestions are a narrow
 exception to [ADR 13](0013-clean-slate-rewriting-rebuild.md)'s exclusion of
@@ -27,12 +27,13 @@ details.
 
 ## Decision
 
-**What they are.** Up to three short, editable replies, each with a purpose
+**What they are.** Up to three editable replies, each with a purpose
 label: Acknowledge, Support, Clarify, Celebrate, or, for answers, Accept,
 Decline and Later. The decision model assigns the labels from what each reply
 says (ADR 49 Q19). A set offers only replies that suit the conversation,
-never fills a quota and never gives communication coaching. The owner
-chooses, edits and sends deliberately; preparing a set never touches the
+never fills a quota and never gives communication coaching. No character
+limit applies: an option's length follows the conversation and the draft. The
+owner chooses, edits and sends deliberately; preparing a set never touches the
 draft.
 
 **Automatic generation.** Only in private chats, for the latest unanswered
@@ -239,15 +240,15 @@ dates and ranges, fractions, paths, names, identifiers and uncertain literal
 values. There is no broad punctuation or compatibility normalization and no
 dash-to-word repair. Mapping runs after the provider's JSON is parsed and
 before final checks and storage, never on JSON framing or the models that read
-cached options. The nonblank, 280-character and distinct-option checks run
-again after mapping, and different raw options that converge fail as format.
+cached options. The nonblank and distinct-option checks run again after
+mapping, and different raw options that converge fail as format.
 The display and the insertion use the same stored text. Cached options and
 drafts are never normalized, no option is filtered and no extra call is made.
 
 ### Questions
 
-- **Q1:** short editable messages with purpose labels; outgoing Rewrite and
-  its tone controls are removed.
+- **Q1:** editable messages with purpose labels and no length limit;
+  outgoing Rewrite and its tone controls are removed.
 - **Q2:** prepared automatically with the latest block's processing; the
   trigger is ADR 56's either signal.
 - **Q3:** qualifying emotions as above; a neutral or uncertain block now

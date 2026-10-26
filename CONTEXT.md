@@ -802,8 +802,9 @@ status without changing the draft.
 ### Response suggestions
 
 **Response Suggestions**:
-Up to three short, editable message options above a private chat's composer
-([ADR 25](docs/adr/0025-emotion-response-suggestions.md), ADR 49, ADR 56).
+Up to three editable message options, of any length, above a private chat's
+composer ([ADR 25](docs/adr/0025-emotion-response-suggestions.md), ADR 49,
+ADR 56).
 Automatic sets answer the latest qualifying unanswered block or reaction;
 manual sets can continue the conversation after the user's own last message,
 a neutral exchange or an ending. Groups and Saved Messages have none.
