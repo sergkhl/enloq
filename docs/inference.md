@@ -1200,6 +1200,15 @@ Authored offline coverage: `backend/tests/test_message_actions.py` and
   re-score the earlier set; the owner's ordinary-use quality review remains
   open.
 
+- **Complete manual messages: Low quality.** In ADR 25's live check under
+  defaults revision 20, a draft set and a bracketed set in each Style and
+  one long draft followed the draft's intent and its brackets, with no
+  bracketed text in any option. The Friendly bracketed set began all three
+  options with "not yet:", a stance word, so none could be sent as written;
+  a Professional draft option kept a shortened form of the draft's test
+  prefix, and an Idioms option used "falls through" for an unavailable day.
+  The owner's ordinary-use quality review remains open.
+
 - **Hostile-wording detection: Low quality.** The pinned decision model can
   miss subtle hostile sarcasm, aggressive blame and hostility in a forwarded
   exchange. In the authored hostile-only pass it missed six of 18 positive

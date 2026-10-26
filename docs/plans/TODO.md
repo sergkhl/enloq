@@ -97,13 +97,6 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
-- **Reminder and suggestion redesign** ([ADR 58](../adr/0058-recurring-message-reminders.md),
-  [ADR 25](../adr/0025-emotion-response-suggestions.md)): adopted, not
-  implemented; [its plan](2026-10-26-message-reminders-and-suggestions.md)
-  awaits the owner's go-ahead. Until it is delivered, the code, journeys and
-  runbooks keep the earlier behavior (one Weekly or Monthly schedule per
-  chat, Generate suggestions, draft additions at the cursor).
-
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the
   existing enrollment gate below.
@@ -159,8 +152,8 @@ Act only if they recur or grow.
   [group briefing outcomes](../inference.md#group-briefing-first-outcomes)):
   the Low quality outcomes kept for media rewrites (ADR 29), Emotion
   Classification and Reaction Assessment (ADR 30), Response Suggestions
-  (ADR 49), recurring reminder check-ins (ADR 58) and Daily Briefings
-  (ADR 34), and ADR 35's two unverified image
+  (ADR 49), recurring reminder check-ins (ADR 58), complete manual messages
+  (ADR 25) and Daily Briefings (ADR 34), and ADR 35's two unverified image
   cases.
 - **Ordinary use of native paths no check has observed**: queued-send
   recovery after a real interruption or flood wait ([ADR 26](../adr/0026-mobile-message-actions-and-send-status.md));
@@ -191,4 +184,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 1,865 are used. Add each check's requests here.
+total; 1,881 are used. Add each check's requests here.
