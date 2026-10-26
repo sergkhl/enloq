@@ -44,7 +44,10 @@ appId: ${APP_ID}
 # the keyboard to cover its counter, so the counter is read once it closes.
 - hideKeyboard
 - assertVisible: "23/300 bytes"
-# Traits have an Add of their own, named Add trait note.
+# Traits have an Add of their own, named Add trait note. The longer profile
+# can leave the button below the screen once the keyboard closes.
+- scrollUntilVisible:
+    element: "Add note"
 - tapOn: "Add note"
 # Earlier flows' messages may have grown the memory: scroll to the entry.
 - scrollUntilVisible:
