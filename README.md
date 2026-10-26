@@ -24,10 +24,10 @@ Python service. Enloq comes from *en* (縁, human connection) and *loqui*
   <tbody>
     <tr>
       <td width="33%" valign="top">
-        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a softened message, labeled Calmed in this capture, with the original available through the AI view toggle"></a>
+        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a softened message, marked Softened, with the original available through the AI view toggle"></a>
       </td>
       <td width="33%" valign="top">
-        <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions with Accept, Decline and Later options above an edited draft and a separate Send button"></a>
+        <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions with Accept, Decline and Later options above an edited draft, with separate Suggestions and Send buttons"></a>
       </td>
       <td width="33%" valign="top">
         <a href="docs/screenshots/enloq-briefing.png"><img src="docs/screenshots/enloq-briefing.png" width="270" alt="Enloq daily group briefing with topic summaries, participants and source links"></a>
@@ -44,9 +44,7 @@ Python service. Enloq comes from *en* (縁, human connection) and *loqui*
 *Open any screenshot at full size. These are high-resolution captures of the
 real phone-width web interface, using authored synthetic conversations and
 prepared outputs. They demonstrate presentation, not model quality, live
-Telegram delivery or native-device acceptance. They were taken on 24 October
-2026, before outgoing Rewrite was removed: the composer's Rewrite · Neutral
-button now reads Suggestions, and the Calmed label now reads Softened.*
+Telegram delivery or native-device acceptance.*
 
 ## What it does
 
