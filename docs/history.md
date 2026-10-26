@@ -207,7 +207,6 @@ Intake never fetches reply parents. A parent in the same page or the local store
 marks the reply available; otherwise it stays unknown until the message itself
 changes. Incoming rewriting and sending use the stored direct parent, or read it
 by exact ID when it is not stored, and refuse one that is missing or deleted.
-Outgoing Rewrite does not read it.
 
 For Reply Quotes ([ADR 41](adr/0041-reply-quotes.md)) intake also keeps the
 reply header's own details: `reply_quote` (a quoted fragment),

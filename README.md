@@ -3,10 +3,11 @@
 **A Telegram client that helps people read busy conversations and write clearer replies.**
 
 Enloq combines incoming messages into readable blocks, turns voice notes and
-images into clear text, calms hostile messages without losing their content,
-rewrites an authored draft in a chosen tone, and turns group conversations into
-daily briefings with links back to their sources. The original messages remain
-available, and sending is always a separate, deliberate action.
+images into clear text, softens hostile messages without losing their content,
+suggests complete replies that can build on your draft, and turns group
+conversations into daily briefings with links back to their sources. The
+original messages remain available, and sending is always a separate,
+deliberate action.
 
 The product has a React web client and an Expo / React Native app, backed by a
 Python service. Enloq comes from *en* (縁, human connection) and *loqui*
@@ -23,17 +24,17 @@ Python service. Enloq comes from *en* (縁, human connection) and *loqui*
   <tbody>
     <tr>
       <td width="33%" valign="top">
-        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a Calmed message, with the original available through the AI view toggle"></a>
+        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a softened message, labeled Calmed in this capture, with the original available through the AI view toggle"></a>
       </td>
       <td width="33%" valign="top">
-        <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions and an edited draft with separate Rewrite and Send controls"></a>
+        <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions with Accept, Decline and Later options above an edited draft and a separate Send button"></a>
       </td>
       <td width="33%" valign="top">
         <a href="docs/screenshots/enloq-briefing.png"><img src="docs/screenshots/enloq-briefing.png" width="270" alt="Enloq daily group briefing with topic summaries, participants and source links"></a>
       </td>
     </tr>
     <tr>
-      <td width="33%" valign="top">Read a calm rendering of a frustrated message and return to the original.</td>
+      <td width="33%" valign="top">Read a softened rendering of a hostile message and return to the original.</td>
       <td width="33%" valign="top">Choose a suggestion, edit your draft and send when ready.</td>
       <td width="33%" valign="top">Follow the key points back to the messages behind them.</td>
     </tr>
@@ -43,21 +44,27 @@ Python service. Enloq comes from *en* (縁, human connection) and *loqui*
 *Open any screenshot at full size. These are high-resolution captures of the
 real phone-width web interface, using authored synthetic conversations and
 prepared outputs. They demonstrate presentation, not model quality, live
-Telegram delivery or native-device acceptance.*
+Telegram delivery or native-device acceptance. They were taken on 24 October
+2026, before outgoing Rewrite was removed: the composer's Rewrite · Neutral
+button now reads Suggestions, and the Calmed label now reads Softened.*
 
 ## What it does
 
 - **Read with less friction.** Show incoming text together as it was sent, and
-  rewrite voice notes, video circles and images into clear text. A frustrated
-  or angry block is rewritten calmly, keeping every fact, request, deadline and
-  threat, and marked Calmed. Switch between AI text and originals; retain
-  original media, observed edits, replies and source navigation.
-- **Write with control.** Rewrite a draft as Neutral, Professional or Friendly
-  casual. Review streamed text, stop an outgoing rewrite, restore the original
-  with Undo, and send only when ready. When the latest block shows a clear
-  emotion or calls for a reply, suggestions can offer Accept, Decline and Later
-  stances; choosing one edits the draft. Each chat's profile can turn calming
-  and suggestions off or ask for idioms.
+  rewrite voice notes, video circles and images into clear text. A block with
+  hostile wording is softened, keeping every fact, request, deadline and
+  threat, and marked Softened; frustration or anger alone is left as written.
+  Switch between AI text and originals; retain original media, observed edits,
+  replies and source navigation.
+- **Write with control.** Press Suggestions for up to three complete messages.
+  A started draft is the idea they develop, and text in [square brackets]
+  instructs the writer without appearing in them. Choosing one puts it in the
+  draft for editing, Undo restores the previous draft, and nothing is sent
+  until you press Send, which asks first while bracketed text remains. When
+  the latest block shows a clear emotion or calls for a reply, suggestions
+  also appear on their own and can offer Accept, Decline and Later stances.
+  Each chat's profile can turn softening and automatic suggestions off and
+  set the suggestions' style: Friendly, Professional or Idioms.
 - **Remember what matters.** In chats with memory on, note what each person and
   the owner care about for the suggestions to read, and collect the owner's
   traits and habits for them alone.
@@ -79,7 +86,7 @@ Telegram delivery or native-device acceptance.*
 | Web | TypeScript, React, Vite | Reading, composing, streamed updates, pairing and settings |
 | Mobile | TypeScript, React Native, Expo | iPhone and Android clients, device trust, media and notifications |
 | Shared client rules | Framework-independent TypeScript in `shared/` | Routes, times, reply presentation and reading rules |
-| AI and speech | A model proxy, bounded inference roles and Whisper transcription | Rewriting, classification, briefings and speech, with explicit routes and budgets |
+| AI and speech | A model proxy, bounded inference roles and Whisper transcription | Rewriting, suggestions, classification, briefings and speech, with explicit routes and budgets |
 
 The deployed architecture places the service on an owner-managed VPS behind
 HTTPS. Telegram authorizations, message caches and durable work stay with that
@@ -97,10 +104,11 @@ model routes are documented in [Inference](docs/inference.md) and
 
 ## Engineering decisions
 
-**Rewriting and sending have different lifecycles.** Incoming generation waits
-for a quiet window. Streamed text is provisional until final validation. An
-outgoing rewrite only changes the editable draft; it cannot send a message.
-Account processing controls are independent of the reading view.
+**Generating and sending have different lifecycles.** Incoming generation
+waits for a quiet window. Streamed text is provisional until final validation,
+and suggestions appear only as complete sets. A chosen suggestion only changes
+the editable draft; it cannot send a message. Account processing controls are
+independent of the reading view.
 
 **An uncertain send is not safe to repeat.** Sends are ordered per chat and
 retain their operation identity, intended account, peer and media. Failed and
