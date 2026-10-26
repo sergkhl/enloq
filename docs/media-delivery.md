@@ -9,16 +9,15 @@ current `caption_length_max` before upload. Text-only sends use 4,096 UTF-16
 units. Every native send keeps the account's own identity and refuses paid
 delivery (`allow_paid_stars=0`, no paid flood skip); text sends also disable
 link previews. Oversized drafts remain editable without splitting, truncation
-or automatic attachment removal. Caption rewriting uses at most four images /
-20 MB under the Daily Budget; a larger selection can still be sent
-deliberately within the delivery limits.
+or automatic attachment removal.
 
 Draft images live in the account's private `draft-images` directory with mode
-600, referenced by its `rewriting.sqlite3`. Saving, removing and applying a
-rewrite check the draft revision. Rewrite/Undo transform text and preserve the
-attachment selection. An unknown operation pins its image bytes even when the
-user edits the newer draft; a prepared one does so only until housekeeping,
-within about a minute, refuses it because its revision can no longer be sent.
+600, referenced by its `rewriting.sqlite3`. Saving, removing and choosing a
+suggestion check the draft revision. A chosen suggestion and Undo change only
+the text and preserve the attachment selection. An unknown operation pins its
+image bytes even when the user edits the newer draft; a prepared one does so
+only until housekeeping, within about a minute, refuses it because its
+revision can no longer be sent.
 Confirmed sends clear only their exact revision; a collector deletes images
 only when no draft or unresolved operation references them. Temporary incoming
 media belongs to a separate bounded lease.
@@ -210,13 +209,12 @@ Durable queue acceptance captures the selected media, optional GIF caption,
 reply and stable random ID in one immutable submission. A sticker payload has
 no kept text. Acceptance restores its exact kept text/Undo/state and retains
 the reply with nonempty text immediately; it does not wait for native
-confirmation. Removing the unsent sticker restores the same draft. GIF caption
-Rewrite uses authored text only; sticker Rewrite, Undo and suggestion insertion
-are unavailable. Both media kinds use the paid-send refusal, per-chat ordering,
-receipt/refusal evidence and the ordinary-reply suggestion lifecycle. Draft
-actions also bind clicked content/selected identity across delayed autosaves
-so another trusted client's replacement cannot be sent, rewritten or amended
-silently.
+confirmation. Removing the unsent sticker restores the same draft. With a
+sticker selected, Undo and suggestion insertion are unavailable. Both media
+kinds use the paid-send refusal, per-chat ordering, receipt/refusal evidence
+and the ordinary-reply suggestion lifecycle. Draft actions also bind clicked
+content/selected identity across delayed autosaves so another trusted client's
+replacement cannot be sent or amended silently.
 
 A native GIF or sticker goes out in the final `messages.sendMedia` as the
 chosen document itself: Telegram answers `messages.uploadMedia` with an
