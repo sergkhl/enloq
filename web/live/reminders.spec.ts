@@ -71,17 +71,23 @@ body=json.loads(row[0]) if row else {}
 packet=body.get('packet') or {}
 print(json.dumps({'reminders':len(body.get('reminders') or []),'trigger':body.get('trigger'),'state':body.get('state'),'answered':len(packet.get('messages') or []),'reference':len(packet.get('context') or []),'kept':[len(d.get('messages') or []) for d in packet.get('kept') or []]}))
 `;
-// Zones whose local midnight may fall inside the run, so the idea's day is
-// kept while it lasts (ADR 58 Q11).
+// Regional zones covering every whole and fractional offset, so some local
+// midnight is near whenever the run starts; the idea's day is kept when that
+// midnight falls inside the run (ADR 58 Q11). Offsets come from Intl, so
+// daylight saving needs no table here.
 const ZONES = [
   "Pacific/Kiritimati",
-  "Pacific/Tongatapu",
   "Pacific/Chatham",
+  "Pacific/Tongatapu",
   "Pacific/Auckland",
+  "Pacific/Fiji",
+  "Asia/Kamchatka",
   "Pacific/Noumea",
   "Australia/Lord_Howe",
   "Australia/Sydney",
   "Australia/Adelaide",
+  "Australia/Brisbane",
+  "Australia/Darwin",
   "Asia/Tokyo",
   "Australia/Eucla",
   "Asia/Shanghai",
@@ -95,23 +101,36 @@ const ZONES = [
   "Asia/Dubai",
   "Asia/Tehran",
   "Europe/Moscow",
+  "Africa/Johannesburg",
   "Europe/Athens",
+  "Africa/Lagos",
   "Europe/Berlin",
+  "Africa/Abidjan",
   "Europe/London",
+  "Atlantic/Cape_Verde",
   "Atlantic/Azores",
   "Atlantic/South_Georgia",
-  "America/Sao_Paulo",
+  "America/Noronha",
   "America/St_Johns",
+  "America/Sao_Paulo",
+  "America/Argentina/Buenos_Aires",
   "America/Halifax",
+  "America/Santo_Domingo",
   "America/New_York",
+  "America/Bogota",
   "America/Chicago",
+  "America/Mexico_City",
   "America/Denver",
+  "America/Phoenix",
   "America/Los_Angeles",
   "America/Anchorage",
+  "Pacific/Pitcairn",
+  "Pacific/Gambier",
   "Pacific/Marquesas",
   "Pacific/Honolulu",
+  "Pacific/Tahiti",
   "Pacific/Pago_Pago",
-  "Etc/GMT+12",
+  "Pacific/Niue",
 ];
 
 function local(zone: string, at: Date) {
