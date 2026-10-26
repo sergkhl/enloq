@@ -16,7 +16,9 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-No active plans.
+1. [Message reminders and full-message suggestions](2026-10-26-message-reminders-and-suggestions.md):
+   ADR 58 and ADR 25 in two phases; awaits the owner's go-ahead and one
+   open question.
 
 Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
 implementation or deployment.

@@ -98,11 +98,11 @@ Act only if they recur or grow.
 ## Waiting on the owner
 
 - **Reminder and suggestion redesign** ([ADR 58](../adr/0058-recurring-message-reminders.md),
-  [ADR 25](../adr/0025-emotion-response-suggestions.md)): adopted in an
-  interview, not implemented. The code, journeys and runbooks keep the
-  earlier behavior (one Weekly or Monthly schedule per chat, Generate
-  suggestions, draft additions at the cursor) until the owner authorizes a
-  plan.
+  [ADR 25](../adr/0025-emotion-response-suggestions.md)): adopted, not
+  implemented; [its plan](2026-10-26-message-reminders-and-suggestions.md)
+  awaits the owner's go-ahead. Until it is delivered, the code, journeys and
+  runbooks keep the earlier behavior (one Weekly or Monthly schedule per
+  chat, Generate suggestions, draft additions at the cursor).
 
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the
