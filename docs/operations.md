@@ -623,13 +623,16 @@ but a read of one fails the check. Write new checks in `web/live/` with
 `openMayaChat`. These checks may send real messages, so `./scripts/check`
 never runs them; run one file at a time.
 
-`live/manual-suggestions.spec.ts` makes three authored generations, one per
-Style, with automation Off and no sends. It checks unchanged draft, insertion,
-Undo and restored settings. `live/arrival-notifications.spec.ts` sends three
-authored Maya messages and reads only the service's scoped eligibility and
-screening metadata through Docker, using no second Telegram client. It checks
-early clean eligibility and silent later updates; OS-banner display is a
-separate phone check. Both save private evidence under `.local/live-results/`.
+`live/manual-suggestions.spec.ts` asks for a draft set and a bracketed set in
+each Style, plus one long draft, with automation Off and no sends; its ceiling
+is 20 model requests, 20 minutes and $0.05 counted. It checks that every set
+is ready with no bracketed text in its options, the unchanged draft,
+replacement with Undo and restored settings.
+`live/arrival-notifications.spec.ts` sends three authored Maya messages and
+reads only the service's scoped eligibility and screening metadata through
+Docker, using no second Telegram client. It checks early clean eligibility and
+silent later updates; OS-banner display is a separate phone check. Both save
+private evidence under `.local/live-evidence/`.
 
 `live/reminders.spec.ts` checks the calendar occurrence's first review,
 reopening, all three Styles, draft preservation, insertion/Undo and confirmed
