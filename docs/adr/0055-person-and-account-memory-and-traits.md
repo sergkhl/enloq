@@ -195,9 +195,10 @@ run still missed twice by Q26's zero-miss rule (see Known limits). Trying
 Muse Spark 1.3 for the memory update is the follow-up if literal readings
 show up in real chats.
 
-**The test chat (Q29).** Remember this chat is Off for the Maya test chat in
-the Owner Account, so test messages teach the Owner Account's About you
-nothing.
+**The test chat (Q29).** Remember this chat is On for the Maya test chat in
+the Owner Account, so test messages there teach Maya's Person Memory and the
+Owner Account's About you like any other chat's. A check that must not teach
+memory switches it Off for its run and back On.
 
 ## Consequences
 

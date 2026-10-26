@@ -186,11 +186,11 @@ login is a MacHelm setting, and install does not change it.
   and both account IDs (`origin`, `owner`, `maya`); it is never committed.
 - Keep every other chat out of tests: never send there, and never make another
   person's messages test content. Keep test messages recognisable as tests.
-- Both accounts are signed in on the VPS service, Maya with her AI processing
-  off. Remember this chat is Off for the Maya chat in the Owner Account, so
-  live sends teach neither Person nor Account Memory; a check that needs
-  memory there switches it on, then off again, and removes from About you
-  whatever it taught.
+- Both accounts are signed in on the VPS service with AI processing On, and
+  Remember this chat is On for the Maya chat in the Owner Account (ADR 55
+  Q29), so live sends there are processed on both sides and teach Maya's
+  Person Memory and the Owner Account's About you. A check that needs either
+  Off switches it Off for its run and back On afterwards, even when it fails.
 - **Browser first.** Run live checks in a browser on the VPS: `npm --prefix web
   run live -- live/<check>.spec.ts`, one file at a time; `./scripts/check`
   never runs them. Write new ones in `web/live/` with `openMayaChat` from

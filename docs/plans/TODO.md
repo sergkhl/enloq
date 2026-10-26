@@ -97,12 +97,6 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
-- **Remember this chat in the Maya chat** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)
-  Q29): it has been On since 2026-10-25 17:28 UTC, when no agent session on
-  the VPS was active, while Q29 and AGENTS.md keep it Off so live sends teach
-  nothing. Live checks switch it Off for their runs and back On; the owner
-  decides which state stands.
-
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the
   existing enrollment gate below.

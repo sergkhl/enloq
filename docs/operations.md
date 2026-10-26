@@ -648,7 +648,9 @@ timezone's midnight is at most 22 minutes away, the reminders use it, so the
 idea's day ends within the run and its Kept Messages are copied first. It
 requires the Maya composer to be empty, Remember this chat Off, no Maya
 schedule pending or due during the run, the owner's account AI On, Maya's AI
-Off, global Automatic suggestions On and available Daily Budget. It turns the
+Off, global Automatic suggestions On and available Daily Budget. Remember this
+chat and Maya's AI stand On (AGENTS.md, Live Telegram sends), so switch both
+Off before a run and back On after it, whether or not it passed. It turns the
 chat's Automatic suggestions On for the run, then restores the chat's
 settings, clears its draft and removes only its own schedules, checking that
 any others are unchanged. Its ceiling is 60 model requests, three
