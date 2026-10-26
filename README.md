@@ -53,7 +53,7 @@ button now reads Suggestions, and the Calmed label now reads Softened.*
 - **Read with less friction.** Show incoming text together as it was sent, and
   rewrite voice notes, video circles and images into clear text. A block with
   hostile wording is softened, keeping every fact, request, deadline and
-  threat, and marked Softened; frustration or anger alone is left as written.
+  threat, and marked Softened; frustration or anger alone does not trigger it.
   Switch between AI text and originals; retain original media, observed edits,
   replies and source navigation.
 - **Write with control.** Press Suggestions for up to three complete messages.
