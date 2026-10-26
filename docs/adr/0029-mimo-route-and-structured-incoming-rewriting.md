@@ -91,8 +91,8 @@ Copy takes the same text, and previews and notifications collapse it to one
 line. The structure rules live in the owner-editable incoming guidance; the
 plain-text rule lives in the fixed core, because rendering depends on it. The
 Faithfulness Rules, forwarded-content attribution and the empty text of
-image-only blocks are unchanged. Suggestion insertion keeps the authored
-draft and adds the chosen text at its cursor (ADR 25).
+image-only blocks are unchanged. A chosen manual suggestion replaces the
+draft and an automatic one is added at its cursor, with Undo (ADR 25).
 
 **Speech (Q10, Q11).** Voice notes and video-circle audio are rewritten into
 clear written text, not stitched in. Fillers, false starts, repetition and

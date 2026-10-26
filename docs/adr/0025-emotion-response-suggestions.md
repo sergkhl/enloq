@@ -52,43 +52,54 @@ Both the owner's server-wide and the chat's **Automatic suggestions**
 switches must be On. Preparation follows the block's or reaction's decision
 ([ADR 30](0030-decider-emotion-classification.md)). Unchanged results are
 reused across reads, refreshes and restarts. Groups and Saved Messages have no
-suggestions.
+suggestions, and a chat with a pending reminder gets no automatic set while
+it is pending ([ADR 58](0058-recurring-message-reminders.md)).
 
-**Manual generation.** A separate, always-visible Generate suggestions button
+**Manual generation.** A separate, always-visible **Suggestions** button
 replaces outgoing Rewrite in private-chat composers; Send remains separate.
 It works after the user's own latest message, in a neutral exchange or after
 a conversation has ended, without an unanswered-block, emotion or usefulness
 gate. Automatic suggestions Off does not block it. Account AI, budget,
 capacity, trust and the normal composer action guards still apply. Groups
-lose Rewrite without gaining suggestions; Saved Messages keeps no AI.
+lose Rewrite without gaining suggestions; Saved Messages keeps no AI. The
+button is disabled and shows its spinner while any set for the chat is being
+prepared, manual, reminder or automatic. While a set waits for budget, AI
+processing or the provider, it stays disabled without the spinner. A draft
+edit withdraws a set built from that draft and frees the button.
 
-With an empty draft, a manual request offers complete messages grounded in
-the available recent conversation and enabled memory. With a nonempty draft,
-the text supplies the user's intent: options are additions that fit its
-captured insertion point, using the whole draft as context rather than
-repeating or replacing it. A draft alone is sufficient when recent chat
+Every manual option is a complete message. With an empty draft, options are
+grounded in the available recent conversation and enabled memory. With text
+in the draft, the draft is the starting idea: options develop it into
+complete messages and may go beyond its own words. Text in square brackets
+is an instruction to the writer rather than message text; the rest is the
+user's wording to develop. A draft alone is sufficient when recent chat
 context is unavailable. The request uses bounded cached same-chat context,
 transcripts and image meanings, never an older-history scan or a reply chain.
 Automatic requests continue to use their conversation evidence, not the
 unfinished draft. Generation itself changes no draft text or attachments.
 
 Each deliberate press requests fresh alternatives, even on unchanged input;
-duplicate taps during one active request share that attempt. There is no
+duplicate requests during one active request share that attempt. There is no
 automatic resampling. A manual attempt owns the suggestion area until
 withdrawn or explicitly replaced: later automatic output cannot overwrite
 it. Editing its draft or changing its conversation evidence withdraws it,
 including late output, and starts no replacement call. Another press captures
 the revised draft and context.
 
-**Reminder review.** Opening one pending recurring reminder deliberately
-requests its first set through this manual path (ADR 58). Its occurrence and
-check-in intent are separate from draft text. Duplicate reviews share only
-that occurrence's attempt. Reopening reuses valid options; changed context,
-expiry or failure needs explicit Generate/Retry. A blank draft without usable
-context or enabled memory may receive simple check-ins in the schedule's
-editable fallback language. Each occurrence gets newly generated wording,
-with no wording history for repetition avoidance. Listing or notifying
-reminders starts no inference. Schedule edits/removal and occurrence
+**Reminder suggestions.** While a chat has pending reminder occurrences, one
+manual set covering all of them owns its suggestion area, however the chat
+was opened (ADR 58). Each reminder's Message Idea, or a check-in without one,
+supplies its purpose, and any text in the chat's draft adds intent. The set
+is prepared two minutes before the alert and refreshed in the background 30
+quiet seconds after new messages; opening prepares a fresh set only when the
+current one no longer fits, never rerunning an unchanged failure, and the
+Suggestions button requests the same kind of set. Messages that arrived
+after a reminder fell due are answered; earlier ones are reference only.
+Reminder sets read the 20 newest cached messages within the 30-day cache,
+Kept Messages and enabled memory; without conversation or memory they use
+the schedule's fallback language. Each set gets newly generated wording, with
+no wording history for repetition avoidance. Listing or notifying reminders
+starts no inference. Schedule edits/removal and occurrence
 completion/replacement withdraw options without touching drafts.
 
 **Added meaning.** Options may offer grounded acknowledgement, sympathy,
@@ -105,14 +116,16 @@ Support keeps the person's refusals and boundaries; an inferred emotion is
 context, not knowledge of someone's inner state; a reaction never counts as
 agreement.
 
-A draft-guided manual addition follows the intent the user has supplied,
-including an explicit answer stance; it does not need to offer an opposing
-stance to that intent. This does not authorize facts, feelings or commitments
-that neither the draft nor the permitted evidence supplies.
+A draft-guided manual message follows the intent the user has supplied,
+including an explicit answer stance and bracketed instructions; it does not
+need to offer an opposing stance to that intent. It may develop the idea
+beyond the draft's own words, but this does not authorize facts, feelings or
+commitments that neither the draft nor the permitted evidence supplies.
 
 **Evidence.** Automatic sets read the latest original incoming block, or the
 reaction and its exact target. Manual sets read the captured draft intent
-and available recent conversation as above. Both keep bounded Supporting
+and available recent conversation as above, and reminder sets the wider
+context ADR 58 gives them. Both keep bounded Supporting
 Context: up to 20 preceding recent
 same-chat messages and the one directly replied-to message, including their
 transcripts and image context. The messages decide the response; emotion
@@ -139,11 +152,13 @@ the Daily Budget of the member whose account it serves
 option's full wording and label, in both reading views. It belongs to the
 latest qualifying block or reaction, or the current manual attempt. Folding
 is remembered on every client until the next set arrives (ADR 56); there is no notification or row
-marker. Choosing an option inserts it into an empty draft, or at the saved
-cursor in an existing draft (its end when none is known), keeping the text,
-chosen images and reply target. Undo restores the whole previous draft. The
+marker. Choosing a manual option replaces the draft's text with it, keeping
+chosen images, a GIF and the reply target. Choosing an automatic option
+inserts it into an empty draft, or at the saved cursor in an existing draft
+(its end when none is known). Undo restores the whole previous draft. The
 composer's action and revision locks apply, focus returns to the composer, and
-insertion neither sends nor rewrites.
+choosing neither sends nor rewrites. Send transmits the exact draft, but asks
+first while it still contains square-bracketed instructions.
 
 **Style and language.** The chat's **Style**, Friendly, Professional or
 Idioms, applies to both manual and automatic sets (ADR 56). Friendly is the
@@ -154,7 +169,8 @@ block's language; for
 a mixed block, the owner's established recent language in that chat,
 otherwise the dominant incoming language. Reminder schedules alone have a
 fallback-language selector for missing conversation and memory (ADR 58).
-When the draft is the only evidence, its language supplies the language.
+The draft's own wording supplies the language of options developed from it;
+bracketed instructions never choose the language.
 
 **Lifetime.** An automatic set is withdrawn by new incoming content, changed, deleted or
 re-transcribed evidence, the 12-hour expiry from the source's time, any later
@@ -170,8 +186,9 @@ without clearing it.
 
 A manual set lasts at most twelve hours from its request, rather than the
 time of an incoming block. Draft edits, new conversation content, a send or
-changed source evidence withdraw it sooner. The pending-send suspension and
-non-send restoration rules apply only while its captured inputs remain valid.
+changed source evidence withdraw it sooner; a withdrawn reminder set is
+refreshed as above. The pending-send suspension and non-send restoration
+rules apply only while its captured inputs remain valid.
 
 **Controls.** Settings → AI names the owner's server-wide switch
 **Automatic suggestions**, initially On. Each private chat's Correspondent
@@ -186,7 +203,7 @@ Reset and versions for future calls: Response suggestions, When to suggest,
 Friendly, Professional and Idioms (ADR 56 Q6).
 
 **No implicit generation.** Apart from automatic triggers, deliberate manual
-presses and first reminder reviews above, opening,
+presses and reminder sets above, opening,
 refreshing, restarting, switching On or editing guidance neither backfills nor
 regenerates; a deliberate Retry of an incoming block prepares no set. A failed
 set shows an unobtrusive status and composing stays available; the next new or
@@ -243,12 +260,14 @@ drafts are never normalized, no option is filtered and no extra call is made.
   press; writers and labels as above.
 - **Q7:** the area above the composer in both reading views; the fold is
   remembered across clients (ADR 56).
-- **Q8:** insertion at the cursor with Undo; never sends or rewrites.
+- **Q8:** a manual choice replaces the draft and an automatic one inserts at
+  the cursor, with Undo; never sends or rewrites.
 - **Q9:** one per-chat Style for manual and automatic sets; no Rewrite tone.
 - **Q10:** the language rule above.
 - **Q11:** the lifetime above.
 - **Q12:** automatic triggers plus explicit manual generation as above;
-  fresh alternatives require a deliberate press, never a read or restart.
+  fresh alternatives require a deliberate press, never a read or restart,
+  except the reminder sets ADR 58 prepares and refreshes.
 - **Q13:** global and per-chat Automatic suggestions switches; manual
   generation remains available when either is Off.
 - **Q14:** editable Response suggestions, When to suggest and style guidance.

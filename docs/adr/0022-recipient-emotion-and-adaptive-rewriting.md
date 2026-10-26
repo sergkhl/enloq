@@ -96,7 +96,7 @@ Hostile-message softening uses its own explicit wording decision, never a
 frustrated or angry mood code (ADR 53). Manual suggestions may use a current
 emotion as context but require neither emotion nor usefulness.
 
-**The composer.** Send and Generate suggestions are separate in private
+**The composer.** Send and Suggestions are separate in private
 chats (ADR 13, ADR 25); there is no Rewrite or tone control. Enter adds a new
 line, with no keyboard shortcuts (ADR 44). No usage hints or Help are added;
 Settings controls keep their concise explanations (ADR 45).

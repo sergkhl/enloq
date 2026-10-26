@@ -33,13 +33,14 @@ Its core is two flows:
   the sender's voice, and the originals stay one tap away.
 - **Outgoing.** Private chats offer manual Response Suggestions alongside
   automatic ones (ADR 25), using the chat's Friendly, Professional or Idioms
-  Style (ADR 56). With a draft they offer additions following its intent;
-  without one they offer complete messages. Generation changes and sends no
-  draft. Outgoing Rewrite and its tones are removed, in groups too.
+  Style (ADR 56). Manual options are complete messages; with a draft they
+  develop its idea and follow its bracketed instructions. Generation changes
+  and sends no draft. Outgoing Rewrite and its tones are removed, in groups
+  too.
 
 **What it does not do.** No inferred attention or commitment tracking, topic
 classification or "needs reply" marks. Narrow exceptions: user-configured
-weekly/monthly Reminders invite review and manual sending
+Reminders, once or repeating, invite review and manual sending
 ([ADR 58](0058-recurring-message-reminders.md)); Response Suggestions offer short editable replies
 ([ADR 25](0025-emotion-response-suggestions.md),
 [ADR 49](0049-useful-response-suggestions.md),
@@ -61,7 +62,8 @@ profile-based advice; and groups get Daily Briefings
   processing.
 - **Any private chat.** New Message and chat links open any of the account's
   private chats to read and write; its draft can request manual suggestions,
-  while background work waits until a message makes it recent ([ADR 51](0051-telegram-phone-look-and-new-messages.md)).
+  while background work other than reminder suggestions (ADR 58) waits until
+  a message makes it recent ([ADR 51](0051-telegram-phone-look-and-new-messages.md)).
 - **Background work.** New and changed blocks and unread catch-up within the
   seven days, after 30 quiet seconds. Notification screening starts on arrival
   under ADR 20's five-second deadline and original fallback. Opening, refreshing and restarting reuse
@@ -70,16 +72,20 @@ profile-based advice; and groups get Daily Briefings
   the one message a block directly replies to, even when older
   ([ADR 41](0041-reply-quotes.md) excludes replies to another chat or a
   story). No history scan and no reply chains. A deliberate action may reach
-  further back in the cache (ADR 15).
+  further back in the cache (ADR 15), and reminder suggestions read the 20
+  newest cached messages within the 30-day cache (ADR 58).
 - **Retention.** A 30-day local cache of messages and results; drafts and
   their attachments are kept until sent or discarded. Older originals are
   read from Telegram only on demand, and the cache never widens what
-  background work may read. Reminder schedules and their latest pending
-  occurrence survive chat inactivity and content expiry (ADR 58).
+  background work may read, except reminder suggestions. Reminder schedules,
+  their pending occurrences and their Kept Messages survive chat inactivity
+  and content expiry until the schedule ends (ADR 58).
 
-**Composer.** Private chats have separate, always-visible Send and Generate
-suggestions buttons. Send transmits the exact draft; generation leaves it
-intact, and a chosen option inserts at the cursor with Undo (ADR 25).
+**Composer.** Private chats have separate, always-visible Send and
+Suggestions buttons. Send transmits the exact draft, asking first while it
+still contains bracketed instructions; generation leaves it intact, a chosen
+manual option replaces it and an automatic one inserts at the cursor, with
+Undo (ADR 25).
 Automatic suggestions and Style live in the Correspondent Profile (ADR 56).
 There is no outgoing Rewrite, tone control, draft stream or Stop rewrite.
 Groups and Saved Messages keep send composers without AI actions. Photos,

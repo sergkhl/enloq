@@ -96,8 +96,8 @@ never learned.
   Under ADR 58, either automation switch Off also pauses calendar reminders
   while preserving schedules. On resumes at the next future occurrence,
   without backfill. Account AI Off still permits reminder timing and alerts
-  while blocking review generation. Reminder review otherwise retains the
-  same captured Style and writers as manual generation.
+  while blocking reminder suggestions. Reminder suggestions otherwise retain
+  the same captured Style and writers as manual generation.
 
   Existing Off maps to automation Off and Friendly; On to automation On and
   Friendly; Idioms to automation On and Idioms. Existing global On/Off is

@@ -289,38 +289,68 @@ the account's own chat opens its Saved tab.
 
 **Reminders**:
 The fourth tab, after Private, Groups and Saved, with a clock icon and
-**All accounts** shown clearly (ADR 58). It lists a Member's pending and
-upcoming reminders with account labels and paused/unavailable states.
+**All accounts** once in its header (ADR 58). Its first line, Daily digest
+with its time, opens the digest's settings. It lists a Member's pending and
+upcoming reminders as chat-like rows with account labels and
+paused/unavailable states; tapping a pending row opens its chat and an
+upcoming one its editor. Add reminder picks the account and person.
 `?tab=reminders` opens it independently of account selection. A digest opens
-the list; an exact alert and Review name the exact account, private chat and
-occurrence. Listing starts no model work.
+the list, or the one reminder it names. Listing starts no model work.
 
 **Reminder Schedule**:
-One Weekly or Monthly calendar rule per private human chat, configured in
-the Correspondent Profile (ADR 58). It saves its weekday or date, timezone,
-delivery choice and fallback language; timezone and language initially come
-from the device and travel changes neither. Short months use their last day
-without moving later months' selected date. The editor previews the next
-future delivery. A schedule survives inactivity and the thirty-day cache.
+One reminder rule for a private human chat, which may have several (ADR 58):
+Once on a date, Every N days, Every N weeks on a weekday, Monthly on a date
+or Yearly on a date, with a Daily digest or exact-time alert and an optional
+Message Idea. It saves its timezone, initially the device's, and fallback
+language, initially the chat's recent language or else the device's; travel
+changes neither. Short months use their last day, and 29 February the 28th
+in other years, without moving later dates. The reminder editor previews the
+next delivery. A schedule survives inactivity and the thirty-day cache; a
+Once schedule ends when its occurrence completes.
+
+**Message Idea**:
+A Reminder Schedule's optional text: a draft, instructions in square
+brackets, or both, shaping every set its occurrences prepare until edited
+(ADR 58). Empty means a gentle check-in. Its first line shows on the
+reminder's row, in the Reminder Bar and in exact alerts; it never enters the
+chat's draft. A day it names explicitly gets Kept Messages.
+
+**Kept Messages**:
+A private copy of up to 20 cached messages from a day a Message Idea names
+explicitly ("oct 25", "25.10"), with their transcripts and image meanings,
+kept with its Reminder Schedule until the schedule ends or is removed or the
+date leaves the idea (ADR 58). A day still ahead is copied when it ends.
+Edits and deletions seen while the originals are cached update it. It is the
+only message text that outlives the thirty-day cache.
 
 **Reminder Occurrence**:
-A schedule's due invitation to review fresh check-in options and send
-manually (ADR 58). Only the latest pending occurrence per chat remains.
-Opening it requests its first set; reopening reuses valid options and
-changed context, expiry or failure needs explicit Generate/Retry. Draft text
-supplies intent and gets additions with insertion and Undo; a blank draft
-gets complete check-ins using bounded current context and enabled memory,
-or simple wording in the saved fallback language. No past wording is kept
-to avoid repetition. Only a Telegram-confirmed later outgoing message, from
-any client, or Dismiss completes it. Incoming messages and opening do not.
+A schedule's due invitation to write, pending until a qualifying send or
+Dismiss and never lapsing (ADR 58). Only the latest pending occurrence per
+schedule remains. One manual set covers all of a chat's pending occurrences
+and owns its suggestion area: prepared two minutes before the alert,
+refreshed 30 quiet seconds after new messages, and replaced on opening only
+when it no longer fits. Its options keep each reminder's purpose, answer
+messages that arrived after it fell due and treat earlier ones as reference.
+Without a Message Idea, any Telegram-confirmed later outgoing message, from
+any client, completes it; with one, only a confirmed send that started from
+its suggestions does. Dismiss completes either. Incoming messages and
+opening do not.
+
+**Reminder Bar**:
+A slim bar above a private chat's suggestions while it has pending Reminder
+Occurrences, listing each by its Message Idea's first line, or "Check-in
+reminder", with when it fell due, its own Dismiss and a way to its editor
+(ADR 58).
 
 **Reminder Digest**:
 One daily alert across the member's accounts, initially 09:00 in a saved
-device timezone, with editable time and timezone (ADR 58). A schedule's local
-calendar date becomes eligible for the first digest on or after it begins.
-Exact-time occurrences use the schedule's local time and are excluded.
-Latest missed digest occurrences wait for the next digest after downtime;
-old pending occurrences never alert repeatedly. Both Automatic suggestions
+device timezone, with editable time and timezone (ADR 58). It shows
+"Reminders" with up to three names and "+N". A schedule's local calendar date
+becomes eligible for the first digest on or after it begins. Exact-time
+occurrences use the schedule's local time and are excluded; their alerts show
+the person's name and the Message Idea's first line, or "Check in". Latest
+missed digest occurrences wait for the next digest after downtime; old
+pending occurrences never alert repeatedly. Both Automatic suggestions
 switches pause reminders; On resumes at the next future delivery without
 backfill. Account AI Off allows reminders but blocks new generation.
 
@@ -342,7 +372,7 @@ The screen a private chat's header photo and name open
 - the Recipient Emotion with its label, reason, source and time;
 - the chat's switches: Soften hostile messages, Automatic suggestions and
   Remember This Chat, plus its Suggestion Style;
-- its Weekly or Monthly Reminder Schedule;
+- its Reminder Schedules, each opening the reminder editor, and Add reminder;
 - what the person cares about (Person Memory) and their Traits;
 - Copy chat link.
 
@@ -782,20 +812,25 @@ a neutral exchange or an ending. Groups and Saved Messages have none.
   Both Automatic suggestions switches must be On. Reads and restarts reuse
   unchanged results and never generate.
 - **Manual trigger.** A deliberate press requests fresh alternatives;
-  duplicate taps while active share that attempt. Automation Off does not
-  block it. Account AI, budget, capacity and composer guards still apply.
-- **Draft intent.** With text, manual options are additions fitting the
-  captured cursor, using the whole draft as intent and context; without it,
-  they are complete messages. A draft alone is enough without recent chat
-  context. Generation changes no text, attachments or reply target.
-  Automatic generation does not read the unfinished draft.
+  duplicate requests while active share that attempt. The button is
+  disabled while any set for the chat is prepared or waits, with its spinner
+  only while prepared. Automation Off does not block it.
+  Account AI, budget, capacity and composer guards still apply.
+- **Draft intent.** Manual options are complete messages. With text, the
+  draft is the starting idea: options develop it and may go beyond its own
+  words, and text in square brackets instructs the writer instead of being
+  message text. A draft alone is enough without recent chat context.
+  Generation changes no text, attachments or reply target. Automatic
+  generation does not read the unfinished draft.
+- **Reminders.** While a chat has pending Reminder Occurrences, their set
+  owns its area and no automatic set is prepared there (ADR 58).
 - **Grounding.** Available recent cached same-chat messages, up to the usual
   20 plus one direct reply, transcripts and image meanings, and enabled
   Person and Account Memory. No older-history scan or reply-chain traversal.
   Account Memory facts are stated only in their source chat.
 - **Meaning.** Options may acknowledge, support, clarify, celebrate or ask a
   gentle question. Otherwise valid options may share an answer stance or
-  offer different ones; a draft-guided addition follows the user's stated intent.
+  offer different ones; a draft-guided message follows the user's stated intent.
   Neither path invents facts or unsupplied feelings and commitments. The
   decision model labels each option by what it says.
 - **Lifetime.** Automatic sets keep twelve hours from their source and their
@@ -804,13 +839,16 @@ a neutral exchange or an ending. Groups and Saved Messages have none.
   them sooner. Pending Send guards apply while inputs stay valid. Manual
   work owns the area until withdrawn or explicitly replaced, so later
   automatic output cannot overwrite it.
-- **Use.** A choice inserts at the saved cursor, or at the end without one,
-  with Undo restoring the previous draft. It never replaces the draft or
-  sends. Folding is shared across clients until the next set arrives.
+- **Use.** A manual choice replaces the draft's text; an automatic one
+  inserts at the saved cursor, or at the end without one. Undo restores the
+  previous draft, and choosing never sends. Folding is shared across clients
+  until the next set arrives.
 
 MiMo writes Friendly and Professional; Muse Spark 1.3 writes Idioms. All
 requests count in the account member's Daily Budget and shared capacity.
-Language follows the conversation; a draft-only request uses its language.
+Language follows the conversation; a draft's own wording supplies the
+language of options developed from it, and bracketed instructions never
+choose it.
 
 **Automatic Suggestions**:
 The On/Off control for automatic preparation and display, separate from
@@ -916,11 +954,14 @@ server-wide Memory switch in Settings covers both memories.
 ### Composing and sending
 
 **Composer Action**:
-Separate, always-visible Send and Generate suggestions buttons in private
-chats (ADR 13, ADR 25, ADR 44). Send transmits the exact authored draft;
-Generate suggestions offers complete, selectable options above it, without
-changing or sending it. Outgoing Rewrite, its tones, streaming, Stop and
-rewrite Undo are removed; Undo remains for suggestion insertion. Enter adds
+Separate, always-visible Send and Suggestions buttons in private chats
+(ADR 13, ADR 25, ADR 44). Send transmits the exact authored draft, asking
+first while it still contains square-bracketed instructions; Suggestions
+offers complete, selectable messages above it, without changing or sending
+it, and is disabled while any set for the chat is prepared, showing its
+spinner, or waits for budget, AI processing or the provider. Outgoing
+Rewrite, its tones, streaming, Stop and rewrite Undo are removed; Undo
+remains for suggestion choices. Enter adds
 a new line, with no keyboard shortcuts. The paperclip opens Photos, GIFs and
 Stickers (on the phone Photo library, Take photo, GIFs and Stickers). Image
 thumbnails sit above an optional caption, and image-only sends are allowed.

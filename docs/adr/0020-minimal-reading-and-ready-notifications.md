@@ -144,9 +144,12 @@ the owner's destinations; neither concerns a chat or carries message content.
 **Reminder pushes.** [ADR 58](0058-recurring-message-reminders.md) adds one
 combined daily digest across a member's accounts, or an occurrence's separate
 exact-time alert. They use the same opaque payload, trusted destinations and
-client notification permissions, without message previews or model work.
-Digest taps open the member's Reminders list; exact alerts resolve the exact
-account, chat and still-pending occurrence before review. Durable occurrence
+client notification permissions, without message previews or model work, and
+never wait for suggestions. The fetched banner of an exact alert shows the
+person's name and its Message Idea's first line, or "Check in"; a digest
+shows "Reminders" with up to three names and "+N". Digest taps open the
+member's Reminders list, or the one reminder they name; exact alerts resolve
+the exact account, chat and still-pending occurrence first. Durable occurrence
 and delivery claims prevent repeated alerts for an old pending occurrence.
 Schedule edits/removal, completion, logout and revoked trust cancel obsolete
 queued alerts. These are calendar alerts, separate from incoming bursts.

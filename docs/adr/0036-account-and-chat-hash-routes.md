@@ -147,10 +147,11 @@ five-minute rule for undelivered alerts adds no age limit to clicking a
 delivered one, and every real target is checked against current
 authorization and eligibility.
 
-An exact reminder review adds `reminder=<opaque occurrence>` beside the
-account query and chat fragment. Its target must still be pending; a stale
-target cannot review a replacement. Digest notifications open `?tab=reminders`
-without changing the remembered account or its tab (ADR 58).
+A reminder tap opens its chat's ordinary route: a chat shows whatever
+reminders are pending in it, so the route names no occurrence, and a tap
+whose occurrence is no longer pending opens `?tab=reminders` instead. Digest
+notifications open `?tab=reminders`, or the one reminder they name, without
+changing the remembered account or its tab (ADR 58).
 
 The Enloq app uses the same identities: a notification tap opens its exact
 chat, and Copy chat link copies the canonical web URL.

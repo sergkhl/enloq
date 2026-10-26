@@ -54,9 +54,10 @@ Account Memory); when updates run is
 chat starts Off ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)).
 
 **Reminders.** Calendar timing, listing and notifications run independently
-of AI admission and make no model calls. Reviewing a pending occurrence uses
-manual suggestions under the existing Account AI switch, Daily Budget and
-capacity, with a separate check-in intent (ADR 58). Global and per-chat
+of AI admission and make no model calls. A pending occurrence's manual
+suggestions are prepared two minutes before its alert and refreshed after new
+messages, under the existing Account AI switch, Daily Budget and capacity,
+with its Message Idea or a check-in intent (ADR 58). Global and per-chat
 Automatic suggestions Off pause reminders; Account AI Off does not pause
 their timing or alerts.
 

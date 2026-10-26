@@ -143,7 +143,8 @@ Telegram (the latest page, then Load earlier) as originals only: its old
 messages get no automatic rewrite, emotion, suggestions or memory. It stays out of the
 Private list until a message is sent or received there; from then on the
 Recent Chat rules apply. Manual suggestions can use its draft as intent,
-without processing or scanning older history (ADR 25). Chat links open any of
+without processing or scanning older history (ADR 25), and a reminder's
+suggestions may read its cached messages as reference (ADR 58). Chat links open any of
 the account's private chats, amending ADR 36 Q5. Not adopted: making an
 opened chat recent at once, which would process its unread messages.
 

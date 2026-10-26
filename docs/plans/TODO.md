@@ -11,9 +11,8 @@ decisions go into the ADR, not here. Active work is listed in the
 None of these is adopted, implemented or authorized.
 
 - **Reminder follow-ups** ([ADR 58](../adr/0058-recurring-message-reminders.md)
-  Q9): conversation-derived timed-event proposals next. Other reminder
-  workflows beyond weekly/monthly private-chat schedules need their own
-  scope and decision; no automatic sending is adopted.
+  Q9): conversation-derived timed-event proposals next; no automatic sending
+  is adopted.
 
 - **Further decision-model uses** ([ADR 30](../adr/0030-decider-emotion-classification.md)
   Q10): a completeness and invention check of rewritten text (media and softened
@@ -97,6 +96,13 @@ Act only if they recur or grow.
   Spark 1.3 for the memory update (Q28).
 
 ## Waiting on the owner
+
+- **Reminder and suggestion redesign** ([ADR 58](../adr/0058-recurring-message-reminders.md),
+  [ADR 25](../adr/0025-emotion-response-suggestions.md)): adopted in an
+  interview, not implemented. The code, journeys and runbooks keep the
+  earlier behavior (one Weekly or Monthly schedule per chat, Generate
+  suggestions, draft additions at the cursor) until the owner authorizes a
+  plan.
 
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the

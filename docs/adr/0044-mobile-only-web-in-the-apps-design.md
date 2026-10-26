@@ -40,7 +40,7 @@ wide, centered on the page background, so a desktop shows what a large phone
 shows. Sheets and dialogs open inside it.
 
 **Enter adds a new line (Q4).** As in the app, Enter adds a new line and
-Generate suggestions and Send act only from their buttons; ADR 22's Enter, Cmd+Enter and
+Suggestions and Send act only from their buttons; ADR 22's Enter, Cmd+Enter and
 Shift+Enter shortcuts are gone. Right-click and the menu key still open a
 message's sheet, since an Android long-press reaches the web as the same
 event.

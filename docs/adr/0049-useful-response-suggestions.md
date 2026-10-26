@@ -91,7 +91,7 @@ check.
 
 **Answer labels (Q8).** Accept, Decline and Later join Acknowledge, Support,
 Clarify and Celebrate. Any answer stance may stand alone or repeat across
-distinct options (Q20). A draft-guided manual addition follows the user's
+distinct options (Q20). A draft-guided manual message follows the user's
 explicit stance (ADR 25).
 
 **When to suggest (Q9).** The field is "When to suggest", under Guidance's
@@ -174,7 +174,7 @@ dropping the labels.
 **Every answer stance may stand alone (Q20).** A set may contain only
 `accept`, only `decline` or only `later`, including alongside non-answer
 options. Different options must still have distinct wording, and every
-format and grounding rule remains. A draft-guided manual addition follows
+format and grounding rule remains. A draft-guided manual message follows
 the user's explicit stance (ADR 25). A failed past attempt is not regenerated
 by changing this rule; a new manual request or qualifying changed source
 uses it.

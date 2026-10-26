@@ -27,7 +27,7 @@ Incoming work retains 30 quiet seconds and has no Stop. Leaving the chat or
 closing a client cancels no service-owned work; reopening attaches to the
 same attempt or result. Outgoing Rewrite and its draft stream, tones, Stop
 and rewrite Undo are removed. Manual suggestions publish complete validated
-sets without touching the draft; selection inserts with Undo under
+sets without touching the draft; a choice fills it with Undo under
 [ADR 25](0025-emotion-response-suggestions.md).
 
 **Observed message history.** Enloq keeps every native text or caption
@@ -69,7 +69,7 @@ mechanics.
 `@username` are tappable in originals, rewrites and transcripts in both
 clients, keeping their real destinations; the web opens them in a new tab.
 The composer stays plain text. Controls are icons with accessible names;
-Generate suggestions keeps its visible label. Active work shows a spinner, and queued, paused,
+Suggestions keeps its visible label. Active work shows a spinner, and queued, paused,
 failed and completed work stay distinguishable.
 
 **Speech recognition.** Whisper large-v3-turbo, with automatic language

@@ -69,9 +69,10 @@ are the standing principles:
   [ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). Voice
   notes, video circles and images are rewritten into clear text.
 - Outgoing Rewrite and its tones are removed. Private chats have separate,
-  always-visible Send and Generate suggestions buttons. Generation leaves
-  the draft intact; selection inserts at the cursor with Undo and never
-  sends. Manual additions follow a nonempty draft's intent.
+  always-visible Send and Suggestions buttons. Generation leaves the draft
+  intact. Manual options are complete messages that develop a nonempty
+  draft's idea and follow its [bracketed] instructions; choosing one
+  replaces the draft with Undo and never sends.
 - Each private chat separates **Automatic suggestions** On/Off from **Style**
   Friendly, Professional or Idioms, Friendly by default, for both generation
   paths. Automation Off leaves manual generation available. The owner's
