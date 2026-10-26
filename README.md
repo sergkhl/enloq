@@ -110,6 +110,13 @@ and suggestions appear only as complete sets. A chosen suggestion only changes
 the editable draft; it cannot send a message. Account processing controls are
 independent of the reading view.
 
+**A decision model decides before a writer is called.** Perplexity's Decider
+answers named questions with probabilities and writes no text. Its answers
+decide whether a text block is softened, the only rewrite of incoming text,
+whether automatic suggestions are prepared, and which group messages
+briefings leave out as ads or bots. [Measurements](docs/measurements.md) gives
+its per-call latency and cost from small checks, with their limits.
+
 **An uncertain send is not safe to repeat.** Sends are ordered per chat and
 retain their operation identity, intended account, peer and media. Failed and
 uncertain outcomes remain visible with explicit recovery actions. Checking
@@ -184,6 +191,7 @@ distinct lifetimes; [Operations](docs/operations.md) owns those rules.
 
 - [Domain vocabulary](CONTEXT.md) and [architectural decisions](docs/adr/)
 - [Inference and media bounds](docs/inference.md)
+- [Measured decision latency and cost](docs/measurements.md)
 - [Private media and native delivery](docs/media-delivery.md)
 - [Telegram sync and original history](docs/history.md)
 - [Code provenance](docs/extraction.md)
