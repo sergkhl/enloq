@@ -23,6 +23,14 @@ const REMINDERS = `${CHAT}/reminders`;
 const LIMIT = 150_000_000;
 const REQUESTS = 60;
 const SECONDS = 2700;
+// A continuation keeps the original start in
+// ENLOQ_REMINDER_ACCEPTANCE_SINCE (Unix seconds), counts the authored sends
+// already made in ENLOQ_REMINDER_ACCEPTANCE_SENDS and may name the original
+// zone in ENLOQ_REMINDER_ACCEPTANCE_ZONE. It never resets a bound; with a
+// send already made it reuses that day's authored test message.
+const SINCE = Number(process.env.ENLOQ_REMINDER_ACCEPTANCE_SINCE || 0);
+const SENT = Number(process.env.ENLOQ_REMINDER_ACCEPTANCE_SENDS || 0);
+const ZONE = process.env.ENLOQ_REMINDER_ACCEPTANCE_ZONE || "";
 const VERIFY = String.raw`
 import asyncio,json
 from enloq.config import Settings
@@ -56,10 +64,11 @@ key=f"{q['owner']}/user:{q['maya']}"
 rows=db.execute("SELECT r.role,r.status,r.actual FROM model_reservations r WHERE r.account_id=? AND r.created>=? AND (r.scope=? OR r.scope LIKE ?)",(q['owner'],q['since'],key,key+'/%')).fetchall()
 print(json.dumps({'requests':len(rows),'counted':sum(r['actual'] if r['actual'] is not None else 10000000 for r in rows)}))
 `;
-// The set's shape only: how many reminders, answered and reference
-// messages and kept days it carries, never their text.
+// The set's shape only, from fields a finished set keeps (its packet is
+// dropped on completion): how many reminders it covers, whether it carried
+// Kept Messages and the chat's latest message, never any text.
 const SHAPE = String.raw`
-import json,sqlite3,sys
+import hashlib,json,sqlite3,sys
 from enloq.config import Settings
 s=Settings.load('personal'); q=json.load(sys.stdin)
 if q['owner']!=s.owner_account: raise RuntimeError('Wrong live account')
@@ -68,8 +77,8 @@ r=AccountRegistry(s.data); path=r.path_for(r.get(q['owner'])['directory'])/'rewr
 db=sqlite3.connect(path.as_uri()+'?mode=ro',uri=True,timeout=2)
 row=db.execute("SELECT body FROM suggestion_state WHERE chat_key=?",(f"{q['owner']}/user:{q['maya']}",)).fetchone()
 body=json.loads(row[0]) if row else {}
-packet=body.get('packet') or {}
-print(json.dumps({'reminders':len(body.get('reminders') or []),'trigger':body.get('trigger'),'state':body.get('state'),'answered':len(packet.get('messages') or []),'reference':len(packet.get('context') or []),'kept':[len(d.get('messages') or []) for d in packet.get('kept') or []]}))
+empty=hashlib.sha256(b'[]').hexdigest()
+print(json.dumps({'reminders':len(body.get('reminders') or []),'trigger':body.get('trigger'),'state':body.get('state'),'kept':body.get('kept') not in (None,empty),'sources':len(body.get('sources') or []),'latest':body.get('latest_message') in (body.get('sources') or [])}))
 `;
 // Regional zones covering every whole and fractional offset, so some local
 // midnight is near whenever the run starts; the idea's day is kept when that
@@ -158,9 +167,15 @@ const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 test("message reminders through the live service: early sets, refresh, a send from the set and Dismiss", async ({
   page,
 }) => {
-  test.setTimeout(SECONDS * 1000);
-  const began = Date.now() / 1000;
-  const evidence: Record<string, any> = { began, sets: [], sends: 0 };
+  const began = SINCE || Date.now() / 1000;
+  expect(Date.now() / 1000 - began).toBeLessThan(SECONDS - 600);
+  test.setTimeout((SECONDS - (Date.now() / 1000 - began)) * 1000);
+  const evidence: Record<string, any> = {
+    began,
+    continued: !!SINCE,
+    sets: [],
+    sends: SENT,
+  };
   const metadata = (script = READ) =>
     JSON.parse(
       execFileSync("docker", ["exec", "-i", "enloq", "python", "-c", script], {
@@ -179,17 +194,27 @@ test("message reminders through the live service: early sets, refresh, a send fr
   );
   // The zone whose local midnight comes soonest, at least six minutes away.
   const now = new Date();
-  const choice = ZONES.map((zone) => ({
-    zone,
-    until: 86400 - local(zone, now).seconds,
-  }))
-    .filter((item) => item.until >= 360)
+  const choice = (ZONE ? [ZONE] : ZONES)
+    .map((zone) => ({
+      zone,
+      until: 86400 - local(zone, now).seconds,
+    }))
+    .filter((item) => ZONE || item.until >= 360)
     .sort((a, b) => a.until - b.until)[0]!;
   const zone = choice.zone;
-  const keepsToday = choice.until <= 22 * 60;
-  const day = local(zone, now).day;
+  // The day of the run's authored test message, sent at its start; once
+  // that day has ended, saving keeps its messages at once.
+  const day = local(zone, new Date(began * 1000)).day;
+  const ended = local(zone, now).day > day;
+  const keepsToday = !ended && choice.until <= 22 * 60;
+  const keeps = ended || keepsToday;
   const [, month, date] = day.split("-").map(Number);
-  evidence.zone = { zone, minutes_to_midnight: choice.until / 60, keepsToday };
+  evidence.zone = {
+    zone,
+    minutes_to_midnight: choice.until / 60,
+    ended,
+    keepsToday,
+  };
 
   await openMayaChat(page, "owner");
   const initial = await (await page.request.get(CHAT)).json();
@@ -319,10 +344,12 @@ test("message reminders through the live service: early sets, refresh, a send fr
         })
       ).status(),
     ).toBe(200);
-    // 1. The day's authored test message.
-    const first = `(Enloq authored reminder check ${began.toFixed(0)}) A test message for the day.`;
-    await field.fill(first);
-    await send(first);
+    // 1. The day's authored test message, unless a continuation's run sent it.
+    if (!SENT) {
+      const first = `(Enloq authored reminder check ${began.toFixed(0)}) A test message for the day.`;
+      await field.fill(first);
+      await send(first);
+    }
     // 2. An exact reminder whose idea names that day, and a check-in, due
     // after the day ends when it ends inside the run.
     const lead = keepsToday ? choice.until / 60 + 3 : 4;
@@ -342,6 +369,10 @@ test("message reminders through the live service: early sets, refresh, a send fr
     own.push(reminder.id);
     evidence.kept_on_save = reminder.kept;
     expect(reminder.kept.day).toBe(day);
+    if (ended) {
+      expect(reminder.kept.state).toBe("kept");
+      expect(reminder.kept.count).toBeGreaterThan(0);
+    }
     const checkIn = exact(lead + 1);
     const plain = await change("/reminders", {
       repeat: "once",
@@ -393,7 +424,7 @@ test("message reminders through the live service: early sets, refresh, a send fr
     // Prepared before the first alert, so the alert never waits for it.
     expect(shown.view.source_time).toBeLessThan(reminder.next_at);
     evidence.lead_seconds = reminder.next_at - shown.view.source_time;
-    if (keepsToday) expect(shown.shape.kept.length).toBe(1);
+    expect(shown.shape.kept).toBe(keeps);
     previous = shown.view.source_time;
     // Both fall due; the bar lists them.
     await expect
@@ -412,7 +443,9 @@ test("message reminders through the live service: early sets, refresh, a send fr
     await page.goto("about:blank");
     shown = await ready(previous);
     expect(shown.shape.trigger).toBe("refresh");
-    expect(shown.shape.answered).toBeGreaterThan(0);
+    // Maya's message, the chat's latest, came after both fell due, so the
+    // set answers it.
+    expect(shown.shape.latest).toBe(true);
     previous = shown.view.source_time;
     await openMayaChat(page, "owner");
     const bar = page.getByRole("region", { name: "Reminders" });

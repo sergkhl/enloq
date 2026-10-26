@@ -655,7 +655,12 @@ any others are unchanged. Its ceiling is 60 model requests, three
 authored sends, 45 minutes and $0.15 counted, within the unchanged member
 budget. Route/rate verification precedes each run, and Docker reads request
 counts and the set's shape, never message text. Private evidence is in
-`.local/live-evidence/`; actual requests go in TODO.
+`.local/live-evidence/`; actual requests go in TODO. A continuation after a
+failed run keeps its start in `ENLOQ_REMINDER_ACCEPTANCE_SINCE` (Unix
+seconds), counts its authored sends in `ENLOQ_REMINDER_ACCEPTANCE_SENDS` and
+may name its zone in `ENLOQ_REMINDER_ACCEPTANCE_ZONE`; with a send already
+made it reuses that day's authored test message, and once that day has ended
+saving keeps its messages at once. No ceiling is reset.
 
 ### Android push through FCM
 
