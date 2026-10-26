@@ -258,12 +258,18 @@ test("message reminders through the live service: early sets, refresh, a send fr
       )
       .toBe(true);
   }
+  // Docker reads of the live stores stay light: at most one every ten
+  // seconds while waiting, beside the service's own API reads.
+  let bounded = 0;
   async function ready(previous: number) {
     let value: any;
     await expect
       .poll(
         async () => {
-          await bounds();
+          if (Date.now() - bounded >= 10000) {
+            bounded = Date.now();
+            await bounds();
+          }
           value = (await (await page.request.get(CHAT)).json()).suggestions;
           return (
             value.kind === "manual" &&
