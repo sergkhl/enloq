@@ -208,12 +208,18 @@ class GroupQuestions:
         fused = fuse(*ranked)[:FUSED]
         if self.reranker is not None and fused:
             texts = {m.message_id: text for m, _, text in entries}
-            scores = await self._run(
-                self.reranker,
-                RERANK_ROLE,
-                {"query": question, "documents": [texts[i] for i in fused]},
-                key,
-            )
+            try:
+                scores = await self._run(
+                    self.reranker,
+                    RERANK_ROLE,
+                    {"query": question, "documents": [texts[i] for i in fused]},
+                    key,
+                )
+            except Refused:
+                # Reranking only improves the order: without it the question
+                # is still answered from the fused list.
+                self._admit(key)
+                return fused[:WRITTEN]
             fused = [
                 i for _, i in sorted(zip(scores, fused), key=lambda p: (-p[0], p[1]))
             ]

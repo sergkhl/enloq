@@ -690,12 +690,19 @@ async def final_run(app, judge, bounds, settings, registry, report, save, groups
     candidates, reranked = {"dense": {}, "fused": {}}, {"dense": {}, "fused": {}}
 
     async def reorder(g, q, ids, texts):
-        scores = await app.questions._run(
-            rerank,
-            RERANK_ROLE,
-            {"query": q["question"], "documents": [texts[i] for i in ids]},
-            g["key"],
-        )
+        try:
+            scores = await app.questions._run(
+                rerank,
+                RERANK_ROLE,
+                {"query": q["question"], "documents": [texts[i] for i in ids]},
+                g["key"],
+            )
+        except Refused as failure:
+            if "bound" in str(failure):
+                raise
+            # As the application does: the unreranked order, counted.
+            report["rerank_fallbacks"] = report.get("rerank_fallbacks", 0) + 1
+            return list(ids)
         return [i for _, i in sorted(zip(scores, ids), key=lambda p: (-p[0], p[1]))]
 
     for g, entries, questions in groups:

@@ -293,3 +293,18 @@ async def test_the_subscription_writer_asks_for_json_and_spends_nothing(tmp_path
     with pytest.raises(ProviderRefused):
         await engine.generate(QUESTION_ROLE, packet)
     await engine.client.aclose()
+
+
+async def test_a_failed_rerank_keeps_the_fused_order(rig):
+    source(rig, 1, text="The shed key is with Eli now.")
+    source(rig, 2, text="Watering moved to Sunday.")
+
+    class Overloaded:
+        name, model, provider = "offline", "authored-rerank", "local"
+
+        async def generate(self, role, packet):
+            raise ProviderRefused("Model provider HTTP 503")
+
+    rig.app.questions.reranker = Overloaded()
+    result = await rig.app.questions.ask(KEY, "Who has the key?")
+    assert result["status"] == "answer"

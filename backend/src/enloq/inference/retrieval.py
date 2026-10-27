@@ -125,9 +125,10 @@ class PassThrough:
             )
         except httpx.ConnectError:
             raise ProviderRefused("Provider connection refused") from None
-        if response.status_code in (401, 402, 403, 404, 429):
+        if response.status_code in (401, 402, 403, 404, 429, 503):
             # Refused at the proxy or OpenRouter before any model work; 404 is
-            # OpenRouter finding no endpoint for the route and data policy.
+            # OpenRouter finding no endpoint for the route and data policy,
+            # 503 an overloaded provider (Fireworks, in the Ask check).
             raise ProviderRefused(
                 f"Model provider HTTP {response.status_code}",
                 retry_after=retry_after(response.headers.get("retry-after")),
