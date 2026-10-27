@@ -14,12 +14,14 @@ from pathlib import Path
 
 from ..domain import agreement
 from ..domain.briefing_contract import GROUP_ROLES
-from ..domain.citation_check import CHECK_ROLES
+from ..domain.citation_check import CHECK_ROLE
 from ..domain.group_filtering import FILTER_ROLES, RULES_HASH
 from ..domain.models import ProcessingPaused, Refused, Syncing
+from ..inference import retrieval
 from ..inference.audio import LocalWhisper, ProxyWhisper
 from ..inference.decider import DeciderEngine
 from ..inference.openrouter import MuseEngine, OpenRouterEngine
+from ..inference.retrieval import EmbeddingEngine, RerankEngine
 from ..inference.work import ROUTES
 from ..storage.accounts import AccountRegistry
 from ..storage.lock import OwnerLock
@@ -43,7 +45,7 @@ from .media_cache import MediaCache, evict
 from .reminders import ReminderClock
 from .runtime import connection_status, housekeeping, personal_sync
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | {CHECK_ROLE}
 
 _LOG = logging.getLogger("enloq.scheduler")
 
@@ -168,6 +170,16 @@ class AccountManager:
             decider.on_route = self.decision_route
             calmer = MuseEngine(scoped, user=user)
             assistant = Conversations(store, transport, engine, decider, calmer)
+            # ADR 59 Q3: Ask this group's embedding and, once adopted, rerank
+            # routes, with the member's own pseudonym.
+            assistant.questions.embedder = EmbeddingEngine(
+                scoped, retrieval.EMBEDDING, user=user
+            )
+            assistant.questions.reranker = (
+                RerankEngine(scoped, retrieval.RERANK, user=user)
+                if retrieval.RERANK
+                else None
+            )
         member = entry.get("member") or OWNER
         assistant.media.transcriber = self.whisper
         assistant.media.transcription_lock = self.transcription.handle(member)
@@ -765,7 +777,13 @@ class AccountManager:
         runtime = self.runtimes.pop(identity)
         await self._drain(runtime)
         await runtime.assistant.transport.close()
-        for engine in (runtime.assistant.engine, runtime.assistant.decider):
+        questions = runtime.assistant.questions
+        for engine in (
+            runtime.assistant.engine,
+            runtime.assistant.decider,
+            questions.embedder,
+            questions.reranker,
+        ):
             if hasattr(engine, "client"):
                 await engine.client.aclose()
 

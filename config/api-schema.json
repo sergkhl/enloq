@@ -321,6 +321,91 @@
         "title": "AgreementAcceptance",
         "type": "object"
       },
+      "AskRange": {
+        "additionalProperties": false,
+        "description": "The searched calendar days, first opt-in day or the cache's oldest\nto today, in the server's timezone.",
+        "properties": {
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "AskRange",
+        "type": "object"
+      },
+      "AskStatement": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "unsupported": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unsupported",
+            "type": "array"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "citations",
+          "unsupported",
+          "supported"
+        ],
+        "title": "AskStatement",
+        "type": "object"
+      },
+      "AskView": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "answer",
+              "not_found",
+              "unchecked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "searched": {
+            "$ref": "#/components/schemas/AskRange"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/AskStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "searched"
+        ],
+        "title": "AskView",
+        "type": "object"
+      },
       "AssetRepresentation": {
         "additionalProperties": false,
         "properties": {

@@ -24,6 +24,7 @@ from ..domain.models import (
 )
 from . import (
     emotion,
+    group_vectors,
     history,
     memory,
     reactions,
@@ -401,6 +402,7 @@ class Store:
                 for trigger in change_triggers(table, "subject"):
                     db.execute(trigger)
             db.execute(emotion.DDL)
+            db.execute(group_vectors.DDL)
             for trigger in change_triggers("emotion_state", "chat_key"):
                 db.execute(trigger)
             viewing.initialize(db, self.clock())
@@ -940,6 +942,7 @@ class Store:
                 )
             if old:
                 db.execute("DELETE FROM derivatives WHERE source=?", (message.key,))
+                group_vectors.forget(db, message.key)
             if chat.kind == "private":
                 # New content refreshes a pending reminder set (ADR 58 Q5).
                 reminders.touched(db, key, self.clock())
@@ -1086,6 +1089,7 @@ class Store:
                 "DELETE FROM derivatives WHERE source NOT IN (SELECT key FROM messages) OR source IN (SELECT key FROM messages WHERE date<?)",
                 (self.clock() - RETENTION,),
             )
+            group_vectors.expire(db, cutoff)
             db.execute("DELETE FROM blocks WHERE date<?", (self.clock() - RETENTION,))
             db.execute("DELETE FROM messages WHERE date<?", (self.clock() - RETENTION,))
             memory.expire(db)

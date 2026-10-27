@@ -15,6 +15,7 @@ from ..application.media import DOWNLOAD_BYTES, IMAGE_BYTES, voice_note
 from ..application.memory import ACCOUNT
 from ..application.previews import ConversationRow
 from ..domain.catalog_assets import representation
+from ..domain.group_questions import MAX_QUESTION, AskView
 from ..domain.models import (
     SPOKEN_MEDIA,
     ChatKey,
@@ -204,6 +205,10 @@ class SuggestionGenerate(Revision):
     # Earlier clients still send their caret; a manual option is a complete
     # message replacing the draft (ADR 25 Q8), so none is used.
     cursor: int | None = Field(default=None, ge=0, le=65536)
+
+
+class Question(Model):
+    question: str = Field(min_length=1, max_length=MAX_QUESTION)
 
 
 class SuggestionFold(Model):
@@ -405,6 +410,13 @@ def routes(manager, settings):
         return manager.get(account_id).suggestions.generate(
             key(account_id, peer), body.revision
         )
+
+    @router.post("/chats/{peer}/ask", response_model=AskView)
+    async def ask_group(account_id: int, peer: str, body: Question):
+        """Ask this group (ADR 59): an answer with checked citations, a range
+        searched without an answer, or unchecked. Nothing is stored."""
+        async with manager.lease(account_id) as app:
+            return await app.questions.ask(key(account_id, peer), body.question)
 
     @router.get("/chats/{peer}/suggestions/settings", response_model=SuggestionSettings)
     def suggestion_settings(account_id: int, peer: str):

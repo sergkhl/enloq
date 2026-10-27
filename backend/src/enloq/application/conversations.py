@@ -10,7 +10,7 @@ from ..domain.models import (
     ProcessingPaused,
     Refused,
 )
-from ..inference.fake import FakeDecider, FakeEngine
+from ..inference.fake import FakeDecider, FakeEmbedder, FakeEngine
 from ..storage.store import RETENTION, WINDOW
 from .assessment import Assessment
 from .attachments import Attachments
@@ -25,6 +25,7 @@ from .delivery import Delivery, operation_view
 from .emotion import Emotion
 from .forwarding import Forwarding
 from .group_briefings import GroupBriefings
+from .group_questions import GroupQuestions
 from .group_updates import GroupUpdates
 from .media import Media
 from .memory import Memory
@@ -89,6 +90,8 @@ class Conversations:
         self.assessment = Assessment(self)
         self.deletion = Deletion(self)
         self.briefings = GroupBriefings(self)
+        # ADR 59; the account manager attaches the real routes.
+        self.questions = GroupQuestions(self, embedder=FakeEmbedder())
         self.group_changed = self.briefings.changed
         self.store.groups.on_access_change = self.group_access_changed
         self.sync.new_incoming = self.notifications.admit

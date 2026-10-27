@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 from ..domain import citation_check
 from ..domain.briefing_contract import GROUP_ROLES, BriefingOutput
-from ..domain.citation_check import CHECK_ROLE, CHECK_ROLES, ClaimCheck
+from ..domain.citation_check import CHECK_ROLE, ClaimCheck
 from ..domain.group_briefings import BriefingChunk, BriefingResult, FrozenBriefing
 from ..domain.group_filtering import FILTER_ROLES
 from ..domain.models import (
@@ -40,7 +40,7 @@ from .group_filtering import GroupFiltering
 from .group_planner import Planner
 from .group_rollout import GroupBriefingRollout
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | {CHECK_ROLE}
 
 # Seconds a planning answer may stand with no local commit and no hold ending.
 # Sources leaving the automatic window or retention, and writers outside this
@@ -1464,7 +1464,7 @@ class GroupBriefings:
         )
         self._next_day(payload)
 
-    def _check_packet(self, key, topic):
+    def _check_packet(self, key, topic, *, role=CHECK_ROLE):
         """A topic and its cited originals as the briefing read them, with the
         cached messages they reply to as bounded context."""
         cited, replies = [], []
@@ -1497,7 +1497,7 @@ class GroupBriefings:
                 replies.append(parent)
                 used += size
         return citation_check.make_packet(
-            CHECK_ROLE,
+            role,
             {"title": topic.title, "text": topic.text},
             [checked_view(self.store, m) for m in cited],
             [checked_view(self.store, m) for m in replies],

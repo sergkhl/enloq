@@ -14,7 +14,9 @@ from .group_filtering import REPEATED_INPUT, digest, encoded
 from .models import Model, Refused
 
 CHECK_ROLE = "briefing_citation_check"
-CHECK_ROLES = frozenset({CHECK_ROLE})
+# ADR 59 Q6: the same check of each statement in an Ask this group answer.
+ANSWER_CHECK_ROLE = "group_answer_check"
+CHECK_ROLES = frozenset({CHECK_ROLE, ANSWER_CHECK_ROLE})
 # ADR 34 citation check Q1: a citation is supported at this probability or
 # more. Only the owner changes it.
 FLOOR = 0.5

@@ -86,6 +86,7 @@ from enloq.domain.catalog_assets import (
     ReceivedAssetView,
 )
 from enloq.domain.emotion import EmotionView
+from enloq.domain.group_questions import AskView
 from enloq.domain.models import Chat, GroupProcessing, Message
 from enloq.domain.reminders import (
     ChatReminders,
@@ -179,6 +180,7 @@ _, schema = models_json_schema(
             ScaleEdit,
             EmotionView,
             SuggestionsView,
+            AskView,
             SuggestionSettings,
             ViewedContent,
             ViewedSources,

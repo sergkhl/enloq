@@ -17,6 +17,7 @@ from ..domain.briefing_contract import (
     attached_image_ids,
     covered_source_ids,
 )
+from ..domain.group_questions import QUESTION_ROLE, GroupAnswer
 from ..domain.models import Model, Refused, Unavailable
 from ..domain.suggestions import ResponseSuggestions
 from .base import EngineResponse, ProviderRefused
@@ -262,6 +263,7 @@ SCHEMAS = {
     "group_briefing_image": BriefingImageOutput,
     "group_briefing_chunk": BriefingOutput,
     "group_briefing": BriefingOutput,
+    QUESTION_ROLE: GroupAnswer,
 }
 STREAMED_ROLES = frozenset({"incoming_rewrite", "group_briefing"})
 
@@ -365,6 +367,15 @@ def output_schema(role, packet=None):
                 "maxLength": 240,
             }
             participants["minItems"] = 1
+    if role == QUESTION_ROLE and packet is not None:
+        # ADR 59 Q5: statements cite only the messages retrieval found.
+        statement = schema["$defs"]["AnswerStatement"]
+        statement["required"] = ["text", "citations"]
+        statement["properties"]["citations"].update(uniqueItems=True)
+        statement["properties"]["citations"]["items"]["enum"] = sorted(
+            packet["retrieved_ids"]
+        )
+        schema["required"] = ["outcome", "statements"]
     return schema
 
 
@@ -500,13 +511,15 @@ def retry_after(value):
 
 
 def output_tokens(role):
-    return BACKGROUND_OUTPUT_TOKENS
+    # An answer is at most four short statements, written without reasoning.
+    return 2048 if role == QUESTION_ROLE else BACKGROUND_OUTPUT_TOKENS
 
 
 def thinking(role):
     """Xiaomi's own reasoning switch. Its reasoning text comes back beside the
-    content and is never read or retained."""
-    return {"type": "enabled"}
+    content and is never read or retained. A member waits for an Ask this
+    group answer, which is written without it (ADR 59 Q5)."""
+    return {"type": "disabled" if role == QUESTION_ROLE else "enabled"}
 
 
 class OpenRouterEngine:

@@ -461,7 +461,7 @@ async def test_background_sync_and_reconnect_are_independent_per_account(
 ):
     from enloq.application import accounts
     from enloq.domain.models import Chat, Message
-    from enloq.inference.fake import FakeDecider, FakeEngine
+    from enloq.inference.fake import FakeDecider, FakeEmbedder, FakeEngine
     from enloq.transport.fake import FakeTransport
 
     connections = []
@@ -513,6 +513,9 @@ async def test_background_sync_and_reconnect_are_independent_per_account(
     )
     monkeypatch.setattr(accounts, "MuseEngine", lambda settings, user: FakeEngine())
     monkeypatch.setattr(accounts, "DeciderEngine", lambda settings, user: FakeDecider())
+    monkeypatch.setattr(
+        accounts, "EmbeddingEngine", lambda settings, route, user: FakeEmbedder()
+    )
     registry = AccountRegistry(tmp_path)
     registry.register(1, "one.session")
     registry.register(2, "two.session")
@@ -544,7 +547,7 @@ async def test_identity_withdrawn_during_sync_stops_only_that_account(
 ):
     from enloq.application import accounts
     from enloq.domain.models import Chat, Message, Refused
-    from enloq.inference.fake import FakeDecider, FakeEngine
+    from enloq.inference.fake import FakeDecider, FakeEmbedder, FakeEngine
     from enloq.transport.fake import FakeTransport
 
     class PersonalFake(FakeTransport):
@@ -593,6 +596,9 @@ async def test_identity_withdrawn_during_sync_stops_only_that_account(
     )
     monkeypatch.setattr(accounts, "MuseEngine", lambda settings, user: FakeEngine())
     monkeypatch.setattr(accounts, "DeciderEngine", lambda settings, user: FakeDecider())
+    monkeypatch.setattr(
+        accounts, "EmbeddingEngine", lambda settings, route, user: FakeEmbedder()
+    )
     registry = AccountRegistry(tmp_path)
     registry.register(1, "one.session")
     registry.register(2, "two.session")

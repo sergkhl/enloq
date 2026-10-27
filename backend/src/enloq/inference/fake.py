@@ -1,4 +1,5 @@
 import asyncio
+import zlib
 
 from ..domain import citation_check
 from ..domain.briefing_contract import GROUP_ROLES, validate_briefing
@@ -13,10 +14,23 @@ class FakeEngine:
 
     def __init__(self):
         self.calls = []
+        # ADR 59: None answers from the first retrieved message; a dict is
+        # returned as written.
+        self.answer = None
 
     async def generate(self, role, packet):
         self.calls.append((role, packet))
         await asyncio.sleep(0.03)
+        if role == "group_question":
+            if self.answer is not None:
+                return self.answer
+            first = packet["messages"][0]
+            return {
+                "outcome": "answer",
+                "statements": [
+                    {"text": "An authored answer.", "citations": [first["id"]]}
+                ],
+            }
         if role == "group_briefing_image":
             return {
                 "image_context": [
@@ -114,6 +128,30 @@ class FakeEngine:
                 )
             ],
         }
+
+
+class FakeEmbedder:
+    """Authored vectors from character trigrams: mechanics, not meaning."""
+
+    name, model, provider = "offline", "authored-embeddings", "local"
+
+    def __init__(self):
+        from .retrieval import Route
+
+        self.route = Route("authored/embeddings", "local", "local", "0")
+        self.calls = []
+
+    async def generate(self, role, packet):
+        self.calls.append((role, packet))
+        rows = []
+        for index, text in enumerate(packet["texts"]):
+            vector = [0.0] * 64
+            value = f"  {text.lower()} "
+            for start in range(len(value) - 2):
+                vector[zlib.crc32(value[start : start + 3].encode()) % 64] += 1.0
+            vector[0] += 0.001
+            rows.append({"index": index, "embedding": vector})
+        return {"data": rows, "provider": "local"}
 
 
 class FakeDecider:

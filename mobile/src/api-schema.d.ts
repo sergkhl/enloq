@@ -124,6 +124,39 @@ export interface components {
       /** Version */
       version: string;
     };
+    /**
+     * AskRange
+     * @description The searched calendar days, first opt-in day or the cache's oldest
+     *     to today, in the server's timezone.
+     */
+    AskRange: {
+      /** Start */
+      start: string;
+      /** End */
+      end: string;
+    };
+    /** AskStatement */
+    AskStatement: {
+      /** Text */
+      text: string;
+      /** Citations */
+      citations: number[];
+      /** Unsupported */
+      unsupported: number[];
+      /** Supported */
+      supported: boolean;
+    };
+    /** AskView */
+    AskView: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: "answer" | "not_found" | "unchecked";
+      searched: components["schemas"]["AskRange"];
+      /** Statements */
+      statements?: components["schemas"]["AskStatement"][];
+    };
     /** AssetRepresentation */
     AssetRepresentation: {
       /**

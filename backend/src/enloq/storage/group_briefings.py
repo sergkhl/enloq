@@ -9,7 +9,7 @@ from contextlib import nullcontext
 from pydantic import ValidationError
 
 from ..domain.briefing_contract import GROUP_ROLES, BriefingError, validate_briefing
-from ..domain.citation_check import CHECK_ROLES, CitationCheck
+from ..domain.citation_check import CHECK_ROLE, CitationCheck
 from ..domain.group_briefings import (
     BriefingAttempt,
     BriefingBatch,
@@ -26,7 +26,7 @@ from ..domain.group_briefings import (
 from ..domain.group_filtering import FILTER_ROLES
 from ..domain.models import Message, Refused
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | {CHECK_ROLE}
 
 TABLES = (
     "CREATE TABLE IF NOT EXISTS group_briefing_days (chat_key TEXT NOT NULL REFERENCES chats(key),day TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(chat_key,day))",

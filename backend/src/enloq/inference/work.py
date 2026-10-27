@@ -9,13 +9,13 @@ from zoneinfo import ZoneInfo
 from pydantic import ValidationError
 
 from ..application.capacity import Capacity
-from ..domain import citation_check
+from ..domain import citation_check, group_questions
 from ..domain.briefing_contract import GROUP_ROLES, BriefingError, validate_group_output
 from ..domain.group_filtering import FILTER_ROLES, RULES_HASH
 from ..domain.models import Refused
 from ..domain.suggestions import ResponseSuggestions, bracketed
 from ..storage.members import OWNER, account_member, account_setting
-from . import decider
+from . import decider, retrieval
 from .base import EngineResponse, InvalidOutput, ProviderRefused
 from .guidance import briefing_fingerprint, snapshot
 from .openrouter import (
@@ -56,6 +56,7 @@ ROLES = (
     | GROUP_ROLES
     | FILTER_ROLES
     | citation_check.CHECK_ROLES
+    | group_questions.ROLES
 )
 # Background roles whose unavailable exact route is a bounded no-work refusal.
 BACKGROUND = (
@@ -91,14 +92,15 @@ DECIDED = (
     | FILTER_ROLES
     | citation_check.CHECK_ROLES
 )
+RETRIEVED = frozenset({group_questions.EMBED_ROLE, group_questions.RERANK_ROLE})
 ROUTES = {
     role: f"{decider.LOGICAL_MODEL}@{decider.PROVIDER}"
     if role in DECIDED
     else f"{LOGICAL_MODEL}@{PROVIDER}"
-    for role in ROLES
+    for role in ROLES - RETRIEVED
 }
 # The Daily Briefing's stages, paid from the Group Briefing Budget (ADR 34).
-STAGE_ROLES = GROUP_ROLES | FILTER_ROLES | citation_check.CHECK_ROLES
+STAGE_ROLES = GROUP_ROLES | FILTER_ROLES | {citation_check.CHECK_ROLE}
 # Roles whose repeated format failures pause automatic dispatch. Suggestions
 # never pause: each normal changed source stays eligible for one attempt and
 # cannot touch another role's count (ADR 25).
@@ -131,6 +133,9 @@ def instructed(packet):
 
 
 def validate_output(role, response, packet):
+    if role in RETRIEVED:
+        # Vectors and relevance scores, not generated text (ADR 59).
+        return retrieval.validate(role, response, packet)
     if role in DECIDED:
         # Decision answers, not generated text (ADR 30).
         return decider.validate(role, response.content, packet)
@@ -157,6 +162,11 @@ def validate_output(role, response, packet):
             content = json.loads(content, object_pairs_hook=unique, strict=False)
         except ValueError:
             raise InvalidOutput("invalid_json") from None
+    if role == group_questions.QUESTION_ROLE:
+        try:
+            return group_questions.validate_answer(content, packet["retrieved_ids"])
+        except group_questions.AnswerError as failure:
+            raise InvalidOutput(failure.code) from None
     if role in GROUP_ROLES:
         try:
             return validate_group_output(role, content, packet)
@@ -217,7 +227,7 @@ def validate_output(role, response, packet):
 
 def budget_family(role):
     """A request's purpose, independent of its account, chat or current settings."""
-    return "group_briefing" if role in STAGE_ROLES else "daily"
+    return "group_briefing" if role in STAGE_ROLES | group_questions.ROLES else "daily"
 
 
 def budget_key(family):
