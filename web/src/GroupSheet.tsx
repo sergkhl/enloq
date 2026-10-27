@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
+import { ChevronRight } from "lucide-react";
 import type { useGroupProcessing } from "./GroupProcessingControl";
 import type { useHideBots } from "./HideBots";
+import "./ask.css";
 
 // Why Group AI processing can't brief now (the app's GroupSheet notes).
 function processingNote(
@@ -17,16 +19,19 @@ function processingNote(
 }
 
 // A group's ⋮ actions sheet, as in the app (ADR 42 Q3, ADR 44 MW2): Group AI
-// processing with its notes, absent for retained work, and Hide bots.
+// processing with its notes, absent for retained work, Ask this group while
+// it is On (ADR 59 Q1), and Hide bots.
 export function GroupSheet({
   processing,
   accountEnabled,
   hideBots,
+  onAsk,
   onClose,
 }: {
   processing: ReturnType<typeof useGroupProcessing> | null;
   accountEnabled: boolean | null;
   hideBots: ReturnType<typeof useHideBots>;
+  onAsk: () => void;
   onClose: () => void;
 }) {
   const first = useRef<HTMLButtonElement>(null);
@@ -67,6 +72,12 @@ export function GroupSheet({
             </button>
             {note && <p className="sheet-note">{note}</p>}
           </>
+        )}
+        {processing?.value?.processing_enabled && (
+          <button type="button" className="sheet-item ask-row" onClick={onAsk}>
+            <span>Ask this group</span>
+            <ChevronRight size={18} aria-hidden />
+          </button>
         )}
         <button
           ref={processing ? undefined : first}

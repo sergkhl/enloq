@@ -262,8 +262,13 @@ export function mergeMessages(
 // last snapshot read on this phone shows until the server answers, or while
 // it can't (Q20). A group also keeps the originals a citation or its opening
 // brought in, rechecked against the service's cache on every reread, as the
-// web does (ADR 42 AG3, AG4).
-export function useConversation(account: number, peer: string) {
+// web does (ADR 42 AG3, AG4). A group opened at an Ask this group source
+// opens at that original instead of its earliest unseen (ADR 59 Q1).
+export function useConversation(
+  account: number,
+  peer: string,
+  opening?: number,
+) {
   const { api } = useConnection();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   // The server answered since the chat opened; until then the snapshot may be
@@ -298,14 +303,15 @@ export function useConversation(account: number, peer: string) {
     }),
   );
 
-  // A group opens at its earliest unseen ready message, read from the cache
-  // around it when the page lacks it; kept originals outside the page are
-  // read again, dropping those the cache no longer holds.
+  // A group opens at its earliest unseen ready message, or the source it was
+  // opened at, read from the cache around it when the page lacks it; kept
+  // originals outside the page are read again, dropping those the cache no
+  // longer holds.
   async function recheck(next: Snapshot) {
     const loaded = new Set(next.messages.map((m) => m.message_id));
     if (!opened.current) {
       opened.current = true;
-      const source = next.opening_source;
+      const source = opening ?? next.opening_source;
       if (source && !loaded.has(source)) {
         try {
           const window = await api<NativeMessage[]>(

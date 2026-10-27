@@ -32,6 +32,7 @@ export function ConversationHeader({
   emotion,
   aiOff,
   onBack,
+  backLabel = "Back to conversations",
   onActions,
   onProfile,
   view,
@@ -44,6 +45,8 @@ export function ConversationHeader({
   emotion?: Emotion;
   aiOff: boolean;
   onBack: () => void;
+  // Where Back goes: the list, or an Ask this group answer (ADR 59 Q1).
+  backLabel?: string;
   // A group's actions sheet (ADR 42 Q3); private chats have none.
   onActions?: () => void;
   // The photo and name open the Correspondent Profile (CU3) or, in a group,
@@ -68,7 +71,7 @@ export function ConversationHeader({
       <button
         type="button"
         className="header-icon"
-        aria-label="Back to conversations"
+        aria-label={backLabel}
         onClick={onBack}
       >
         <ChevronLeft size={26} aria-hidden />

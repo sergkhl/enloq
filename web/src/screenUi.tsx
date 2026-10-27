@@ -11,11 +11,14 @@ export function ScreenFrame({
   onBack,
   children,
   bodyRef,
+  footer,
 }: {
   title: string;
   onBack: () => void;
   children: React.ReactNode;
   bodyRef?: React.Ref<HTMLDivElement>;
+  // Stays under what scrolls, as a chat's composer does.
+  footer?: React.ReactNode;
 }) {
   return (
     <section className="screen" aria-label={title}>
@@ -33,6 +36,7 @@ export function ScreenFrame({
       <div className="screen-body" ref={bodyRef}>
         {children}
       </div>
+      {footer}
     </section>
   );
 }

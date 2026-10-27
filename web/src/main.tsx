@@ -13,6 +13,7 @@ import "./style.css";
 import "./rewriting.css";
 import "./reading.css";
 import "./sending.css";
+import { AskScreen } from "./AskScreen";
 import { AiBubble, OriginalBubble, type MenuTarget } from "./Bubble";
 import { ConversationHeader } from "./ConversationHeader";
 import { GroupSheet } from "./GroupSheet";
@@ -198,6 +199,9 @@ function Conversation({
   // "Chat link copied" beside the reading bar.
   const [sheet, setSheet] = useState<MenuTarget | null>(null);
   const [actions, setActions] = useState(false);
+  // Ask this group over the group (ADR 59 Q1): open, or hidden while the
+  // group shows one of its answer's sources.
+  const [asking, setAsking] = useState<"open" | "source" | null>(null);
   const [note, setNote] = useState("");
   useEffect(() => {
     if (!note) return;
@@ -472,6 +476,38 @@ function Conversation({
       if (alive.current) setError((e as Error).message);
     }
     if (alive.current && request === jumpRequest.current) setJumping(null);
+  }
+  // An Ask this group source (ADR 59 Q1): the group at that original, read
+  // from the cache around it as an opening is when it isn't loaded, then
+  // jumped to as a quote's message is, so a summarized one reveals its day as
+  // a briefing citation does.
+  const [source, setSource] = useState<number | null>(null);
+  useEffect(() => {
+    if (source === null || !messages.some((m) => m.message_id === source))
+      return;
+    setSource(null);
+    void jump(source);
+  }, [source, messages]);
+  async function openSource(identity: number) {
+    setAsking("source");
+    let target = messages.find((m) => m.message_id === identity);
+    if (!target)
+      try {
+        const window = await chatApi<NativeMessage[]>(
+          account,
+          chat.peer,
+          `/window?around=${identity}`,
+        );
+        if (!alive.current) return;
+        mergeSources(window);
+        target = window.find((m) => m.message_id === identity);
+      } catch (e) {
+        if (alive.current) setError((e as Error).message);
+        return;
+      }
+    if (target && !target.deleted) setSource(identity);
+    else
+      setError("The cited source changed or is no longer available locally.");
   }
   const replyAllowed = !retainedWork && data?.draft.state !== "rewriting";
   // Blocks shown otherwise than the reading view, until it changes (CU3).
@@ -812,7 +848,13 @@ function Conversation({
                       (group &&
                         groupProcessing.value?.processing_enabled === false)
                     }
-                    onBack={onBack}
+                    // Back from an answer's source returns to the answer.
+                    onBack={
+                      asking === "source" ? () => setAsking("open") : onBack
+                    }
+                    backLabel={
+                      asking === "source" ? "Back to answer" : undefined
+                    }
                     onActions={group ? () => setActions(true) : undefined}
                     view={saved ? undefined : reading.view}
                     onView={reading.choose}
@@ -844,7 +886,14 @@ function Conversation({
                       <LocalViewing
                         account={account}
                         peer={chat.peer}
-                        active={viewingActive && !!data && !!opening.current}
+                        // The Ask screen covers the stream, as the app's
+                        // covers its group (ADR 59 Q1).
+                        active={
+                          viewingActive &&
+                          !!data &&
+                          !!opening.current &&
+                          asking !== "open"
+                        }
                         readyOnly={group}
                         version={data}
                         stream={scroll.stream}
@@ -1058,7 +1107,21 @@ function Conversation({
                     processing={retainedWork ? null : groupProcessing}
                     accountEnabled={processing}
                     hideBots={hideBots}
+                    onAsk={() => {
+                      setActions(false);
+                      setAsking("open");
+                    }}
                     onClose={() => setActions(false)}
+                  />
+                )}
+                {asking && group && (
+                  <AskScreen
+                    account={account}
+                    peer={chat.peer}
+                    timezone={data?.timezone || "UTC"}
+                    hidden={asking === "source"}
+                    onBack={() => setAsking(null)}
+                    onSource={(identity) => void openSource(identity)}
                   />
                 )}
               </MessageDeletionProvider>

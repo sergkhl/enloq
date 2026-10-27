@@ -237,23 +237,12 @@ export function BriefingCard({
                 <Text selectable style={[styles.body, text]}>
                   {topic.text}
                 </Text>
-                <View style={styles.row}>
-                  {topic.citations.map((identity) => (
-                    <Pressable
-                      key={identity}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Source ${identity}`}
-                      accessibilityState={{ disabled: busy }}
-                      disabled={busy}
-                      hitSlop={6}
-                      onPress={() => onCite(identity)}
-                    >
-                      <Text style={[styles.small, { color: palette.accent }]}>
-                        #{identity}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                <SourceLinks
+                  citations={topic.citations}
+                  busy={busy}
+                  palette={palette}
+                  onCite={onCite}
+                />
                 {participants.length ? (
                   <View style={styles.row}>
                     {names.map((participant) => (
@@ -319,6 +308,41 @@ export function BriefingCard({
             : ""}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+// A statement's `#ID` links to its sources, each opening its original: a
+// briefing topic's (ADR 42 Q4) and an Ask this group answer's (ADR 59 Q1).
+export function SourceLinks({
+  citations,
+  busy = false,
+  palette,
+  onCite,
+}: {
+  citations: number[];
+  // A citation is being read.
+  busy?: boolean;
+  palette: Palette;
+  onCite: (source: number) => void;
+}) {
+  return (
+    <View style={styles.row}>
+      {citations.map((identity) => (
+        <Pressable
+          key={identity}
+          accessibilityRole="button"
+          accessibilityLabel={`Source ${identity}`}
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          hitSlop={6}
+          onPress={() => onCite(identity)}
+        >
+          <Text style={[styles.small, { color: palette.accent }]}>
+            #{identity}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
 }

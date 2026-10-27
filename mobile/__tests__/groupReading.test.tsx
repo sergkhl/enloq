@@ -564,6 +564,71 @@ describe("citations in place (AG4)", () => {
       borderWidth: 2,
     });
   });
+
+  // ADR 59 Q1: an answer's source link opens the group over the Ask screen.
+  describe("from an Ask this group answer", () => {
+    // The cache around a source outside the loaded page, and the reads of it.
+    let windows: Record<number, NativeMessage[]> = {};
+    const around: number[] = [];
+    beforeEach(() => {
+      windows = {};
+      around.length = 0;
+      const base = global.fetch;
+      global.fetch = jest.fn(async (url: string, init: RequestInit) => {
+        const read = /\/window\?around=(\d+)$/.exec(url);
+        if (!read) return base(url, init);
+        around.push(Number(read[1]));
+        return {
+          status: 200,
+          ok: true,
+          json: async () => windows[Number(read[1])] ?? [],
+        };
+      }) as unknown as typeof fetch;
+    });
+
+    test("a source outside the loaded page is read with its window and opens outlined", async () => {
+      windows[5] = [message(5, "An earlier decision.", "Gina")];
+      // The source replaces the opening at the earliest unseen message.
+      served = snapshot({
+        messages: MESSAGES.filter((m) => m.message_id > 10),
+        unread_sources: [3, 13],
+        opening_source: 3,
+      });
+      mockParams.source = "5";
+      await mount();
+      expect(await screen.findByText("An earlier decision.")).toBeTruthy();
+      expect(around).toEqual([5]);
+      await waitFor(() =>
+        expect(bubble("An earlier decision.")).toHaveStyle({ borderWidth: 2 }),
+      );
+      expect(screen.getByLabelText("Back to answer")).toBeTruthy();
+      expect(screen.queryByLabelText("Back to conversations")).toBeNull();
+    });
+
+    test("a summarized source reveals its day as a citation does", async () => {
+      pages[`/briefings/${TODAY}/sources?result=${RESULT}&source=12`] =
+        page(12);
+      mockParams.source = "12";
+      await mount();
+      expect(
+        await screen.findByText("I will bring the printed agenda."),
+      ).toBeTruthy();
+      expect(screen.getByText("Return to briefing")).toBeTruthy();
+      expect(sourceReads).toEqual([
+        `/briefings/${TODAY}/sources?result=${RESULT}&source=12`,
+      ]);
+      expect(bubble("I will bring the printed agenda.")).toHaveStyle({
+        borderWidth: 2,
+      });
+    });
+
+    test("a source the cache no longer holds says so", async () => {
+      mockParams.source = "7";
+      await mount();
+      expect(await screen.findByText(CHANGED)).toBeTruthy();
+      expect(screen.getByText("Planning")).toBeTruthy();
+    });
+  });
 });
 
 const CHANGED = "The cited source changed or is no longer available locally.";

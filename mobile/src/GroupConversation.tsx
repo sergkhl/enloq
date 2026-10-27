@@ -100,9 +100,13 @@ type SourcePage = {
 export function GroupConversation({
   account,
   peer,
+  source,
 }: {
   account: number;
   peer: string;
+  // An Ask this group source link's original (ADR 59 Q1): the group opens
+  // there over the Ask screen, which Back returns to.
+  source?: number;
 }) {
   const { connection, api } = useConnection();
   const palette = usePalette();
@@ -115,7 +119,7 @@ export function GroupConversation({
     loadEarlier,
     reload,
     merge,
-  } = useConversation(account, peer);
+  } = useConversation(account, peer, source);
   const composer = useComposer(account, peer, snapshot, reload, readAt);
   const bots = useHideBots();
   const hideBots = bots.hideBots;
@@ -186,7 +190,10 @@ export function GroupConversation({
   // Days whose band is wholly on screen, so it needs no pinned copy.
   const [whole, setWhole] = useState<ReadonlySet<string>>(new Set());
   const list = useRef<FlatList<GroupRow>>(null);
-  const openedAt = useRef(false);
+  // A source opening replaces the opening at the earliest unseen message;
+  // the reading the source last opened in.
+  const openedAt = useRef(source !== undefined);
+  const sourced = useRef<string | null>(null);
   const retries = useRef(0);
 
   const timezone = snapshot?.timezone ?? "UTC";
@@ -502,6 +509,17 @@ export function GroupConversation({
     setJump({ key: `m${identity}`, outline: true, place: "center" });
   }
 
+  // An Ask this group source opens as a quote's jump does, once the server's
+  // answer and the cache around the source are in (ADR 59 Q1). A reveal
+  // belongs to its reading, so a new reading opens the source again.
+  useEffect(() => {
+    if (source === undefined || !live || sourced.current === view) return;
+    sourced.current = view;
+    const target = messages.find((message) => message.message_id === source);
+    if (target && !target.deleted) jumpTo(source);
+    else setNotice(CHANGED);
+  }, [live, messages, view]);
+
   // The inverted list draws its last row at the top: that row's band stays
   // pinned above it unless the band itself is wholly on screen. A band with
   // only a sliver left at the top counts as gone.
@@ -802,7 +820,11 @@ export function GroupConversation({
           <View style={[styles.header, { borderColor: palette.line }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Back to conversations"
+              accessibilityLabel={
+                source === undefined
+                  ? "Back to conversations"
+                  : "Back to answer"
+              }
               hitSlop={8}
               onPress={() =>
                 router.canGoBack() ? router.back() : router.replace("/chats")
@@ -1063,6 +1085,17 @@ export function GroupConversation({
                         body: { enabled: !processing?.processing_enabled },
                       }),
                     )
+            }
+            onAsk={
+              retained
+                ? null
+                : () => {
+                    setSheet(false);
+                    router.push({
+                      pathname: "/ask/[account]/[peer]",
+                      params: { account: String(account), peer },
+                    });
+                  }
             }
             onHideBots={() => void save(() => bots.choose(!hideBots))}
             onClose={() => setSheet(false)}

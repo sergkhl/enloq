@@ -124,7 +124,8 @@ function ordinal(value: number) {
   return `${value}${suffix}`;
 }
 
-function shortDay(day: string) {
+// "25 Oct": a YYYY-MM-DD calendar day, its year only outside the current one.
+export function shortDay(day: string) {
   const [year, month, date] = day.split("-").map(Number);
   return `${date} ${MONTHS[month! - 1]!.slice(0, 3)}${
     year === new Date().getFullYear() ? "" : ` ${year}`

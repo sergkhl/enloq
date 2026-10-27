@@ -96,6 +96,34 @@ function BriefingSlot({
   );
 }
 
+// A statement's `#ID` links to its sources, each opening its original: a
+// briefing topic's (ADR 42 Q4) and an Ask this group answer's (ADR 59 Q1),
+// as the app's SourceLinks.
+export function SourceLinks({
+  citations,
+  disabled = false,
+  onCite,
+}: {
+  citations: number[];
+  disabled?: boolean;
+  onCite: (source: number) => void;
+}) {
+  return (
+    <span className="briefing-citations">
+      {citations.map((identity) => (
+        <button
+          key={identity}
+          aria-label={"Source " + identity}
+          disabled={disabled}
+          onClick={() => onCite(identity)}
+        >
+          #{identity}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export function DailyBriefings({
   account,
   peer,
@@ -536,20 +564,13 @@ export function DailyBriefings({
                               {topic.title && <h4>{topic.title}</h4>}
                               <p>
                                 {topic.text}{" "}
-                                <span className="briefing-citations">
-                                  {topic.citations.map((identity) => (
-                                    <button
-                                      key={identity}
-                                      aria-label={"Source " + identity}
-                                      disabled={busy === day}
-                                      onClick={() =>
-                                        void reveal(brief, identity)
-                                      }
-                                    >
-                                      #{identity}
-                                    </button>
-                                  ))}
-                                </span>
+                                <SourceLinks
+                                  citations={topic.citations}
+                                  disabled={busy === day}
+                                  onCite={(identity) =>
+                                    void reveal(brief, identity)
+                                  }
+                                />
                               </p>
                               {!!participants.length && (
                                 <div className="briefing-participants">

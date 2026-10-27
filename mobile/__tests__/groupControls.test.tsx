@@ -445,6 +445,32 @@ describe("the group's actions sheet", () => {
     expect(screen.getByText(note)).toBeTruthy();
   });
 
+  test("Ask this group opens its screen while Group AI processing is On", async () => {
+    await mount();
+    await screen.findByText("Planning");
+    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Ask this group" }),
+    );
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: "/ask/[account]/[peer]",
+      params: { account: "1", peer: "chat:42" },
+    });
+    // Off, the sheet offers it no more (ADR 59 Q1).
+    served = snapshot({
+      group_processing: { ...PROCESSING, processing_enabled: false },
+    });
+    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await fireEvent.press(
+      screen.getByRole("switch", { name: "Group AI processing" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Ask this group" }),
+      ).toBeNull(),
+    );
+  });
+
   test("account AI Off shows its note and the AI off tag", async () => {
     accountAI = false;
     await mount();

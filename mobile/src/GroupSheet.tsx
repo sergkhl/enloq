@@ -1,3 +1,4 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,7 +20,8 @@ export function processingNote(
 }
 
 // A group's ⋮ actions sheet (ADR 42 Q3): Group AI processing with its notes,
-// and the global Hide Bots preference. Both wait for the server.
+// Ask this group while it is On (ADR 59 Q1), and the global Hide Bots
+// preference. The switches wait for the server.
 export function GroupSheet({
   visible,
   processing,
@@ -29,6 +31,7 @@ export function GroupSheet({
   note,
   palette,
   onProcessing,
+  onAsk,
   onHideBots,
   onClose,
 }: {
@@ -42,6 +45,8 @@ export function GroupSheet({
   note: string;
   palette: Palette;
   onProcessing: (() => void) | null;
+  // Null for a retained group.
+  onAsk: (() => void) | null;
   onHideBots: () => void;
   onClose: () => void;
 }) {
@@ -81,6 +86,23 @@ export function GroupSheet({
                   </Text>
                 ) : null}
               </>
+            ) : null}
+            {onAsk && processing?.processing_enabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ask this group"
+                onPress={onAsk}
+                style={styles.row}
+              >
+                <Text style={[styles.label, { color: palette.text }]}>
+                  Ask this group
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={palette.muted}
+                />
+              </Pressable>
             ) : null}
             <SwitchRow
               label="Hide bots"

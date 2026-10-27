@@ -115,9 +115,12 @@ export default function ConversationRoute() {
   const params = useLocalSearchParams<{
     account: string;
     peer: string;
+    // An Ask this group source link's original (ADR 59 Q1).
+    source?: string;
   }>();
   const account = Number(params.account);
   const peer = String(params.peer ?? "");
+  const source = Number(params.source);
   const { connection } = useConnection();
   if (connection.status === "unpaired") return <Redirect href="/pair" />;
   if (!Number.isSafeInteger(account) || account <= 0 || !peer)
@@ -131,6 +134,7 @@ export default function ConversationRoute() {
       key={`${account}/${peer}`}
       account={account}
       peer={peer}
+      source={Number.isSafeInteger(source) && source > 0 ? source : undefined}
     />
   ) : (
     <Conversation key={`${account}/${peer}`} account={account} peer={peer} />
