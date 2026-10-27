@@ -216,6 +216,33 @@ s), 2.4 s for bge-m3 and 9.2 s for Qwen3 at Nebius, whose per-second token
 quota refused bursts until retried. One rerank of 40 messages took 0.9 s
 (1.4 s) for the Qwen3 reranker and 0.5 s (0.6 s) for both Voyage models.
 
+**Answers.** On the adopted retrieval (Perplexity with keywords, then the
+Qwen3 reranker; the relevant messages were among the 25 the writer read for
+93% of them), 60 questions, eight answerable and two unanswerable from each
+group, were answered by MiMo with thinking on and each statement checked, and
+by gpt-6.1-sol at medium effort on the same messages. gpt-6.1-sol, as judge,
+graded both against the authored answers.
+
+| Writer | Correct when answerable | Not found when answerable | Not found when unanswerable | Statements judged unsupported | Seconds: median (95th) |
+| --- | --- | --- | --- | --- | --- |
+| MiMo, thinking on | 27 of 48 (41%–71%) | 16 of 48 | 12 of 12 | 4 of 85 | 8.1 (18.0) |
+| gpt-6.1-sol, medium | 43 of 48 (77%–97%) | 1 of 48 | 6 of 12 | 1 of 73 | 3.3 (5.5) |
+
+Nine of MiMo's answers failed the answer format by saying "not found" beside
+statements, five of them on answerable questions; the format has since
+dropped the separate outcome. Five of gpt-6.1-sol's six answers to
+unanswerable questions described an open discussion accurately, the kind the
+labels call unanswerable. With thinking off, in an earlier stopped run, MiMo
+said "not found" to 14 of 24 answerable questions whose answer it had.
+
+**The check on answers.** It left none of MiMo's 85 statements without a
+citation, found 3 not fully supported, and kept 4 citations of statements the
+judge found unsupported. One check of a statement took 0.6 s.
+
+**Cost per question.** About $0.0009: the reranker $0.00056, MiMo $0.00034,
+the checks $0.00002 and the question's embedding less than $0.00001. Embedding
+a group's cached messages the first time costs $0.000015 per 64 of them.
+
 ## Not measured
 
 - The deployment's savings: how often real blocks are hostile, call for
