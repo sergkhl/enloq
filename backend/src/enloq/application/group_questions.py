@@ -26,11 +26,14 @@ from ..domain.group_questions import (
     searchable,
 )
 from ..domain.models import Message, ProcessingPaused, Refused
+from ..inference.base import ProviderRefused
 from ..storage import group_vectors
 from ..storage.store import RETENTION
 from . import group_context as context
 from .group_briefings import checked_view
 
+# Embedding and rerank refusals that did no work are tried again (_run).
+RETRIED_TRIES, RETRIED_WAIT = 3, 5
 # A long transcript is embedded by its beginning: the vector only ranks it.
 EMBEDDED_CHARACTERS = 8000
 BATCH, BATCH_BYTES = 64, 100_000
@@ -111,6 +114,20 @@ class GroupQuestions:
             db.close()
 
     async def _run(self, engine, role, packet, key):
+        """One request; an embedding or rerank refusal that did no work, such
+        as a provider's per-second token quota, is tried again after the wait
+        it names (a second by default), at most twice and five seconds each."""
+        tries = RETRIED_TRIES if role in (EMBED_ROLE, RERANK_ROLE) else 1
+        for attempt in range(tries):
+            try:
+                return await self._attempt(engine, role, packet, key)
+            except ProviderRefused as refusal:
+                wait = 1 if refusal.retry_after is None else refusal.retry_after
+                if attempt + 1 == tries or wait > RETRIED_WAIT:
+                    raise
+                await asyncio.sleep(max(1, wait))
+
+    async def _attempt(self, engine, role, packet, key):
         job = dict(
             id=uuid.uuid4().hex,
             scope=key,

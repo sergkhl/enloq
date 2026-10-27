@@ -228,3 +228,29 @@ async def test_one_question_at_a_time_per_account(rig):
     async with questions._busy:
         with pytest.raises(Refused):
             await questions.ask(KEY, "Who has the key?")
+
+
+async def test_a_quota_refusal_of_an_embedding_is_tried_again(rig, monkeypatch):
+    source(rig, 1, text="The shed key is with Eli now.")
+    embedder = rig.app.questions.embedder
+    answer = embedder.generate
+    refusals = [ProviderRefused("Model provider HTTP 429")] * 2
+
+    async def quota(role, packet):
+        if refusals:
+            raise refusals.pop()
+        return await answer(role, packet)
+
+    waits = []
+
+    async def wait(seconds):
+        waits.append(seconds)
+
+    embedder.generate = quota
+    monkeypatch.setattr("enloq.application.group_questions.asyncio.sleep", wait)
+    result = await rig.app.questions.ask(KEY, "Who has the key?")
+    # The authored engines sleep briefly too; the quota waits are whole seconds.
+    assert result["status"] == "answer" and [w for w in waits if w >= 1] == [1, 1]
+    refusals.extend([ProviderRefused("Model provider HTTP 429")] * 3)
+    with pytest.raises(ProviderRefused):
+        await rig.app.questions.ask(KEY, "Who has the key now?")

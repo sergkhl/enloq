@@ -72,6 +72,11 @@ None of these is adopted, implemented or authorized.
   on opening a group, the pinned Today band is sometimes not drawn while its
   in-list copy sits as a sliver at the top, so `groups.yaml` misses "Briefing
   up to date". Recompute the pinned day after the opening scroll.
+- **The reminders journey's request count** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
+  in a full `npm --prefix web run journeys` run, `journeys/reminders.spec.ts`
+  expects 3 suggestion requests and receives 4, because its count includes
+  requests from journeys that ran earlier on the same fixture server; alone it
+  passes. Count only its own requests.
 - **Account Memory sources** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)):
   a note's sources name their chats, but neither client shows them.
 - **Image caches after Forget** ([ADR 38](../adr/0038-mobile-expo-client.md)
