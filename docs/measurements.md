@@ -6,7 +6,8 @@ Enloq asks a decision model before it calls a writing model
 [ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)). Perplexity's
 Decider answers named questions with probabilities and writes no text. This
 page gives the latency and cost measured for one decision and for the
-writing-model steps it replaced or made unnecessary.
+writing-model steps it replaced or made unnecessary, and the
+[ranges](#miss-rate-ranges) around two gates' published check results.
 
 **These figures are indicative, not a benchmark.** They come from small finite
 checks on 7 and 9 October 2026, each with its own authored test messages, on
@@ -94,6 +95,47 @@ output validation; its time and cost are included. ADR 54 stopped rewriting
 non-hostile text because the rewrites added little beside their originals, and
 says "Cost was not the reason"; the table shows what each of those rewrites
 took.
+
+## Miss-rate ranges
+
+[Inference](inference.md#retained-acceptance-limits) publishes two
+decision-model gates' check results: the cases each gate missed and the cases
+it acted on wrongly. The samples are small, so each count is given with the
+range of true rates it is consistent with: its two-sided 95% exact
+(Clopper–Pearson) interval. Computed on 27 October 2026.
+
+| Gate | Counted | Count | 95% range |
+| --- | --- | --- | --- |
+| Hostile wording | Hostile cases missed | 6 of 18 (33.3%) | 13.3%–59.0% |
+| Hostile wording | Non-hostile controls changed | 0 of 12 | 0%–26.5% |
+| Advertising | Hand-labelled ads not excluded | 1 of 13 (7.7%) | 0.2%–36.0% |
+| Advertising | Other cases excluded | 0 of 129 | 0%–2.8% |
+
+- **Hostile wording**
+  ([inference](inference.md#retained-acceptance-limits), Hostile-wording
+  detection). The authored hostile-only pass of 24 October 2026: 18 hostile
+  and 12 non-hostile authored blocks, one decision each from the pinned
+  decision model, Decider V1.2 (`perplexity/pplx-decider-v1.2` at checkpoint
+  `-20261016`). A hostility probability of 0.5 or more softens.
+- **Advertising**
+  ([inference](inference.md#group-briefing-first-outcomes), Ad filtering).
+  Authored and cached group sources, classified on 12 October 2026: 13
+  hand-labelled ads and 129 other cases. A probability of 0.90 or more
+  excludes. The inference page names no model version for this check; its
+  report records Decider V1.1 (`perplexity/pplx-decider-v1.1-27b` at
+  checkpoint `-20261006`), which Enloq used before V1.2.
+
+**Method.** The ends of each range are the rates at which a count at least as
+extreme as the observed one has a 2.5% chance, from the exact binomial
+distribution, so a count of zero still has an upper end above zero. The
+interval treats the cases as independent draws at one rate. **These are
+authored and cached cases, not live traffic:** the rates on real chats and
+groups are not measured.
+
+**What it means.** With 18 positive cases, no threshold can promise at most 5%
+misses at 95% confidence: even catching all 18 would leave a one-sided upper
+bound of 15.3%. That takes at least 59 positive cases with no misses (72 for
+the two-sided bound the table uses).
 
 ## Not measured
 
