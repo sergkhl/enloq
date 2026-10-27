@@ -44,6 +44,7 @@ def authored(manager):
     )
     app.store.groups.observe(KEY, access="available", reason="authored_native")
     app.set_group_processing(KEY, True)
+    app.briefings.check_citations = False
     intake = app.store.groups.intake(KEY)
     app.store.groups.scanned(
         KEY,

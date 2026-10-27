@@ -38,6 +38,7 @@ async def review_rig(tmp_path, request):
     )
     app.store.groups.observe(key, access="available", reason="authored_native")
     app.set_group_processing(key, True)
+    app.briefings.check_citations = False
     known_non_ads(app)
     engine = AuthoredEngine(app)
     app.engine = engine

@@ -9,6 +9,7 @@ from contextlib import nullcontext
 from pydantic import ValidationError
 
 from ..domain.briefing_contract import GROUP_ROLES, BriefingError, validate_briefing
+from ..domain.citation_check import CHECK_ROLES, CitationCheck
 from ..domain.group_briefings import (
     BriefingAttempt,
     BriefingBatch,
@@ -25,7 +26,7 @@ from ..domain.group_briefings import (
 from ..domain.group_filtering import FILTER_ROLES
 from ..domain.models import Message, Refused
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
 
 TABLES = (
     "CREATE TABLE IF NOT EXISTS group_briefing_days (chat_key TEXT NOT NULL REFERENCES chats(key),day TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(chat_key,day))",
@@ -436,6 +437,7 @@ class GroupBriefings:
         *,
         requests=0,
         classifier_requests=0,
+        check_requests=0,
         source_ids=(),
         speech_seconds=0,
         dispatch_token=None,
@@ -447,6 +449,8 @@ class GroupBriefings:
             or requests < 0
             or type(classifier_requests) is not int
             or classifier_requests < 0
+            or type(check_requests) is not int
+            or check_requests < 0
             or any(type(value) is not int or value <= 0 for value in ids)
             or isinstance(speech_seconds, bool)
             or not isinstance(speech_seconds, (int, float))
@@ -458,10 +462,11 @@ class GroupBriefings:
                     not isinstance(dispatch_token, str)
                     or not dispatch_token
                     or (
-                        requests + classifier_requests != 1
+                        requests + classifier_requests + check_requests != 1
                         and not (
                             requests == 0
                             and classifier_requests == 0
+                            and check_requests == 0
                             and speech_seconds > 0
                         )
                     )
@@ -469,14 +474,15 @@ class GroupBriefings:
             )
         ):
             raise Refused("Invalid briefing work evidence")
-        proof = digest(
-            dict(
-                requests=requests,
-                classifier_requests=classifier_requests,
-                source_ids=sorted(set(ids)),
-                speech_seconds=speech_seconds,
-            )
+        proof = dict(
+            requests=requests,
+            classifier_requests=classifier_requests,
+            source_ids=sorted(set(ids)),
+            speech_seconds=speech_seconds,
         )
+        if check_requests:
+            proof["check_requests"] = check_requests
+        proof = digest(proof)
         with nullcontext(db) if db is not None else self.store.transaction() as db:
             batch = self._batch(db, identity)
             if batch is None or batch.state != "active":
@@ -493,6 +499,7 @@ class GroupBriefings:
             if (
                 batch.requests + requests > 5
                 or batch.classifier_requests + classifier_requests > 12
+                or batch.check_requests + check_requests > 12
                 or len(sources) > 200
             ):
                 raise Refused("Briefing update work limit reached")
@@ -503,6 +510,7 @@ class GroupBriefings:
                 update=dict(
                     requests=batch.requests + requests,
                     classifier_requests=batch.classifier_requests + classifier_requests,
+                    check_requests=batch.check_requests + check_requests,
                     source_ids=sources,
                     speech_seconds=batch.speech_seconds + speech_seconds,
                     dispatch_tokens=tokens,
@@ -1020,6 +1028,7 @@ class GroupBriefings:
         local_outcome=None,
         filter_state=None,
         filter_evidence=(),
+        citation_check=None,
     ):
         covered, chunk_ids = _ids(covered_ids), list(chunk_ids)
         excluded = _ids(excluded_ids) if excluded_ids else []
@@ -1032,6 +1041,14 @@ class GroupBriefings:
             output = validate_briefing(output, sorted(set(covered) - set(excluded)))
         except BriefingError as error:
             raise Refused(f"Invalid final briefing ({error.code})") from None
+        if citation_check is not None:
+            citation_check = CitationCheck.model_validate(citation_check)
+            if len(citation_check.topics) != len(output.topics) or any(
+                {s.message_id for s in check.support} != set(topic.citations)
+                for topic, check in zip(output.topics, citation_check.topics)
+                if check.status == "checked"
+            ):
+                raise Refused("Citation check does not match its final briefing")
         with self.store.transaction() as db:
             attempt = self._active(db, identity)
             if (
@@ -1138,6 +1155,7 @@ class GroupBriefings:
                 local_outcome=local_outcome,
                 filter_state=filter_state,
                 filter_evidence=list(filter_evidence),
+                citation_check=citation_check,
             )
             db.execute(
                 "INSERT INTO group_briefing_results VALUES (?,?,?,1,?)",

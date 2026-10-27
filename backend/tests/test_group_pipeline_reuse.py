@@ -58,7 +58,7 @@ def attach_model(rig):
     rig.app.engine.generate = generate
 
 
-def create(tmp_path, *, first_enabled=NOW, classify_non_ads=True):
+def create(tmp_path, *, first_enabled=NOW, classify_non_ads=True, check=False):
     settings = Settings(data=tmp_path / "authored-app", timezone="UTC")
     manager = AccountManager(settings)
     now = [first_enabled]
@@ -82,6 +82,9 @@ def create(tmp_path, *, first_enabled=NOW, classify_non_ads=True):
         complete=True,
     )
     app.set_group_processing(KEY, True)
+    # Stage-by-stage tests publish at the final; test_citation_check runs the
+    # citation check stage (ADR 34).
+    app.briefings.check_citations = check
     rig = SimpleNamespace(
         manager=manager,
         app=app,

@@ -7,15 +7,24 @@ import threading
 import uuid
 from contextlib import contextmanager
 
-from ..domain.briefing_contract import GROUP_ROLES
+from ..domain import citation_check
+from ..domain.briefing_contract import GROUP_ROLES, BriefingOutput
+from ..domain.citation_check import CHECK_ROLE, CHECK_ROLES, ClaimCheck
 from ..domain.group_briefings import BriefingChunk, BriefingResult, FrozenBriefing
 from ..domain.group_filtering import FILTER_ROLES
-from ..domain.models import Message, ProcessingPaused, Refused, Unavailable
+from ..domain.models import (
+    Message,
+    ProcessingPaused,
+    Refused,
+    Unavailable,
+    reply_target,
+)
 from ..inference.base import ProviderRefused
 from ..inference.guidance import briefing_fingerprint
 from ..inference.guidance import snapshot as guidance_snapshot
 from ..inference.work import (
     ROUTES,
+    BudgetReached,
     GroupGuidanceChanged,
     accounting,
     budget_day,
@@ -31,12 +40,23 @@ from .group_filtering import GroupFiltering
 from .group_planner import Planner
 from .group_rollout import GroupBriefingRollout
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
 
 # Seconds a planning answer may stand with no local commit and no hold ending.
 # Sources leaving the automatic window or retention, and writers outside this
 # process, are noticed within it.
 RECHECK = 15
+
+
+def checked_view(store, message):
+    """What the briefing read of one original, without internal revision and
+    peer metadata."""
+    value = context._prepared(store, message)
+    value.pop("revision", None)
+    value["speaker"] = {
+        k: v for k, v in value["speaker"].items() if k != "peer" and v is not None
+    }
+    return value
 
 
 def clean(packet):
@@ -81,6 +101,9 @@ class GroupBriefings:
         self._speech_started = set()
         self._settled = {}
         self._held, self._hold_lock = {}, threading.Lock()
+        # ADR 34's citation check; the generative briefing check script, whose
+        # closed role set has no decision calls, publishes unchecked instead.
+        self.check_citations = True
 
     @contextmanager
     def _holding(self, batch):
@@ -187,7 +210,7 @@ class GroupBriefings:
             ):
                 continue
             try:
-                self._admit(payload)
+                self._admit(payload, budget=payload.get("stage") != "check")
             except Refused:
                 continue
             return True
@@ -242,15 +265,7 @@ class GroupBriefings:
                         id=final.id,
                         text=final.text,
                         outcome=final.output.outcome,
-                        topics=[
-                            {
-                                **topic.model_dump(),
-                                "participants": self._participants(
-                                    key, topic.participant_source_ids
-                                ),
-                            }
-                            for topic in final.output.topics
-                        ],
+                        topics=self._topics(key, final),
                         excluded_ids=final.excluded_ids,
                         ad_ids=final.ad_ids,
                         local_outcome=final.local_outcome,
@@ -269,6 +284,31 @@ class GroupBriefings:
                     analyzing=self._analyzing(attempt, prefix),
                     retry=self._retry_view(attempt),
                 )
+            )
+        return result
+
+    def _topics(self, key, final):
+        """Topics as shown: citations the check found unsupported are gone,
+        with their participants (ADR 34 citation check Q3)."""
+        checks = final.citation_check.topics if final.citation_check else []
+
+        def author_of(identity):
+            message = self.store.message(key, identity)
+            return message.author_peer if message and not message.deleted else None
+
+        result = []
+        for index, topic in enumerate(final.output.topics):
+            removed = checks[index].removed if index < len(checks) else set()
+            citations, participant_ids = citation_check.kept(
+                topic.citations, topic.participant_source_ids, removed, author_of
+            )
+            result.append(
+                {
+                    **topic.model_dump(),
+                    "citations": citations,
+                    "participant_source_ids": participant_ids,
+                    "participants": self._participants(key, participant_ids),
+                }
             )
         return result
 
@@ -330,7 +370,9 @@ class GroupBriefings:
             raise Refused("An exact cited original is required")
         final = self._source_final(key, day, identity)
         cited = {
-            identity for topic in final.output.topics for identity in topic.citations
+            identity
+            for topic in self._topics(key, final)
+            for identity in topic["citations"]
         }
         if source not in cited:
             raise Refused("This original is not a validated briefing citation")
@@ -434,7 +476,7 @@ class GroupBriefings:
             "group_briefing",
         )
 
-    def _admit(self, payload, *, db=None):
+    def _admit(self, payload, *, db=None, budget=True):
         GroupBriefingRollout.admit(self, payload, db=db)
         attempt = self.storage.attempt(payload["attempt"], db=db)
         if not attempt or not self.storage.current(attempt, admission=True, db=db):
@@ -457,8 +499,9 @@ class GroupBriefings:
             self.app.admit_ai()
             if not self.app.authorized():
                 raise Refused("Account authorization changed")
-            self.work.check_budget("group_briefing")
-        else:
+            if budget:
+                self.work.check_budget("group_briefing")
+        elif budget:
             self._budget(db)
         batch = self.storage.batch(attempt.batch_id, db=db)
         if not batch or batch.state != "active":
@@ -643,6 +686,8 @@ class GroupBriefings:
             if stage == "image"
             else "group_briefing_chunk"
             if stage in {"prepare", "chunk"}
+            else CHECK_ROLE
+            if stage == "check"
             else "group_briefing"
         )
         identity = uuid.uuid4().hex
@@ -838,7 +883,9 @@ class GroupBriefings:
                     )
                     self.work.check_budget("group_briefing")
                 else:
-                    self._admit(payload)
+                    # ADR 34 citation check Q5: a spent budget leaves a
+                    # finished final unchecked rather than waiting.
+                    self._admit(payload, budget=payload["stage"] != "check")
             except Refused:
                 continue
             key = (
@@ -916,7 +963,7 @@ class GroupBriefings:
                 )
                 self.work.check_budget("group_briefing")
             else:
-                self._admit(payload)
+                self._admit(payload, budget=payload["stage"] != "check")
         except Refused:
             return False
         with self.store.transaction() as db:
@@ -1387,12 +1434,24 @@ class GroupBriefings:
             payload["chunks"].append(chunk.id)
             payload.pop("packet", None)
             return self._advance(payload)
-        self.storage.publish(
-            attempt.id,
-            output,
+        payload["final"] = dict(
+            output=output.model_dump(mode="json"),
             covered_ids=sorted(
                 set(request["covered_ids"]) | set(payload.get("exclusion_ids", []))
             ),
+        )
+        if output.topics and self.check_citations:
+            # ADR 34 citation check Q6: between validation and publishing.
+            payload.update(stage="check", checks=[])
+            return self._enqueue(payload)
+        self._publish(payload)
+
+    def _publish(self, payload, check=None):
+        final, packet = payload.pop("final"), payload.get("packet")
+        self.storage.publish(
+            payload["attempt"],
+            final["output"],
+            covered_ids=final["covered_ids"],
             chunk_ids=payload["chunks"],
             original_ids=packet["covered_ids"] if packet else [],
             packet=packet,
@@ -1401,9 +1460,122 @@ class GroupBriefings:
             ad_ids=payload.get("ad_ids", []),
             filter_state=payload.get("filter_state"),
             filter_evidence=payload.get("filter_evidence", []),
+            citation_check=check,
+        )
+        self._next_day(payload)
+
+    def _check_packet(self, key, topic):
+        """A topic and its cited originals as the briefing read them, with the
+        cached messages they reply to as bounded context."""
+        cited, replies = [], []
+        for identity in topic.citations:
+            message = self.store.message(key, identity)
+            if message is None or message.deleted:
+                raise Refused("A cited original is no longer cached")
+            cited.append(message)
+        used = 0
+        for message in cited:
+            parent = reply_target(message)
+            if (
+                parent is None
+                or parent in topic.citations
+                or any(m.message_id == parent for m in replies)
+            ):
+                continue
+            parent = self.store.message(key, parent)
+            if (
+                parent is None
+                or parent.deleted
+                or not context.eligible(parent)
+                or not self.store.groups.current(parent)
+                # Ads and ignored bots never reach a model as context either.
+                or any(self.filtering.annotations(parent).values())
+            ):
+                continue
+            size = context.encoded(checked_view(self.store, parent))
+            if used + size <= citation_check.CONTEXT_BYTES:
+                replies.append(parent)
+                used += size
+        return citation_check.make_packet(
+            CHECK_ROLE,
+            {"title": topic.title, "text": topic.text},
+            [checked_view(self.store, m) for m in cited],
+            [checked_view(self.store, m) for m in replies],
         )
 
-        self._next_day(payload)
+    async def _check(self, job, payload):
+        """One topic's citation check per job (ADR 34 citation check Q2). A
+        check that cannot run leaves the topic unchecked (Q5); a route or budget
+        failure leaves the rest unchecked too, without further calls."""
+        attempt = self._admit(payload, budget=False)
+        output = BriefingOutput.model_validate(payload["final"]["output"])
+        checks = payload["checks"]
+        topic = output.topics[len(checks)]
+        result = None
+        if self.storage.batch(payload["batch"]).check_requests >= 12:
+            result = ClaimCheck(status="unchecked", reason="limit")
+        else:
+            try:
+                packet = self._check_packet(attempt.snapshot.key, topic)
+            except Refused:
+                if not self._current(payload):
+                    raise
+                result = ClaimCheck(status="unchecked", reason="bound")
+        if result is None:
+
+            def admission(db, _):
+                self._admit(payload, db=db)
+
+            def accounting(db, identity):
+                self.storage.record_work(
+                    payload["batch"],
+                    check_requests=1,
+                    dispatch_token=identity["id"],
+                    db=db,
+                )
+
+            try:
+                answers = await self.work.run(
+                    self.app.decider,
+                    job,
+                    packet,
+                    lambda: self._current(payload),
+                    klass="group",
+                    group_admission=admission,
+                    group_accounting=accounting,
+                    group_guidance=citation_check.RULES_HASH,
+                )
+                result = citation_check.answered(packet, answers)
+            except (GroupGuidanceChanged, ProcessingPaused):
+                raise
+            except ProviderRefused:
+                result = ClaimCheck(status="unchecked", reason="refused")
+            except BudgetReached:
+                result = ClaimCheck(status="unchecked", reason="budget")
+            except Refused as error:
+                if not self._current(payload):
+                    raise
+                result = ClaimCheck(
+                    status="unchecked",
+                    reason="format"
+                    if str(error).startswith("Invalid structured output")
+                    else "unavailable",
+                )
+        # A refusal before dispatch leaves the job claimed; a dispatched one
+        # already settled it.
+        self._done(job)
+        checks.append(result.model_dump())
+        if result.reason in {"limit", "refused", "budget", "unavailable"}:
+            # Further calls would meet the same refusal or count more unknowns.
+            checks.extend(
+                result.model_dump() for _ in range(len(output.topics) - len(checks))
+            )
+        if len(checks) < len(output.topics):
+            return self._enqueue(payload)
+        self._publish(
+            payload,
+            dict(rules_hash=citation_check.RULES_HASH, topics=checks),
+        )
 
     def _next_day(self, payload):
         batch = self.storage.batch(payload["batch"])
@@ -1433,7 +1605,7 @@ class GroupBriefings:
                     day, batch, automatic=batch.automatic, remaining=payload["days"]
                 )
                 return
-            attempt = self._admit(payload)
+            attempt = self._admit(payload, budget=payload["stage"] != "check")
             if attempt.snapshot.guidance_hash != self._guide():
                 self.storage.refresh_guidance(
                     attempt.id,
@@ -1459,6 +1631,8 @@ class GroupBriefings:
                 await self._filter(job, payload)
             elif payload["stage"] == "prepare":
                 await self._prepare(job, payload)
+            elif payload["stage"] == "check":
+                await self._check(job, payload)
             else:
                 await self._model(job, payload)
         except asyncio.CancelledError:
@@ -1486,7 +1660,7 @@ class GroupBriefings:
         except Refused:
             if payload.get("attempt") and self._current(payload):
                 try:
-                    self._admit(payload)
+                    self._admit(payload, budget=payload["stage"] != "check")
                 except Refused:
                     self._hold(job)
                     return

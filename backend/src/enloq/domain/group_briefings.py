@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, field_validator
 
 from .briefing_contract import BriefingOutput
+from .citation_check import CitationCheck
 from .models import ChatKey, Model, Refused
 
 NativeID = Annotated[int, Field(strict=True, gt=0)]
@@ -123,6 +124,8 @@ class BriefingResult(Model):
     local_outcome: Literal["ads_skipped", "bots_skipped"] | None = None
     filter_state: str | None = None
     filter_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    # ADR 34's citation check; None for finals published before it.
+    citation_check: CitationCheck | None = None
 
     @property
     def text(self):
@@ -157,6 +160,8 @@ class BriefingBatch(ChatKey):
     state: Literal["active", "completed", "failed", "interrupted"] = "active"
     requests: int = Field(default=0, strict=True, ge=0, le=5)
     classifier_requests: int = Field(default=0, strict=True, ge=0, le=12)
+    # ADR 34 citation check Q6: twelve check requests beside the others.
+    check_requests: int = Field(default=0, strict=True, ge=0, le=12)
     source_ids: list[NativeID] = Field(default_factory=list)
     speech_seconds: float = Field(default=0, ge=0, le=1200)
     dispatch_tokens: dict[str, str] = Field(default_factory=dict)

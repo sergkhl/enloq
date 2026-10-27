@@ -648,6 +648,9 @@ async def observe(
                     app = Conversations(store, transport, engine)
                     app.media.transcriber = PreparedSpeechOnly()
                     app.memory.enabled = app.suggestions.enabled = lambda: False
+                    # Its closed role set has no decision calls; check-citations.py
+                    # measures ADR 34's citation check.
+                    app.briefings.check_citations = False
                     app.emotion.schedule = lambda *args: None
                     work = app.rewriting.work
                     work.guidance, work.admit = registry.guidance, engine.admit

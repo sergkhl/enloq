@@ -1,5 +1,6 @@
 import asyncio
 
+from ..domain import citation_check
 from ..domain.briefing_contract import GROUP_ROLES, validate_briefing
 from ..domain.group_filtering import FILTER_ROLES
 from ..domain.group_filtering import questions as filter_questions
@@ -140,6 +141,10 @@ class FakeDecider:
         # ADR 55: every trait's authored evidence and level.
         self.trait_evidence = 0.9
         self.trait_level = "2"
+        # ADR 34's citation check: each cited message's authored support, by
+        # ID (0.9 otherwise), and the whole claim's.
+        self.citation_support = {}
+        self.claim_support = 0.9
 
     async def generate(self, role, packet):
         self.calls.append((role, packet))
@@ -151,6 +156,16 @@ class FakeDecider:
                 name: {"type": "noul", "noul": self.group_probability}
                 for name in filter_questions(role, packet)
             }
+        if role in citation_check.CHECK_ROLES:
+            answers = {
+                f"cites_{identity}": {
+                    "type": "noul",
+                    "noul": self.citation_support.get(identity, 0.9),
+                }
+                for identity in packet["cited_ids"]
+            }
+            answers["claim"] = {"type": "noul", "noul": self.claim_support}
+            return answers
         if role == "trait_scales":
             from ..domain import traits
 

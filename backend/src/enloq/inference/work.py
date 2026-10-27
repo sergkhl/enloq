@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from pydantic import ValidationError
 
 from ..application.capacity import Capacity
+from ..domain import citation_check
 from ..domain.briefing_contract import GROUP_ROLES, BriefingError, validate_group_output
 from ..domain.group_filtering import FILTER_ROLES, RULES_HASH
 from ..domain.models import Refused
@@ -54,6 +55,7 @@ ROLES = (
     )
     | GROUP_ROLES
     | FILTER_ROLES
+    | citation_check.CHECK_ROLES
 )
 # Background roles whose unavailable exact route is a bounded no-work refusal.
 BACKGROUND = (
@@ -72,6 +74,7 @@ BACKGROUND = (
     )
     | GROUP_ROLES
     | FILTER_ROLES
+    | citation_check.CHECK_ROLES
 )
 # ADR 30: roles answered by the decision model's exact route; every other role
 # uses ADR 29's MiMo route. ADR 49 Q19 adds the labels of suggestions.
@@ -86,6 +89,7 @@ DECIDED = (
         }
     )
     | FILTER_ROLES
+    | citation_check.CHECK_ROLES
 )
 ROUTES = {
     role: f"{decider.LOGICAL_MODEL}@{decider.PROVIDER}"
@@ -93,6 +97,8 @@ ROUTES = {
     else f"{LOGICAL_MODEL}@{PROVIDER}"
     for role in ROLES
 }
+# The Daily Briefing's stages, paid from the Group Briefing Budget (ADR 34).
+STAGE_ROLES = GROUP_ROLES | FILTER_ROLES | citation_check.CHECK_ROLES
 # Roles whose repeated format failures pause automatic dispatch. Suggestions
 # never pause: each normal changed source stays eligible for one attempt and
 # cannot touch another role's count (ADR 25).
@@ -211,7 +217,7 @@ def validate_output(role, response, packet):
 
 def budget_family(role):
     """A request's purpose, independent of its account, chat or current settings."""
-    return "group_briefing" if role in GROUP_ROLES | FILTER_ROLES else "daily"
+    return "group_briefing" if role in STAGE_ROLES else "daily"
 
 
 def budget_key(family):
@@ -399,7 +405,7 @@ class ModelWork:
 
     def _group_options(self, job, admission, accounting, guidance):
         if any(value is not None for value in (admission, accounting, guidance)):
-            if job["role"] not in GROUP_ROLES | FILTER_ROLES:
+            if job["role"] not in STAGE_ROLES:
                 raise Refused("Group stage hooks require a group briefing role")
             if guidance is not None and (not isinstance(guidance, str) or not guidance):
                 raise Refused("Invalid group stage guidance proof")
@@ -426,6 +432,8 @@ class ModelWork:
         fingerprint = (
             RULES_HASH
             if job["role"] in FILTER_ROLES
+            else citation_check.RULES_HASH
+            if job["role"] in citation_check.CHECK_ROLES
             else briefing_fingerprint(
                 guidance,
                 role=job["role"],

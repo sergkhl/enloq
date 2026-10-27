@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..domain import agreement
 from ..domain.briefing_contract import GROUP_ROLES
+from ..domain.citation_check import CHECK_ROLES
 from ..domain.group_filtering import FILTER_ROLES, RULES_HASH
 from ..domain.models import ProcessingPaused, Refused, Syncing
 from ..inference.audio import LocalWhisper, ProxyWhisper
@@ -42,7 +43,7 @@ from .media_cache import MediaCache, evict
 from .reminders import ReminderClock
 from .runtime import connection_status, housekeeping, personal_sync
 
-GROUP_ROLES = GROUP_ROLES | FILTER_ROLES
+GROUP_ROLES = GROUP_ROLES | FILTER_ROLES | CHECK_ROLES
 
 _LOG = logging.getLogger("enloq.scheduler")
 

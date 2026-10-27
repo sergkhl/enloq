@@ -19,7 +19,7 @@ from decimal import Decimal
 
 import httpx
 
-from ..domain import traits
+from ..domain import citation_check, traits
 from ..domain.emotion import CODES, FLOOR, Classification, EmotionDecision
 from ..domain.group_filtering import FILTER_ROLES, REPEATED_INPUT, checked_packet
 from ..domain.group_filtering import questions as filter_questions
@@ -55,6 +55,7 @@ ROLES = (
         }
     )
     | FILTER_ROLES
+    | citation_check.CHECK_ROLES
 )
 # An implementation default, not an owner decision: suggestions_useful is yes
 # at or above this probability.
@@ -209,6 +210,11 @@ def validate(role, answers, packet=None):
         if not isinstance(answers, dict) or set(answers) != expected:
             raise InvalidOutput("invalid_answer")
         return {name: noul(answers, name) for name in expected}
+    if role in citation_check.CHECK_ROLES:
+        expected = set(citation_check.questions(packet or {}))
+        if not isinstance(answers, dict) or set(answers) != expected:
+            raise InvalidOutput("invalid_answer")
+        return {name: noul(answers, name) for name in expected}
     if role == "trait_scales":
         return traits.validate(answers, (packet or {}).get("subject"))
     if role == "suggestion_labels":
@@ -274,6 +280,9 @@ class DeciderEngine:
     async def prepare(self, packet):
         if packet.get("filter_role") in FILTER_ROLES:
             checked_packet(packet)
+        checked = packet.get("check_role") in citation_check.CHECK_ROLES
+        if checked:
+            citation_check.checked_packet(packet)
         if self.rates is None or time.time() - self.rates["verified_at"] > 86400:
             try:
                 self.rates = await route_rates(self.client)
@@ -283,8 +292,9 @@ class DeciderEngine:
         context = self.rates["context_length"]
         if not isinstance(context, int) or not 1 <= context <= 1048576:
             raise Unavailable("Model context cost bound changed")
-        if packet.get("filter_role") in FILTER_ROLES:
-            filter_questions(packet["filter_role"], packet)
+        if packet.get("filter_role") in FILTER_ROLES or checked:
+            if not checked:
+                filter_questions(packet["filter_role"], packet)
             bound = packet.get("input_bound")
             if type(bound) is not int or not 1 <= bound <= min(context, REPEATED_INPUT):
                 raise ProviderRefused(
@@ -298,6 +308,8 @@ class DeciderEngine:
             raise Refused("Unsupported decision role")
         if role in FILTER_ROLES:
             checked_packet(packet)
+        if role in citation_check.CHECK_ROLES:
+            citation_check.checked_packet(packet)
         payload = {
             "model": MODEL,
             "provider": {"only": [PROVIDER], "allow_fallbacks": False},
@@ -306,6 +318,8 @@ class DeciderEngine:
             # The guidance version was fixed when this attempt was dispatched.
             "questions": filter_questions(role, packet)
             if role in FILTER_ROLES
+            else citation_check.questions(packet)
+            if role in citation_check.CHECK_ROLES
             else traits.questions(packet["subject"])
             if role == "trait_scales"
             else decision_questions(role, packet.get("guidance"), packet),

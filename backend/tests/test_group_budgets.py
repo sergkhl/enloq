@@ -13,6 +13,7 @@ import httpx
 import pytest
 from enloq.config import Settings
 from enloq.cutover import retire
+from enloq.domain.citation_check import CHECK_ROLES
 from enloq.domain.group_filtering import FILTER_ROLES
 from enloq.domain.models import Refused
 from enloq.inference import work
@@ -277,10 +278,10 @@ def test_default_interfaces_keep_daily_shape_and_purpose_mapping(tmp_path):
     assert work.GROUP_ROLES <= work.ROLES & work.BACKGROUND
     assert {work.budget_family(role) for role in work.GROUP_ROLES} == {GROUP}
     assert {work.budget_family(role) for role in FILTER_ROLES} == {GROUP}
-    assert {
-        work.budget_family(role)
-        for role in work.ROLES - work.GROUP_ROLES - FILTER_ROLES
-    } == {DAILY}
+    assert {work.budget_family(role) for role in CHECK_ROLES} == {GROUP}
+    assert {work.budget_family(role) for role in work.ROLES - work.STAGE_ROLES} == {
+        DAILY
+    }
     assert work.budget_family("future_private_role") == DAILY
     rig.owners[0].reserve(queue(rig.stores[0], "composer", "incoming_rewrite"), "mimo")
     rig.owners[1].reserve(queue(rig.stores[1], "briefing"), "mimo")
