@@ -1157,12 +1157,13 @@ of only excluded posts completes locally without a model call.
   withdraws nothing.
 - **Updates.** Automatic updates follow a rolling four-hour clock per group and
   the Processing Character Threshold over the whole day, with new or changed
-  analysable media exempt. Each is bounded: five generative and twelve
-  classifier requests, 200 new or changed sources and 20 minutes of new
-  speech. Incomplete coverage is labelled partial. The first opt-in starts with
-  today's cached messages, later updates catch up missed or changed days since
-  opt-in within seven days, and nothing before opt-in is backfilled. Earlier
-  days have no Briefing Slot; their automatic work continues unseen.
+  analysable media exempt. Each is bounded: five generative, twelve
+  classifier and twelve Citation Check requests, 200 new or changed sources
+  and 20 minutes of new speech. Incomplete coverage is labelled partial. The
+  first opt-in starts with today's cached messages, later updates catch up
+  missed or changed days since opt-in within seven days, and nothing before
+  opt-in is backfilled. Earlier days have no Briefing Slot; their automatic
+  work continues unseen.
 
 It is distinct from an Incoming Rewrite, Response Suggestions and memory.
 
@@ -1248,6 +1249,27 @@ classification matches its revision, and a day of only ads completes locally
 as Ads skipped. Failure keeps normal work available, with no separate Retry or
 resampling.
 
+**Citation Check**:
+The decision-model stage that confirms a Briefing Topic's source links before
+the final briefing publishes (ADR 34). One request per topic asks whether each
+cited message supports part of the topic and whether together they support
+all of it; a citation below probability 0.5 is removed, with its participant
+unless another remaining citation is theirs, and the text is unchanged. It is
+paid from the Group Briefing Budget, at most 12 requests per update. A check
+that cannot run leaves the allowlist-checked citations, recorded unchecked,
+with nothing shown. Ask This Group checks its answers' statements the same
+way. It is distinct from Group Ad Classification, which filters inputs.
+
+**Ask This Group**:
+A Member's question about one Group Chat, answered from that group's cached
+originals since its first opt-in day, within the 30-day cache, as up to four
+statements with checked source links (ADR 59). It opens from the group's
+Conversation Menu while Group AI Processing is On, searches by keywords and
+embeddings, writes with MiMo and runs the Citation Check on every statement.
+When nothing answers, one line names the searched range. Nothing is stored:
+the answer lives on the open screen. It is paid from the Group Briefing
+Budget, one question at a time per account.
+
 ### Notifications
 
 **Notification Burst**:
@@ -1307,7 +1329,7 @@ notification delivery uses its explicit original fallback. The routes:
 - **Decider V1.2** (`perplexity/pplx-decider-v1.2` at checkpoint `-20261016`,
   Perplexity only, on OpenRouter's Decisions endpoint): hostile-wording screening,
   Emotion Classification, Reaction Assessment, suggestion usefulness and
-  labels, group ad and bot filtering and trait scales. Its retention terms
+  labels, group ad and bot filtering, Citation Checks and trait scales. Its retention terms
   are unpublished, and a later
   checkpoint needs the owner.
 
@@ -1358,8 +1380,8 @@ wiping content keeps the spending records.
 
 **Group Briefing Budget**:
 A Member's separate daily ceiling for Daily Briefing work: image meanings,
-chunk summaries, final synthesis, ad and bot classification and failed-briefing
-Retry (ADR 34). The owner's is $2 by default and settable from $0 to $10; a
+chunk summaries, final synthesis, ad and bot classification, Citation Checks
+and failed-briefing Retry (ADR 34), and Ask This Group questions (ADR 59). The owner's is $2 by default and settable from $0 to $10; a
 friend's is $0.50 by default, set by the owner. It is independent of the Daily
 Budget, with no borrowing, double charging or combined ceiling, and each
 request's budget is fixed at dispatch. Private suggestion and hostile-wording
@@ -1369,5 +1391,5 @@ requests use the Daily Budget, and VPS speech has no provider charge.
 The owner's server-wide number of model calls that may run at once across all
 accounts, 1 to 8 and 4 by default (ADR 15). Members take turns within each
 class of work, and transcription runs one at a time. Private work and
-manual suggestion work run ahead of Daily Briefings, which never take the last free
+manual suggestion work, Ask This Group included, run ahead of Daily Briefings, which never take the last free
 slot at two or more, and briefings run ahead of idle memory work.

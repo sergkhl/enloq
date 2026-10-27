@@ -16,7 +16,8 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 ## Active plans
 
-No active plans.
+- [Citation check and Ask this group](2026-10-27-citation-check-and-ask-this-group.md):
+  ADR 34's citation check and ADR 59.
 
 Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
 implementation or deployment.

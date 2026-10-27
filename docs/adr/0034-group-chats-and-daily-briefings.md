@@ -110,6 +110,34 @@ cached messages plus the one directly replied-to message per bounded request.
 It only resolves references, with no reply-chain or history scan, no other
 chat and no memory, and never presents earlier days' events as new.
 
+### Citation check
+
+The source allowlist accepts any covered message, related or not. So before a
+validated final briefing publishes, one decision request per topic checks its
+citations against what the topic says: whether each cited message supports at
+least part of the topic, and whether the cited messages together support all
+of it. The request carries the topic's title and text and each cited message
+as the briefing read it, with its replied-to message as context, framed as
+untrusted data.
+
+A citation is supported at a probability of 0.5 or more, a threshold only the
+owner changes; its measured precision and recall are published in
+[measurements](../measurements.md). An unsupported citation is removed before
+participants and source links activate, and so is its participant unless
+another remaining citation is theirs. The topic's text is unchanged. What a
+topic shows when no citation supports it, or when its citations together fall
+short, is open until the check is measured (citation check Q4).
+
+When the check cannot run (the route refuses or fails, the budget or the
+update's check limit is spent, or an answer is malformed), the briefing
+publishes with its allowlist-checked citations and is recorded unchecked, with
+no retry and nothing shown. The Group Briefing Budget pays, and an update
+admits up to 12 check requests beside its five generative and 12 classifier
+requests, refused and failed ones included. The check runs between validation
+and publishing, so links activate after it while Analyzing shows. Only new
+finals are checked: chunk summaries are hidden inputs, and finals published
+earlier stay until their next update, with no rebuild.
+
 ### Today's Briefing Slot, the date band and the new-message spoiler
 
 Each day starts with a pinned, green-tinted full-width date band with a 2px
@@ -450,9 +478,10 @@ The daily-briefing role uses MiMo through the owner's LiteLLM proxy, as the
 proxy's `xiaomi_mimo/mimo-v2.6-flash` route
 ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md), ADR 39), with
 no model or provider fallback, the global Concurrency Limit and the Group
-Briefing Budget. Ad and bot filtering use the decision model,
-`perplexity/pplx-decider-v1.2` at checkpoint `-20261016`
-([ADR 49](0049-useful-response-suggestions.md) Q1). Speech follows ADR 39.
+Briefing Budget. Ad and bot filtering and the citation check use the decision
+model, `perplexity/pplx-decider-v1.2` at checkpoint `-20261016`
+([ADR 49](0049-useful-response-suggestions.md) Q1, citation check Q1). Speech
+follows ADR 39.
 
 ## Consequences
 
@@ -470,6 +499,9 @@ Briefing Budget. Ad and bot filtering use the decision model,
   background run has no visible recovery.
 - After a missed deletion or edit, a briefing can show for a few minutes,
   until an epoch's read reaches that original.
+- Source links appear only after the citation check, and a briefing
+  published while the check cannot run keeps unchecked citations without
+  saying so.
 - Known limits: retained **Low quality** briefing findings (dropped topics,
   wrong attribution, unrelated citations and weak compression) are in
   [inference](../inference.md#group-briefing-first-outcomes); the ad filter
@@ -483,8 +515,9 @@ Briefing Budget. Ad and bot filtering use the decision model,
 
 ## Questions
 
-Three interviews settled this ADR, each numbered from Q1. The rollout code's
-"ADR 34 Q25" is Q25 of the readability list.
+Four interviews settled this ADR, each numbered from Q1. The rollout code's
+"ADR 34 Q25" is Q25 of the readability list; the citation check's code cites
+"ADR 34 citation check Qn".
 
 ### Group chats (Q1-Q59)
 
@@ -665,3 +698,19 @@ Three interviews settled this ADR, each numbered from Q1. The rollout code's
   when unseen messages start there.
 - Q19: an opened spoiler stays open until the chat closes; a send opens
   today's; folded messages are not viewed.
+
+### Citation check (Q1-Q7)
+
+- Q1: the decision model, Decider V1.2 at `-20261016`; supported at 0.5 or
+  more, a threshold only the owner changes.
+- Q2: one request per topic: whether each cited message supports part of it
+  and whether together they support all of it.
+- Q3: an unsupported citation is removed before links activate, with its
+  participant unless another remaining citation is theirs; the text stays.
+- Q4: open: what a topic shows when nothing supports it, decided after the
+  check is measured ([TODO](../plans/TODO.md)).
+- Q5: a check that cannot run publishes the allowlist-checked citations,
+  recorded unchecked, with no retry or visible difference.
+- Q6: the Group Briefing Budget, up to 12 check requests per update, between
+  validation and publishing.
+- Q7: new finals only; chunks stay unchecked; earlier finals are not rebuilt.
