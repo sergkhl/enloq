@@ -25,6 +25,7 @@ import {
   dayKey,
   dayOf,
   groupDays,
+  PARTLY_SUPPORTED,
   streamedTopics,
   transientSlot,
   unreadPlace,
@@ -563,7 +564,17 @@ export function DailyBriefings({
                             <div className="briefing-topic" key={key}>
                               {topic.title && <h4>{topic.title}</h4>}
                               <p>
-                                {topic.text}{" "}
+                                {topic.text}
+                                {/* Citation check Q4: under the text, beside
+                                    the source links. */}
+                                {topic.fully_supported === false && (
+                                  <>
+                                    <br />
+                                    <small className="briefing-support">
+                                      {PARTLY_SUPPORTED}
+                                    </small>
+                                  </>
+                                )}{" "}
                                 <SourceLinks
                                   citations={topic.citations}
                                   disabled={busy === day}

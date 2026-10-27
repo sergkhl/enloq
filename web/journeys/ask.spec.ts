@@ -37,6 +37,10 @@ test("Ask this group answers with a source that opens the group, and Back return
       .getByRole("button", { name: /^Source \d+$/ })
       .first(),
   ).toBeVisible({ timeout: 20000 });
+  // The fixture's decision model supports every topic and statement in full,
+  // so neither carries the muted line (citation check Q4, ADR 59 Q6).
+  const partly = page.getByText("Not all of this is in its sources.");
+  await expect(partly).toHaveCount(0);
 
   await page.getByRole("button", { name: "Conversation actions" }).tap();
   await sheet.getByRole("button", { name: "Ask this group" }).tap();
@@ -52,6 +56,7 @@ test("Ask this group answers with a source that opens the group, and Back return
   const source = ask.getByRole("button", { name: /^Source \d+$/ });
   await expect(source).toHaveCount(1);
   await expect(source).toHaveText(/^#\d+$/);
+  await expect(partly).toHaveCount(0);
 
   // The source opens the group at its original, highlighted.
   await source.tap();

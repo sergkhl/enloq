@@ -125,6 +125,7 @@ button.briefing-slot.retry {
 }
 .briefing-coverage,
 .briefing-missing,
+.briefing-support,
 .briefing-source-tools small {
   color: var(--muted);
   font-size: 0.75rem;

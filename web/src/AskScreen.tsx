@@ -5,7 +5,7 @@ import { chatApi } from "./conversation-api";
 import { SourceLinks } from "./DailyBriefings";
 import { Note, ScreenFrame } from "./screenUi";
 import { shownAnswer } from "../../shared/ask";
-import { dayKey } from "../../shared/groupBriefings";
+import { dayKey, PARTLY_SUPPORTED } from "../../shared/groupBriefings";
 import "./briefings.css";
 import "./ask.css";
 
@@ -100,7 +100,16 @@ export function AskScreen({
             <div className="briefing-text">
               {shown.statements.map((statement, index) => (
                 <p key={index}>
-                  {statement.text}{" "}
+                  {statement.text}
+                  {/* Q6: as a briefing topic's line (DailyBriefings). */}
+                  {!statement.supported && (
+                    <>
+                      <br />
+                      <small className="briefing-support">
+                        {PARTLY_SUPPORTED}
+                      </small>
+                    </>
+                  )}{" "}
                   <SourceLinks
                     citations={statement.citations}
                     onCite={onSource}

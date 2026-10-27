@@ -84,6 +84,11 @@ export function showGroupOriginal(
   return message.group_filter?.allowed_bot === true && !excluded;
 }
 
+// The muted line under a briefing topic (ADR 34 citation check Q4), or an
+// Ask this group statement (ADR 59 Q6), its citations together don't fully
+// support.
+export const PARTLY_SUPPORTED = "Not all of this is in its sources.";
+
 // The wording a running attempt has streamed so far, shown in place of the
 // day's briefing until its final validates.
 export function activePrefix(brief?: BriefingDay | null) {

@@ -8,7 +8,11 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import { streamedTopics, type BriefingSlot } from "../../shared/groupBriefings";
+import {
+  PARTLY_SUPPORTED,
+  streamedTopics,
+  type BriefingSlot,
+} from "../../shared/groupBriefings";
 import { messageTime, type HourCycle } from "../../shared/messageTime";
 import { participantLabel } from "../../shared/participantLabel";
 import { isReply } from "../../shared/replyQuote";
@@ -237,6 +241,9 @@ export function BriefingCard({
                 <Text selectable style={[styles.body, text]}>
                   {topic.text}
                 </Text>
+                {topic.fully_supported === false ? (
+                  <Text style={[styles.small, muted]}>{PARTLY_SUPPORTED}</Text>
+                ) : null}
                 <SourceLinks
                   citations={topic.citations}
                   busy={busy}

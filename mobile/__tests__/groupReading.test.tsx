@@ -293,6 +293,43 @@ test("a running attempt's streamed topics replace the card", async () => {
   expect(screen.queryByText(/^Covered /)).toBeNull();
 });
 
+// ADR 34 citation check Q4.
+test("only a topic its citations don't fully support carries the muted line", async () => {
+  const value = briefing();
+  served = snapshot({
+    briefings: [
+      {
+        ...value,
+        final: {
+          ...value.final!,
+          topics: [
+            // An unchecked or older final carries no mark.
+            value.final!.topics[0]!,
+            {
+              title: "Schedule",
+              text: "The schedule starts at ten.",
+              citations: [12],
+              fully_supported: false,
+            },
+            {
+              title: "Agenda",
+              text: "Bob prints the agenda.",
+              citations: [12],
+              fully_supported: true,
+            },
+          ],
+        },
+      },
+    ],
+  });
+  await mount();
+  expect(await screen.findByText("The schedule starts at ten.")).toBeTruthy();
+  expect(screen.getByText("Bob prints the agenda.")).toBeTruthy();
+  expect(
+    screen.getAllByText("Not all of this is in its sources."),
+  ).toHaveLength(1);
+});
+
 test("local outcomes and incomplete coverage say so", async () => {
   const value = briefing({
     partial: true,

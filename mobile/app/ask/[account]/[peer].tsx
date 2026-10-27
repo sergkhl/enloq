@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { shownAnswer } from "../../../../shared/ask";
 import { peerTab } from "../../../../shared/chatRoute";
-import { dayKey } from "../../../../shared/groupBriefings";
+import { dayKey, PARTLY_SUPPORTED } from "../../../../shared/groupBriefings";
 import type { Schemas } from "../../../src/api";
 import { useConnection } from "../../../src/connection";
 import { SourceLinks } from "../../../src/GroupReading";
@@ -123,6 +123,11 @@ function AskScreen({ account, peer }: { account: number; peer: string }) {
                 <Text selectable style={[styles.body, { color: palette.text }]}>
                   {statement.text}
                 </Text>
+                {statement.supported ? null : (
+                  <Text style={[styles.small, { color: palette.muted }]}>
+                    {PARTLY_SUPPORTED}
+                  </Text>
+                )}
                 <SourceLinks
                   citations={statement.citations}
                   palette={palette}

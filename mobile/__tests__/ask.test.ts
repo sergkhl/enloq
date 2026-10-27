@@ -37,7 +37,7 @@ test("an answer shows its statements with their checked citations", () => {
   });
 });
 
-// Provisional while ADR 59 Q6 is open.
+// ADR 59 Q6.
 test("a statement without a checked citation is left out", () => {
   const kept = statement("The session is on Friday.", [11]);
   expect(

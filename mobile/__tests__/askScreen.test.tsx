@@ -29,7 +29,12 @@ const NOT_FOUND = "No answer in this group's messages from 3 Oct to today.";
 
 type Answer = { status: number; body: unknown };
 const answer = (
-  statements: { text: string; citations: number[]; unsupported?: number[] }[],
+  statements: {
+    text: string;
+    citations: number[];
+    unsupported?: number[];
+    supported?: boolean;
+  }[],
 ): Answer => ({
   status: 200,
   body: {
@@ -128,7 +133,31 @@ test("an answer shows its statements with source links that open the group", asy
   ).toBe(false);
 });
 
-// Provisional while ADR 59 Q6 is open.
+// ADR 59 Q6.
+test("a statement its citations don't fully support carries the muted line", async () => {
+  answers = [
+    answer([
+      { text: "The planning session is on Friday.", citations: [11] },
+      {
+        text: "It starts at ten.",
+        citations: [12],
+        unsupported: [13],
+        supported: false,
+      },
+      // Left with no supported citation, it is dropped, line and all.
+      { text: "Nobody objected.", citations: [], unsupported: [14] },
+    ]),
+  ];
+  await mount();
+  await ask("When is the planning session?");
+  expect(await screen.findByText("It starts at ten.")).toBeTruthy();
+  expect(screen.getByText("The planning session is on Friday.")).toBeTruthy();
+  expect(screen.queryByText("Nobody objected.")).toBeNull();
+  expect(
+    screen.getAllByText("Not all of this is in its sources."),
+  ).toHaveLength(1);
+});
+
 test("only statements with a checked citation show, or the not-found line", async () => {
   answers = [
     answer([

@@ -151,6 +151,9 @@ export type DailyBriefing = {
       title?: string | null;
       participants?: { peer: string; name: string }[];
       participant_source_ids?: number[];
+      // False when its citations together fall short of it (citation check
+      // Q4); unchecked and older finals leave it true or out.
+      fully_supported?: boolean;
     }[];
     excluded_ids?: number[];
     ad_ids?: number[];
