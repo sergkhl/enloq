@@ -10,7 +10,7 @@ import re
 import unicodedata
 from typing import Literal
 
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import Field, ValidationError, field_validator
 from pydantic_core import PydanticCustomError
 
 from .briefing_contract import BriefingModel, NativeID, meaningful
@@ -55,16 +55,15 @@ class AnswerStatement(BriefingModel):
 
 
 class GroupAnswer(BriefingModel):
-    outcome: Literal["answer", "not_found"]
+    """No statement means the messages do not answer the question. A writer
+    that could say "not found" beside statements contradicted itself, as MiMo
+    did on open questions in the Ask check."""
+
     statements: list[AnswerStatement] = Field(max_length=MAX_STATEMENTS)
 
-    @model_validator(mode="after")
-    def answered(self):
-        if (self.outcome == "answer") != bool(self.statements):
-            raise PydanticCustomError(
-                "answer_outcome", "Outcome and statements disagree"
-            )
-        return self
+    @property
+    def outcome(self):
+        return "answer" if self.statements else "not_found"
 
 
 def validate_answer(output, retrieved_ids):

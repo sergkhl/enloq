@@ -375,7 +375,7 @@ def output_schema(role, packet=None):
         statement["properties"]["citations"]["items"]["enum"] = sorted(
             packet["retrieved_ids"]
         )
-        schema["required"] = ["outcome", "statements"]
+        schema["required"] = ["statements"]
     return schema
 
 

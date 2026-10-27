@@ -26,7 +26,6 @@ class FakeEngine:
                 return self.answer
             first = packet["messages"][0]
             return {
-                "outcome": "answer",
                 "statements": [
                     {"text": "An authored answer.", "citations": [first["id"]]}
                 ],

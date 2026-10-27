@@ -39,18 +39,15 @@ def test_keyword_expression_fusion_and_question_bounds():
 
 
 def test_an_answer_cites_only_retrieved_messages():
-    answer = {
-        "outcome": "answer",
-        "statements": [{"text": "On Sunday.", "citations": [3]}],
-    }
+    answer = {"statements": [{"text": "On Sunday.", "citations": [3]}]}
     assert validate_answer(answer, [3, 5]).statements[0].citations == [3]
     for broken, code in (
         (
             {**answer, "statements": [{"text": "x", "citations": [4]}]},
             "answer_citations",
         ),
-        ({"outcome": "answer", "statements": []}, "answer_schema"),
-        ({"outcome": "not_found", "statements": answer["statements"]}, "answer_schema"),
+        ({"statements": [{"text": "x", "citations": [3]}] * 5}, "answer_schema"),
+        ({"outcome": "not_found", "statements": []}, "answer_schema"),
     ):
         with pytest.raises(AnswerError) as failure:
             validate_answer(broken, [3, 5])
@@ -159,7 +156,6 @@ async def test_an_answer_keeps_supported_citations_and_names_the_range(rig):
     source(rig, 2, text="Watering moved from Saturday to Sunday morning.")
     source(rig, 3, text="Lovely weather today!")
     rig.app.engine.answer = {
-        "outcome": "answer",
         "statements": [{"text": "Watering is on Sunday morning.", "citations": [2, 3]}],
     }
     rig.app.decider.citation_support = {3: 0.1}
@@ -214,7 +210,7 @@ async def test_a_check_that_cannot_run_shows_no_answer(rig):
 
 async def test_a_not_found_answer_and_group_ai_off(rig):
     source(rig, 1, text="The shed key is with Eli now.")
-    rig.app.engine.answer = {"outcome": "not_found", "statements": []}
+    rig.app.engine.answer = {"statements": []}
     result = await rig.app.questions.ask(KEY, "What did the plumber charge?")
     assert result["status"] == "not_found"
     assert ANSWER_CHECK_ROLE not in roles(rig)

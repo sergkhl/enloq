@@ -106,7 +106,7 @@ class Judge:
     async def ask(self, system, content, *, kind="judge"):
         self.bounds.take(kind)
         if kind == "sol":
-            return {"outcome": "not_found", "statements": []}, 0.2
+            return {"statements": []}, 0.2
         return {"A": {"correct": True, "unsupported": []}, "B": {"correct": False}}, 0.3
 
 

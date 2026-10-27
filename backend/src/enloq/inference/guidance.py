@@ -583,8 +583,9 @@ QUESTION_CORE = (
     "messages state and cites the ids of the messages it rests on. When messages correct or update each "
     "other, give the latest and say it changed. Say who said something when it matters. Report proposals, "
     "questions, conditions and uncertainty as such, never as decisions or facts. `today` resolves relative "
-    "dates. Use no outside knowledge and do not guess: when the messages do not answer the question, set "
-    "outcome to not_found with no statements."
+    "dates. When the group discussed the question without settling it, say what was settled and what is "
+    "still open. Use no outside knowledge and do not guess: when the messages do not address the question, "
+    "return no statements."
 )
 
 
