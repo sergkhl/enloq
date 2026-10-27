@@ -152,11 +152,11 @@ async def test_unsupported_citations_leave_with_their_participants(rig):
     assert final.output.topics[0].citations == [1, 2, 3]
     assert [c.status for c in final.citation_check.topics] == ["checked"] * 2
     assert len(checks(rig)) == 2
-    first, second = shown(rig)
+    # The second topic lost its only citation and is hidden (Q4).
+    [first] = shown(rig)
     assert first["citations"] == [1, 3]
     assert first["participant_source_ids"] == [1, 3]
     assert [p["name"] for p in first["participants"]] == ["Alex", "Sam"]
-    assert second["citations"] == [] and second["participants"] == []
     rig.app.briefings.sources(KEY, DAY, final.id, 3)
     with pytest.raises(Refused):
         rig.app.briefings.sources(KEY, DAY, final.id, 2)

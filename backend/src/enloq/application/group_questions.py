@@ -44,9 +44,12 @@ class Unchecked(Exception):
 
 
 class GroupQuestions:
-    def __init__(self, app, *, embedder=None, reranker=None):
+    def __init__(self, app, *, embedder=None, reranker=None, writer=None):
         self.app, self.store = app, app.store
         self.embedder, self.reranker = embedder, reranker
+        # ADR 59 Q5: gpt-6.1-sol on the owner's subscription; the account
+        # manager attaches it, and without it the app's own engine writes.
+        self.writer = writer
         # ADR 59 Q8: one question at a time per account.
         self._busy = asyncio.Lock()
 
@@ -307,7 +310,9 @@ class GroupQuestions:
             if not retrieved:
                 return nothing
             packet = self.packet(question, today, entries, retrieved)
-            answer = await self._run(self.app.engine, QUESTION_ROLE, packet, key)
+            answer = await self._run(
+                self.writer or self.app.engine, QUESTION_ROLE, packet, key
+            )
             if answer.outcome == "not_found":
                 return nothing
             try:

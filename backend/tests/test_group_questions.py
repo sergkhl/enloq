@@ -252,3 +252,44 @@ async def test_a_quota_refusal_of_an_embedding_is_tried_again(rig, monkeypatch):
     refusals.extend([ProviderRefused("Model provider HTTP 429")] * 3)
     with pytest.raises(ProviderRefused):
         await rig.app.questions.ask(KEY, "Who has the key now?")
+
+
+async def test_the_subscription_writer_asks_for_json_and_spends_nothing(tmp_path):
+    from enloq.inference.subscription import MODEL, SubscriptionEngine
+
+    seen, status = [], [200]
+
+    async def handler(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{"model_name": MODEL}]})
+        seen.append(json.loads(request.content))
+        if status[0] != 200:
+            return httpx.Response(status[0])
+        reply = 'Here: {"statements": [{"text": "On Sunday.", "citations": [3]}]}'
+        return httpx.Response(
+            200,
+            json={
+                "id": "authored",
+                "choices": [{"message": {"content": reply}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 9, "completion_tokens": 4},
+            },
+        )
+
+    engine = SubscriptionEngine(
+        settings_at(tmp_path),
+        user="u" * 32,
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    await engine.prepare({})
+    packet = {"question": "When?", "messages": [], "retrieved_ids": [3]}
+    response = await engine.generate(QUESTION_ROLE, packet)
+    assert json.loads(response.content)["statements"][0]["citations"] == [3]
+    assert response.actual_nanos == 0 and response.usage["cost"] == 0
+    assert (
+        seen[0]["model"] == MODEL
+        and "retrieved_ids" not in seen[0]["messages"][1]["content"]
+    )
+    status[0] = 429
+    with pytest.raises(ProviderRefused):
+        await engine.generate(QUESTION_ROLE, packet)
+    await engine.client.aclose()

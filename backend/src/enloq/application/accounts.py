@@ -22,6 +22,7 @@ from ..inference.audio import LocalWhisper, ProxyWhisper
 from ..inference.decider import DeciderEngine
 from ..inference.openrouter import MuseEngine, OpenRouterEngine
 from ..inference.retrieval import EmbeddingEngine, RerankEngine
+from ..inference.subscription import SubscriptionEngine
 from ..inference.work import ROUTES
 from ..storage.accounts import AccountRegistry
 from ..storage.lock import OwnerLock
@@ -180,6 +181,7 @@ class AccountManager:
                 if retrieval.RERANK
                 else None
             )
+            assistant.questions.writer = SubscriptionEngine(scoped, user=user)
         member = entry.get("member") or OWNER
         assistant.media.transcriber = self.whisper
         assistant.media.transcription_lock = self.transcription.handle(member)
@@ -783,6 +785,7 @@ class AccountManager:
             runtime.assistant.decider,
             questions.embedder,
             questions.reranker,
+            questions.writer,
         ):
             if hasattr(engine, "client"):
                 await engine.client.aclose()

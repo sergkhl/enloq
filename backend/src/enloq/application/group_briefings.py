@@ -289,7 +289,8 @@ class GroupBriefings:
 
     def _topics(self, key, final):
         """Topics as shown: citations the check found unsupported are gone,
-        with their participants (ADR 34 citation check Q3)."""
+        with their participants (ADR 34 citation check Q3), and a topic left
+        with none is hidden (Q4)."""
         checks = final.citation_check.topics if final.citation_check else []
 
         def author_of(identity):
@@ -302,6 +303,8 @@ class GroupBriefings:
             citations, participant_ids = citation_check.kept(
                 topic.citations, topic.participant_source_ids, removed, author_of
             )
+            if not citations:
+                continue
             result.append(
                 {
                     **topic.model_dump(),
