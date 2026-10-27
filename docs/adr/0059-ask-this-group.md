@@ -46,19 +46,27 @@ content unless the customer opts out.
 first needs it, kept per message revision with the 30-day content cache, and
 deleted with edits and deletions. Its cost is part of that question's.
 
-**Writer (Q5).** MiMo writes the answer in a `group_question` role with
-thinking off and strict JSON: either not found, or up to four statements, each
-citing messages from the retrieved set; any other ID fails validation. It
-answers in the question's language. Nothing streams: an answer shows once
-checked. gpt-6.1-sol at medium effort writes the same questions in the live
-check as a comparison only; it is not an application route.
+**Writer (Q5).** gpt-6.1-sol at its medium default writes the answer in a
+`group_question` role, on the proxy's `chatgpt/gpt-6.1-sol` subscription
+route: up to four statements, each citing messages from the retrieved set, and
+none when the messages do not address the question; any other ID fails
+validation. It answers in the question's language and says what is still open
+when the group left a question open. Nothing streams: an answer shows once
+checked. It replaced MiMo after the measurement: MiMo answered 27 of 48
+answerable questions correctly with thinking on, and with thinking off said
+"not found" to most of them; gpt-6.1-sol answered 43 of 48 in less than half
+the time. Its receipts record $0, so no budget limits it, and no other limit
+applies: members' questions use the owner's subscription allowance, shared
+with the owner's other callers, and group messages reach OpenAI under that
+plan's data settings.
 
 **Checked answers (Q6).** Each statement goes through ADR 34's citation
 check: whether each cited message supports part of it, and whether together
-they support all of it. Whether an unsupported statement is dropped (with the
-answer abstaining when none is left) or shown marked is open until the check
-model's behaviour is measured. If the check cannot run, no answer shows, only
-"Couldn't check the answer.", and the member asks again.
+they support all of it. A statement left with no supported citation is
+dropped, and an answer left with none abstains; whether a statement its
+citations do not fully support is marked follows ADR 34 citation check Q4,
+which is open. If the check cannot run, no answer shows, only "Couldn't check
+the answer.", and the member asks again.
 
 **Abstention (Q7).** When search finds nothing, with no model call, or no
 statement survives the check, one line names the searched range: "No answer
@@ -89,4 +97,7 @@ requests and spend at most $1.00, within the live test allowance.
   is adopted, besides MiMo and the decision model, which briefings already
   use. Both new routes are zero data retention.
 - The first question in a busy group pays for its messages' vectors.
-- Open: Q6, decided after the measurement ([TODO](../plans/TODO.md)).
+- Members' questions run on the owner's ChatGPT subscription with no budget
+  or count limit.
+- Open: marking a not fully supported statement (Q6, with ADR 34 citation
+  check Q4; [TODO](../plans/TODO.md)).

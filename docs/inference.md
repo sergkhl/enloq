@@ -498,9 +498,8 @@ publication, one decision request per topic, in topic order:
 - **Outcome.** A citation below 0.5 leaves the topic's links, and so does its
   participant unless another remaining citation is theirs, which then names
   them. The final is stored as written, with the check beside it; the view,
-  participants and source links apply the removals. Until the owner decides
-  ADR 34 citation check Q4, a topic left with no citation shows its text
-  without links.
+  participants and source links apply the removals, and a topic left with
+  no citation is hidden (citation check Q4).
 - **Unchecked.** A refused or unavailable route, a spent Group Briefing Budget
   or the update's twelve check requests leave that topic and the rest
   unchecked without further calls; a malformed answer or an oversized packet
@@ -563,10 +562,12 @@ access.
   most 64 texts and 100,000 bytes (a text's first 8,000 characters), and kept
   per message revision and model with the 30-day content cache. An edit or
   deletion drops them.
-- **Writer.** MiMo in the `group_question` role, thinking off, 2,048 output
-  tokens and a strict schema: `not_found`, or at most four statements whose
-  citations are an enum of the retrieved IDs. Its instructions are fixed and
-  read no Processing Guidance.
+- **Writer.** gpt-6.1-sol in the `group_question` role on the proxy's
+  `chatgpt/gpt-6.1-sol` subscription route at its medium default, through the
+  chat route, which drops `response_format`: the reply must hold one JSON
+  object, at most four statements whose citations are among the retrieved
+  IDs, none meaning not found, validated strictly. Receipts record $0. Its
+  instructions are fixed and read no Processing Guidance.
 - **Check.** Each statement goes through the citation check as
   `group_answer_check`. The answer returns each statement's kept and
   unsupported citations and whether the whole statement is supported; how the

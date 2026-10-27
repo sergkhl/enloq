@@ -124,9 +124,10 @@ A citation is supported at a probability of 0.5 or more, a threshold only the
 owner changes; its measured precision and recall are published in
 [measurements](../measurements.md). An unsupported citation is removed before
 participants and source links activate, and so is its participant unless
-another remaining citation is theirs. The topic's text is unchanged. What a
-topic shows when no citation supports it, or when its citations together fall
-short, is open until the check is measured (citation check Q4).
+another remaining citation is theirs. The topic's text is unchanged. A topic
+left with no supported citation is hidden: in the measurement every claim the
+check emptied was wrong, and no correct one was emptied. Whether a topic its
+citations do not fully support is marked is open (citation check Q4).
 
 When the check cannot run (the route refuses or fails, the budget or the
 update's check limit is spent, or an answer is malformed), the briefing
@@ -707,8 +708,8 @@ Four interviews settled this ADR, each numbered from Q1. The rollout code's
   and whether together they support all of it.
 - Q3: an unsupported citation is removed before links activate, with its
   participant unless another remaining citation is theirs; the text stays.
-- Q4: open: what a topic shows when nothing supports it, decided after the
-  check is measured ([TODO](../plans/TODO.md)).
+- Q4: a topic left with no supported citation is hidden; whether one its
+  citations do not fully support is marked is open ([TODO](../plans/TODO.md)).
 - Q5: a check that cannot run publishes the allowlist-checked citations,
   recorded unchecked, with no retry or visible difference.
 - Q6: the Group Briefing Budget, up to 12 check requests per update, between

@@ -259,9 +259,13 @@ The adopted routes, which need no further authorization within their roles:
   two minutes, and notes the VPS cannot answer, go to `elevenlabs/scribe-v2`
   through the proxy, a paid call in the Daily Budget. Offline mode and
   `scripts/check-voice.py` use the Mac's `mlx-community/whisper-large-v3-turbo`.
-- `chatgpt/gpt-6.1-sol` judges sarcasm only inside `scripts/check-calming.py`.
-- The application has no Codex role; do not invoke the owner's personal CLI
-  through it. Any new model role needs its own adopted design. These choices
+- `chatgpt/gpt-6.1-sol`, the proxy's ChatGPT-subscription route, writes Ask
+  this group's answers ([ADR 59](docs/adr/0059-ask-this-group.md) Q5), with $0
+  receipts and no limit, and judges inside the finite checks.
+- Ask this group embeds with `perplexity/pplx-embed-v1-4b` and reranks with
+  `qwen/qwen3-reranker-8b` through the proxy's OpenRouter pass-throughs, both
+  zero data retention (ADR 59 Q3).
+- Do not invoke the owner's personal CLI through the application. Any new model role needs its own adopted design. These choices
   never authorize unrelated models or automatic provider fallback.
 
 **Budgets.** Each member has a Daily Budget and a Group Briefing Budget,

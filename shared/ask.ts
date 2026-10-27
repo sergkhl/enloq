@@ -26,10 +26,8 @@ export function shownAnswer(
 ): { statements: AskStatement[]; line: string | null } {
   if (answer.status === "unchecked")
     return { statements: [], line: "Couldn't check the answer." };
-  // Provisional while ADR 59 Q6 is open: whether a statement the check left
-  // unsupported is dropped or shown marked waits for the owner's decision.
-  // Until then a statement shows only with a citation the check kept, and an
-  // answer left with none abstains.
+  // ADR 59 Q6: a statement shows only with a citation the check kept, and
+  // an answer left with none abstains.
   const statements =
     answer.status === "answer"
       ? (answer.statements ?? []).filter(
