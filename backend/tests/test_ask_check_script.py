@@ -186,3 +186,49 @@ async def test_an_answers_only_run_uses_the_adopted_retrieval(tmp_path, monkeypa
     assert report["reranker"] == "qwen/qwen3-reranker-8b"
     assert [a["question"] for a in report["answers"]] == [QUESTIONS[0]["question"]]
     assert report["requests"]["rerank"] == 1
+
+
+class Subscription(Authored, FakeEngine):
+    kind = "write"
+
+    def __init__(self, settings, *, user):
+        super().__init__()
+        self.model = "chatgpt/gpt-6.1-sol"
+
+
+async def test_the_final_run_compares_candidates_and_answers_everything(
+    tmp_path, monkeypatch
+):
+    for name, value in (
+        ("GROUPS", [GROUP]),
+        ("QUESTIONS", QUESTIONS),
+        ("problems", lambda: []),
+    ):
+        monkeypatch.setattr(runner.fixtures, name, value, raising=False)
+    for name, value in (
+        ("ObservedEmbedder", Embedder),
+        ("ObservedReranker", Reranker),
+        ("ObservedSubscription", Subscription),
+        ("ObservedDecider", Decider),
+        ("Judge", Judge),
+        ("FINAL", [True]),
+    ):
+        monkeypatch.setattr(runner, name, value)
+    (tmp_path / ".local").mkdir()
+    settings = settings_at(tmp_path)
+    registry = AccountRegistry(settings.data)
+    registry.register(37, "authored.session", directory="authored-account")
+    registry.set_processing(37, True)
+    report = await runner.observe(settings, root=tmp_path)
+    assert "stopped" not in report
+    assert set(report["retrieval"]) == {
+        "candidates:dense",
+        "candidates:fused",
+        "reranked:dense",
+        "reranked:fused",
+    }
+    assert report["candidates"] in {"dense", "fused"}
+    assert len(report["answers"]) == 2
+    # One answerable question reranked twice, the other once.
+    assert report["requests"]["rerank"] == 3
+    assert all("judge" in a for a in report["answers"])
