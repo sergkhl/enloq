@@ -76,14 +76,15 @@ from scripts.group_harness import (  # noqa: E402
 )
 from scripts.measuring import percentile, rate  # noqa: E402
 
-# With check-citations.py's 232, at most 1,152 requests (ADR 59 Q11's 1,200).
+# ADR 59 Q11 allows 1,200 requests for both checks. check-citations.py made
+# 223 and two stopped Ask runs 144, so this run may make at most 833.
 LIMITS = {
-    "embed": 80,
-    "rerank": 265,
-    "write": 105,
-    "check": 260,
-    "sol": 105,
-    "judge": 105,
+    "embed": 60,
+    "rerank": 245,
+    "write": 102,
+    "check": 180,
+    "sol": 102,
+    "judge": 102,
 }
 SECONDS, MAX_NANOS = 5400, 600_000_000
 # ADR 59 Q3's candidates, each pinned to one provider. The application may
@@ -102,8 +103,8 @@ EMBEDDERS = (
 )
 RERANKERS = (
     Route("qwen/qwen3-reranker-8b", "fireworks", "fireworks", "0.0000002"),
-    Route("voyageai/rerank-3", "voyageai", "voyageai", "0.00000005"),
-    Route("voyageai/rerank-3-lite", "voyageai", "voyageai", "0.00000002"),
+    Route("voyageai/rerank-3", "voyageai", "voyageai", "0.00000005", zdr=False),
+    Route("voyageai/rerank-3-lite", "voyageai", "voyageai", "0.00000002", zdr=False),
 )
 ZERO_RETENTION_RERANKERS = {"qwen/qwen3-reranker-8b"}
 # A reranker is adopted only if it measurably improves retrieval (Q3): at
@@ -204,19 +205,27 @@ async def retrieval(app, bounds, settings, registry, report, save, groups):
     for route in EMBEDDERS:
         engine = ObservedEmbedder(settings, route, user=registry.provider_user())
         engine.watch(bounds)
-        await engine.prepare({})
         app.questions.embedder = engine
         dense, fused = {}, {}
         started = time.monotonic()
-        for g, entries, questions in groups:
-            vectors = await app.questions.vectors(g["key"], entries)
-            prefix = route.query_instruction or ""
-            asked = await app.questions.embed(
-                g["key"], [prefix + q["question"] for q in questions]
-            )
-            for q, vector in zip(questions, asked, strict=True):
-                dense[id(q)] = nearest(vector, vectors, DENSE)
-                fused[id(q)] = fuse(lexical[id(q)], dense[id(q)])[:FUSED]
+        try:
+            await engine.prepare({})
+            for g, entries, questions in groups:
+                vectors = await app.questions.vectors(g["key"], entries)
+                prefix = route.query_instruction or ""
+                asked = await app.questions.embed(
+                    g["key"], [prefix + q["question"] for q in questions]
+                )
+                for q, vector in zip(questions, asked, strict=True):
+                    dense[id(q)] = nearest(vector, vectors, DENSE)
+                    fused[id(q)] = fuse(lexical[id(q)], dense[id(q)])[:FUSED]
+        except Refused as failure:
+            if "bound" in str(failure):
+                raise
+            report["routes"][route.model] = {"error": str(failure)[:200]}
+            await engine.client.aclose()
+            save()
+            continue
         configs[f"dense:{route.model}"] = dense
         configs[f"fused:{route.model}"] = fused
         fused_by[route.model] = fused
@@ -234,8 +243,9 @@ async def retrieval(app, bounds, settings, registry, report, save, groups):
         )
         for name, ranking in configs.items()
     }
+    report["retrieval"] = table
     best = max(
-        EMBEDDERS,
+        (r for r in EMBEDDERS if f"fused:{r.model}" in table),
         key=lambda r: (table[f"fused:{r.model}"]["ndcg_10"], -float(r.rate)),
     )
     report["best_embedder"] = best.model
@@ -249,24 +259,35 @@ async def retrieval(app, bounds, settings, registry, report, save, groups):
     for route in RERANKERS:
         engine = ObservedReranker(settings, route, user=registry.provider_user())
         engine.watch(bounds)
-        await engine.prepare({})
         app.questions.reranker = engine
         reranked = {}
-        for g, q in answerable:
-            candidates = fused[id(q)]
-            scores = await app.questions._run(
-                engine,
-                RERANK_ROLE,
-                {
-                    "query": q["question"],
-                    "documents": [texts[id(q)][i] for i in candidates],
-                },
-                g["key"],
-            )
-            reranked[id(q)] = [
-                i
-                for _, i in sorted(zip(scores, candidates), key=lambda p: (-p[0], p[1]))
-            ]
+        try:
+            await engine.prepare({})
+            for g, q in answerable:
+                candidates = fused[id(q)]
+                scores = await app.questions._run(
+                    engine,
+                    RERANK_ROLE,
+                    {
+                        "query": q["question"],
+                        "documents": [texts[id(q)][i] for i in candidates],
+                    },
+                    g["key"],
+                )
+                reranked[id(q)] = [
+                    i
+                    for _, i in sorted(
+                        zip(scores, candidates), key=lambda p: (-p[0], p[1])
+                    )
+                ]
+        except Refused as failure:
+            if "bound" in str(failure):
+                raise
+            report["routes"][route.model] = {"error": str(failure)[:200]}
+            app.questions.reranker = None
+            await engine.client.aclose()
+            save()
+            continue
         configs[f"reranked:{route.model}"] = reranked
         reranked_by[route.model] = reranked
         table[f"reranked:{route.model}"] = ranked_metrics(
@@ -299,6 +320,7 @@ async def retrieval(app, bounds, settings, registry, report, save, groups):
         r
         for r in RERANKERS
         if r.model in ZERO_RETENTION_RERANKERS
+        and f"reranked:{r.model}" in table
         and table[f"reranked:{r.model}"]["ndcg_10"] - base["ndcg_10"] >= ADOPTION_GAIN
         and table[f"reranked:{r.model}"]["recall_25"] >= base["recall_25"]
     ]

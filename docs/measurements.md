@@ -10,8 +10,8 @@ writing-model steps it replaced or made unnecessary, and the
 [ranges](#miss-rate-ranges) around two gates' published check results.
 
 **These figures are indicative, not a benchmark.** They come from small finite
-checks on 7 and 9 October 2026, each with its own authored test messages, on
-routes and roles that have since changed. They are not a controlled
+checks on 7, 9 and 27 October 2026, each with its own authored test messages,
+some on routes and roles that have since changed. They are not a controlled
 comparison. Savings
 on real traffic are not measured: they depend on how many blocks are hostile
 or call for suggestions, and receipts do not record latency. The checks'
@@ -136,6 +136,49 @@ groups are not measured.
 misses at 95% confidence: even catching all 18 would leave a one-sided upper
 bound of 15.3%. That takes at least 59 positive cases with no misses (72 for
 the two-sided bound the table uses).
+
+## Citation check
+
+[ADR 34](adr/0034-group-chats-and-daily-briefings.md)'s citation check asks the
+decision model, for each claim (a briefing topic or an answer statement),
+whether each cited message supports part of it and whether together they
+support all of it; a citation below 0.5 is removed. `scripts/check-citations.py`
+measured it on 27 October 2026 with Decider V1.2 (`perplexity/pplx-decider-v1.2`
+at `-20261016`). gpt-6.1-sol, the proxy's subscription route, graded the same
+claims as a second grader.
+
+**Authored claims.** 70 claims over six synthetic groups (Russian, English and
+both), labelled before the run: 162 cited messages, 93 of them supporting.
+Unsupported ones are the mistakes a writer makes: a look-alike message, the
+same subject without the fact, a fact a later message corrected, a proposal
+reported as a decision, the wrong person, a missing part.
+
+| Grader | Supporting citations removed | Unsupported citations kept | Correct claims judged unsupported | Wrong claims judged supported |
+| --- | --- | --- | --- | --- |
+| Decider V1.2 at 0.5 | 8 of 93 (3.8%–16.3%) | 1 of 69 (0.04%–7.8%) | 1 of 32 (0.08%–16.2%) | 3 of 38 (1.7%–21.4%) |
+| gpt-6.1-sol | 12 of 93 (6.9%–21.5%) | 4 of 69 (1.6%–14.2%) | 7 of 32 (9.3%–40.0%) | 0 of 38 (0%–9.3%) |
+
+Ranges are two-sided 95% exact (Clopper–Pearson). The two graders agreed on
+155 of the 162 citations. Seven of the decision model's eight removals were in
+one-sentence statements that the labels call wrong as a whole (a proposal
+reported as a decision, a fact under the wrong person): the cited message
+held part of the claim, but not its point. No claim the labels call correct
+lost all its citations, and no topic did; 17 wrong statements did.
+
+**Live briefings.** Six authored days briefed through the real pipeline: MiMo
+wrote 38 topics citing 126 messages, and the check ran on each. In agent
+labels set after the run, every citation supported its topic, and two topics
+claimed more than their citations hold.
+
+| Grader | Citations removed | Correct topics judged unsupported | Overclaiming topics judged supported |
+| --- | --- | --- | --- |
+| Decider V1.2 at 0.5 | 0 of 126 | 0 of 36 | 0 of 2 |
+| gpt-6.1-sol | 0 of 126 | 5 of 36 | 0 of 2 |
+
+**Time and cost.** One check (one topic, two to six questions) took 0.63 s at
+the median and 0.68 s at the 95th percentile, and cost $0.000018 on average:
+$0.018 per thousand claims. The judge took 3.2 s and 6.9 s. MiMo's finals
+took 22 to 60 seconds.
 
 ## Not measured
 

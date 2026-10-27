@@ -291,9 +291,11 @@ recall at 5, 10 and 25, MRR and nDCG at 10 against the labelled relevant
 messages. On the chosen retrieval it answers every question through the
 application's own steps with MiMo and the check, has gpt-6.1-sol answer the
 same retrieved messages for comparison, and has the judge grade both. Voyage's
-rerankers see only these authored messages. At most 80 embedding, 265 rerank,
-105 MiMo, 260 check, 105 comparison and 105 judge requests, 5,400 seconds and
-$0.60. The report is `.local/ask-check-*/report.json`.
+rerankers, which have no zero-retention endpoint, see only these authored
+messages. At most 60 embedding, 245 rerank, 102 MiMo, 180 check, 102
+comparison and 102 judge requests, 5,400 seconds and $0.60. A candidate that
+fails leaves its row empty and the rest run. The report is
+`.local/ask-check-*/report.json`.
 
 `scripts/check-group-briefings.py`, the briefing path's check, is described in
 [inference](inference.md), and `scripts/check-voice.py` in

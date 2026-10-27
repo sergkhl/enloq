@@ -40,6 +40,9 @@ class Route:
     dimensions: int | None = None
     # Prepended to a question, never to a message, for models trained so.
     query_instruction: str | None = None
+    # Every application route requires zero data retention (ADR 59 Q3);
+    # only the finite check compares routes without it, on authored text.
+    zdr: bool = True
 
 
 # ADR 59 Q3: the zero-retention routes the application may use. Which
@@ -116,7 +119,7 @@ class PassThrough:
             "provider": {
                 "only": [self.route.provider],
                 "allow_fallbacks": False,
-                "zdr": True,
+                "zdr": self.route.zdr,
             },
         }
         try:
@@ -127,8 +130,9 @@ class PassThrough:
             )
         except httpx.ConnectError:
             raise ProviderRefused("Provider connection refused") from None
-        if response.status_code in (401, 402, 403, 429):
-            # Refused at the proxy or OpenRouter before any model work.
+        if response.status_code in (401, 402, 403, 404, 429):
+            # Refused at the proxy or OpenRouter before any model work; 404 is
+            # OpenRouter finding no endpoint for the route and data policy.
             raise ProviderRefused(
                 f"Model provider HTTP {response.status_code}",
                 retry_after=retry_after(response.headers.get("retry-after")),
