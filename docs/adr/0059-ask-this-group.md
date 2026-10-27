@@ -64,9 +64,9 @@ plan's data settings.
 **Checked answers (Q6).** Each statement goes through ADR 34's citation
 check: whether each cited message supports part of it, and whether together
 they support all of it. A statement left with no supported citation is
-dropped, and an answer left with none abstains; whether a statement its
-citations do not fully support is marked follows ADR 34 citation check Q4,
-which is open. If the check cannot run, no answer shows, only "Couldn't check
+dropped, and an answer left with none abstains; a statement its citations
+together do not fully support shows the muted line "Not all of this is in its sources.", as a
+briefing topic does (ADR 34 citation check Q4). If the check cannot run, no answer shows, only "Couldn't check
 the answer.", and the member asks again.
 
 **Abstention (Q7).** When search finds nothing, with no model call, or no
@@ -100,5 +100,3 @@ requests and spend at most $1.00, within the live test allowance.
 - The first question in a busy group pays for its messages' vectors.
 - Members' questions run on the owner's ChatGPT subscription with no budget
   or count limit.
-- Open: marking a not fully supported statement (Q6, with ADR 34 citation
-  check Q4; [TODO](../plans/TODO.md)).

@@ -299,7 +299,8 @@ class GroupBriefings:
 
         result = []
         for index, topic in enumerate(final.output.topics):
-            removed = checks[index].removed if index < len(checks) else set()
+            check = checks[index] if index < len(checks) else None
+            removed = check.removed if check else set()
             citations, participant_ids = citation_check.kept(
                 topic.citations, topic.participant_source_ids, removed, author_of
             )
@@ -311,6 +312,13 @@ class GroupBriefings:
                     "citations": citations,
                     "participant_source_ids": participant_ids,
                     "participants": self._participants(key, participant_ids),
+                    # Q4: a muted line marks a topic whose citations together
+                    # fall short of it; an unchecked topic shows nothing.
+                    "fully_supported": not (
+                        check
+                        and check.status == "checked"
+                        and check.claim < citation_check.FLOOR
+                    ),
                 }
             )
         return result

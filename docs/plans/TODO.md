@@ -33,10 +33,6 @@ None of these is adopted, implemented or authorized.
 
 ## Decisions awaiting the owner
 
-- **Marking what its citations don't fully support** ([ADR 34](../adr/0034-group-chats-and-daily-briefings.md)
-  citation check Q4, [ADR 59](../adr/0059-ask-this-group.md) Q6): a muted
-  line under a topic or statement whose cited messages together fall short,
-  or recording it only. The owner asked to see the flagged examples first.
 - **Group planning and native intake cost** ([ADR 34](../adr/0034-group-chats-and-daily-briefings.md),
   [idle cost](../operations.md#idle-cost)). Each planning pass proves every
   cached briefing source again (about 0.5 s at 1,200 originals), and native

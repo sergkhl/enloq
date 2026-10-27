@@ -1254,7 +1254,9 @@ The decision-model stage that confirms a Briefing Topic's source links before
 the final briefing publishes (ADR 34). One request per topic asks whether each
 cited message supports part of the topic and whether together they support
 all of it; a citation below probability 0.5 is removed, with its participant
-unless another remaining citation is theirs, and the text is unchanged. It is
+unless another remaining citation is theirs, and the text is unchanged. A topic
+left with no citation is hidden, and one its citations together fall short of
+shows the muted line "Not all of this is in its sources." It is
 paid from the Group Briefing Budget, at most 12 requests per update. A check
 that cannot run leaves the allowlist-checked citations, recorded unchecked,
 with nothing shown. Ask This Group checks its answers' statements the same

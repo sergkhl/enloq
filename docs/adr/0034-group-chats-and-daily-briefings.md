@@ -126,8 +126,9 @@ owner changes; its measured precision and recall are published in
 participants and source links activate, and so is its participant unless
 another remaining citation is theirs. The topic's text is unchanged. A topic
 left with no supported citation is hidden: in the measurement every claim the
-check emptied was wrong, and no correct one was emptied. Whether a topic its
-citations do not fully support is marked is open (citation check Q4).
+check emptied was wrong, and no correct one was emptied. A topic its
+citations together do not fully support shows a muted line under its text,
+"Not all of this is in its sources." (citation check Q4).
 
 When the check cannot run (the route refuses or fails, the budget or the
 update's check limit is spent, or an answer is malformed), the briefing
@@ -708,8 +709,8 @@ Four interviews settled this ADR, each numbered from Q1. The rollout code's
   and whether together they support all of it.
 - Q3: an unsupported citation is removed before links activate, with its
   participant unless another remaining citation is theirs; the text stays.
-- Q4: a topic left with no supported citation is hidden; whether one its
-  citations do not fully support is marked is open ([TODO](../plans/TODO.md)).
+- Q4: a topic left with no supported citation is hidden; one its citations
+  do not fully support shows the muted line "Not all of this is in its sources."
 - Q5: a check that cannot run publishes the allowlist-checked citations,
   recorded unchecked, with no retry or visible difference.
 - Q6: the Group Briefing Budget, up to 12 check requests per update, between

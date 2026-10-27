@@ -499,7 +499,9 @@ publication, one decision request per topic, in topic order:
   participant unless another remaining citation is theirs, which then names
   them. The final is stored as written, with the check beside it; the view,
   participants and source links apply the removals, and a topic left with
-  no citation is hidden (citation check Q4).
+  no citation is hidden (citation check Q4). A topic whose `claim` answer
+  is below 0.5 carries `fully_supported: false`, and both clients show the
+  muted line "Not all of this is in its sources." under it.
 - **Unchecked.** A refused or unavailable route, a spent Group Briefing Budget
   or the update's twelve check requests leave that topic and the rest
   unchecked without further calls; a malformed answer or an oversized packet
@@ -570,9 +572,10 @@ access.
   instructions are fixed and read no Processing Guidance.
 - **Check.** Each statement goes through the citation check as
   `group_answer_check`. The answer returns each statement's kept and
-  unsupported citations and whether the whole statement is supported; how the
-  clients show an unsupported statement waits for ADR 59 Q6. A check that
-  cannot run returns `unchecked`, and no answer shows.
+  unsupported citations and whether the whole statement is supported. The
+  clients drop a statement with no kept citation and show the muted line
+  "Not all of this is in its sources." under one that is not fully supported (ADR 59 Q6). A check
+  that cannot run returns `unchecked`, and no answer shows.
 
 Nothing about a question or an answer is stored beyond content-free receipts.
 

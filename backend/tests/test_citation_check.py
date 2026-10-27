@@ -154,7 +154,7 @@ async def test_unsupported_citations_leave_with_their_participants(rig):
     assert len(checks(rig)) == 2
     # The second topic lost its only citation and is hidden (Q4).
     [first] = shown(rig)
-    assert first["citations"] == [1, 3]
+    assert first["citations"] == [1, 3] and first["fully_supported"]
     assert first["participant_source_ids"] == [1, 3]
     assert [p["name"] for p in first["participants"]] == ["Alex", "Sam"]
     rig.app.briefings.sources(KEY, DAY, final.id, 3)
@@ -272,3 +272,18 @@ async def test_a_changed_source_during_the_check_withdraws_the_final(rig):
     rig.app.briefings.reconcile(KEY)
     assert rig.storage.state(KEY, DAY).final is None
     assert rig.storage.attempt(result["attempt"]).state != "completed"
+
+
+async def test_a_topic_its_citations_fall_short_of_is_marked(rig):
+    source(rig, 1)
+    source(rig, 2)
+    final_topics(rig, [topic([1], [1]), topic([2], [2])])
+    answer = rig.app.decider.generate
+
+    async def short(role, packet):
+        rig.app.decider.claim_support = 0.2 if packet["cited_ids"] == [2] else 0.9
+        return await answer(role, packet)
+
+    rig.app.decider.generate = short
+    await briefing(rig)
+    assert [t["fully_supported"] for t in shown(rig)] == [True, False]
