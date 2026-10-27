@@ -270,6 +270,31 @@ stay unverified, and no unchanged failed case is resampled. The report is
 backend and journey evidence, separate from provider shape and semantic
 quality.
 
+**Citation check** ([ADR 34](adr/0034-group-chats-and-daily-briefings.md)
+citation check, [ADR 59](adr/0059-ask-this-group.md) Q11):
+`scripts/check-citations.py`. Part A sends every authored claim in
+`scripts/authored_group_days.py`, labelled before any run, once through the
+application's check packet and the decision model, and the judge grades the
+same claim. Part B briefs six authored days as today's messages of their own
+groups through a deliberate update: MiMo writes each final and the check checks
+it, and the judge grades its topics. At most 110 decision, 12 MiMo and 110
+judge requests, 3,600 seconds and $0.30 counted within the Group Briefing
+Budget. `--labels REPORT LABELS` scores a saved report against labels set after
+the run, without any request. The report is
+`.local/citation-check-*/report.json`.
+
+**Ask this group** ([ADR 59](adr/0059-ask-this-group.md) Q3, Q5, Q11):
+`scripts/check-ask.py` caches every authored group and searches every authored
+question by keywords alone, by each candidate embedder alone and fused with
+keywords, and by each candidate reranker over the best fusion, then reports
+recall at 5, 10 and 25, MRR and nDCG at 10 against the labelled relevant
+messages. On the chosen retrieval it answers every question through the
+application's own steps with MiMo and the check, has gpt-6.1-sol answer the
+same retrieved messages for comparison, and has the judge grade both. Voyage's
+rerankers see only these authored messages. At most 80 embedding, 265 rerank,
+105 MiMo, 260 check, 105 comparison and 105 judge requests, 5,400 seconds and
+$0.60. The report is `.local/ask-check-*/report.json`.
+
 `scripts/check-group-briefings.py`, the briefing path's check, is described in
 [inference](inference.md), and `scripts/check-voice.py` in
 [local credentials](local-credentials.md#other-local-requirements).

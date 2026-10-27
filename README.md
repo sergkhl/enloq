@@ -67,8 +67,10 @@ Telegram delivery or native-device acceptance.*
   the owner care about for the suggestions to read, and collect the owner's
   traits and habits for them alone.
 - **Catch up on groups.** Opt individual groups into daily briefings, follow
-  citations to exact messages, and return to the briefing. Saved Messages has
-  its own tab and does not go through AI processing.
+  citations to exact messages, and return to the briefing. Ask a group a
+  question and get an answer from its own messages with source links, or a
+  plain statement that they hold none. Saved Messages has its own tab and does
+  not go through AI processing.
 - **Keep ordinary messaging useful.** Switch accounts, find people, start a
   private conversation, reply, and work with photos, albums, GIFs, stickers,
   voice notes and videos. Recent background processing covers seven days.
@@ -121,8 +123,11 @@ uncertain outcomes remain visible with explicit recovery actions. Checking
 delivery observes the original operation rather than sending another copy.
 See [media delivery](docs/media-delivery.md).
 
-**Generated text stays connected to its sources.** Group briefings use
-validated citations and bounded source sets. Changed or withdrawn source
+**Generated text stays connected to its sources.** Group briefings and group
+answers cite only messages their inputs held, and a decision model checks that
+each cited message supports what it is cited for before its link appears.
+Answers come from keyword (SQLite FTS5) and embedding search fused by
+reciprocal rank, over the group's own cached messages only. Changed or withdrawn source
 messages invalidate affected work. Originals and observed history remain
 inspectable; model text does not replace the source record. See
 [history](docs/history.md) and [ADR 34](docs/adr/0034-group-chats-and-daily-briefings.md).

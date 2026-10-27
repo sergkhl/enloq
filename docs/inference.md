@@ -33,8 +33,10 @@ user info, query or fragment (the deployment's is
 `https://llm.globesoul.com/v1`), and the key an `sk-` key that is not an
 OpenRouter key; every live adapter checks both. The reference names predate the
 current routes and are kept. Offline mode constructs no live adapter. The
-decision and hosted-speech pass-throughs replace the endpoint's `/v1` with
-`/openrouter/api/alpha/decisions` and `/openrouter/api/v1/audio/transcriptions`.
+decision, hosted-speech, embeddings and rerank pass-throughs replace the
+endpoint's `/v1` with `/openrouter/api/alpha/decisions`,
+`/openrouter/api/v1/audio/transcriptions`, `/openrouter/api/v1/embeddings` and
+`/openrouter/api/v1/rerank`.
 
 - **MiMo.** The proxy's `xiaomi_mimo/mimo-v2.6-flash`, which calls Xiaomi's own
   API ([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
@@ -57,6 +59,11 @@ decision and hosted-speech pass-throughs replace the endpoint's `/v1` with
 - **Speech.** The proxy's `whisper-large-v3-turbo` route on the VPS, with
   ElevenLabs Scribe v2 as a paid hosted fallback
   ([Speech transcripts](#speech-transcripts)).
+- **Embeddings and rerank.** [Ask this group](#ask-this-group)'s routes,
+  through the proxy's pass-throughs to OpenRouter's routers. Each request pins
+  one provider with `allow_fallbacks: false` and `zdr: true`. Verification reads
+  OpenRouter's public listing at most daily for exactly one up endpoint of that
+  provider at no more than the adopted rate.
 
 MiMo and Muse requests ask for strict structured output (`response_format`
 `json_schema` with `strict`), send no `provider` block and send no
@@ -468,6 +475,39 @@ with source and proof rechecked on its derivative-write transaction; no next
 fresh stage starts while paused. Audio reaches a provider only through the
 hosted fallback for long notes and VPS outages.
 
+### Citation check
+
+[ADR 34](adr/0034-group-chats-and-daily-briefings.md)'s citation check runs as
+its own stage, `briefing_citation_check`, between a validated final and its
+publication, one decision request per topic, in topic order:
+
+- **Packet.** The topic's title and text, each cited original as the briefing
+  read it (text or caption, cached transcript and image meaning, speaker name,
+  date, forwarding), and the cached originals they reply to as context, up to
+  6,000 bytes, leaving out ads, ignored or hidden bots and Non-AI Media.
+  Packets are whole: at most 31 citations, 24,000 bytes of cited originals and
+  32,000 bytes of state; the repeated-input bound is the ad filter's 240,000
+  bytes, since the state is billed once per question. A larger topic stays
+  unchecked.
+- **Questions.** `cites_<id>` for each cited original, whether it supports at
+  least part of the topic, and `claim`, whether together they support all of
+  it. The rules are fixed text with their own fingerprint, not Processing
+  Guidance.
+- **Outcome.** A citation below 0.5 leaves the topic's links, and so does its
+  participant unless another remaining citation is theirs, which then names
+  them. The final is stored as written, with the check beside it; the view,
+  participants and source links apply the removals. Until the owner decides
+  ADR 34 citation check Q4, a topic left with no citation shows its text
+  without links.
+- **Unchecked.** A refused or unavailable route, a spent Group Briefing Budget
+  or the update's twelve check requests leave that topic and the rest
+  unchecked without further calls; a malformed answer or an oversized packet
+  leaves only its topic. The final then publishes with its allowlist-checked
+  citations. A spent budget never holds a finished final back: the stage's
+  admission skips the budget gate, and each request still meets it.
+- **Changes.** A source that changes during the stage withdraws the attempt
+  as at any other stage.
+
 ### Finite authored group qualification
 
 `scripts/check-group-briefings.py` runs the real image, reusable-chunk and
@@ -497,6 +537,39 @@ Private evidence under `.local/` keeps first outputs and source and format
 checks, with manual semantic expectations recorded separately. Offline tests
 prove the real staging, accounting and guard mechanics; the
 [first semantic outcomes](#group-briefing-first-outcomes) are below.
+
+## Ask this group
+
+[ADR 59](adr/0059-ask-this-group.md)'s `POST /chats/{peer}/ask` answers one
+question at a time per account, in the manual-suggestion class, paid from the
+member's Group Briefing Budget. It needs account AI, the group's AI and verified
+access.
+
+- **Pool.** Eligible current originals from the group's first opt-in day,
+  within the 30-day cache: text and captions, cached transcripts and image
+  meanings, without ads, ignored or hidden bots, service events and Non-AI
+  Media. No Telegram read and no media work. An empty pool answers not found
+  with no model call.
+- **Retrieval.** An in-memory SQLite FTS5 trigram index built for the
+  question ranks by BM25 (each word of three or more letters, any of them); the
+  question's embedding ranks by cosine similarity. Reciprocal rank fusion (k
+  60) keeps 40; an adopted reranker would reorder them; the writer reads the
+  best 25 in chronological order.
+- **Vectors.** Computed when a question first needs them, in requests of at
+  most 64 texts and 100,000 bytes (a text's first 8,000 characters), and kept
+  per message revision and model with the 30-day content cache. An edit or
+  deletion drops them.
+- **Writer.** MiMo in the `group_question` role, thinking off, 2,048 output
+  tokens and a strict schema: `not_found`, or at most four statements whose
+  citations are an enum of the retrieved IDs. Its instructions are fixed and
+  read no Processing Guidance.
+- **Check.** Each statement goes through the citation check as
+  `group_answer_check`. The answer returns each statement's kept and
+  unsupported citations and whether the whole statement is supported; how the
+  clients show an unsupported statement waits for ADR 59 Q6. A check that
+  cannot run returns `unchecked`, and no answer shows.
+
+Nothing about a question or an answer is stored beyond content-free receipts.
 
 ## Private processing and media
 
@@ -827,8 +900,9 @@ reuses the MiMo endpoint and key binding and sends the same member pseudonym.
 - **Receipts and time.** Receipts count the larger of `usage.cost` and any
   upstream cost; the flat $0.01 covers an unknown outcome. Each attempt has a
   60-second deadline.
-- **Terms.** Perplexity publishes no retention or training terms for this API,
-  so the route gives no privacy guarantee.
+- **Terms.** Perplexity publishes no retention or training terms for this API.
+  OpenRouter lists this endpoint as zero data retention (checked 27 October
+  2026); that is OpenRouter's classification, not a Perplexity term.
 
 Refusals and outages ([ADR 49](adr/0049-useful-response-suggestions.md) Q14):
 
