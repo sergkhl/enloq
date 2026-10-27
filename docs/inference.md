@@ -60,10 +60,12 @@ endpoint's `/v1` with `/openrouter/api/alpha/decisions`,
   ElevenLabs Scribe v2 as a paid hosted fallback
   ([Speech transcripts](#speech-transcripts)).
 - **Embeddings and rerank.** [Ask this group](#ask-this-group)'s routes,
-  through the proxy's pass-throughs to OpenRouter's routers. Each request pins
-  one provider with `allow_fallbacks: false` and `zdr: true`. Verification reads
-  OpenRouter's public listing at most daily for exactly one up endpoint of that
-  provider at no more than the adopted rate.
+  through the proxy's pass-throughs to OpenRouter's routers:
+  `perplexity/pplx-embed-v1-4b` at Perplexity ($0.03 per million tokens) and
+  `qwen/qwen3-reranker-8b` at Fireworks ($0.20 per million tokens). Each
+  request pins its provider with `allow_fallbacks: false` and `zdr: true`.
+  Verification reads OpenRouter's public listing at most daily for exactly
+  one up endpoint of that provider at no more than the adopted rate.
 
 MiMo and Muse requests ask for strict structured output (`response_format`
 `json_schema` with `strict`), send no `provider` block and send no
@@ -553,8 +555,10 @@ access.
 - **Retrieval.** An in-memory SQLite FTS5 trigram index built for the
   question ranks by BM25 (each word of three or more letters, any of them); the
   question's embedding ranks by cosine similarity. Reciprocal rank fusion (k
-  60) keeps 40; an adopted reranker would reorder them; the writer reads the
-  best 25 in chronological order.
+  60) keeps 40, the reranker reorders them, and the writer reads the best 25
+  in chronological order. A rerank or embedding refusal that did no work, such
+  as a provider's per-second quota, is tried again after the wait it names, at
+  most twice and five seconds each.
 - **Vectors.** Computed when a question first needs them, in requests of at
   most 64 texts and 100,000 bytes (a text's first 8,000 characters), and kept
   per message revision and model with the 30-day content cache. An edit or

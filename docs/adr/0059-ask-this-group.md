@@ -31,16 +31,16 @@ no media work and sends a model nothing a Daily Briefing could not.
 **Retrieval (Q3).** A question is matched two ways: keyword search over an
 in-memory SQLite FTS5 trigram index built for that question, and similarity
 between embeddings of the question and of the messages. Reciprocal rank fusion
-merges the two lists. The embedding model is the one that measures best on the
-authored question set among Qwen3 Embedding 8B, Perplexity Embed V1 4B and
-bge-m3. It runs through OpenRouter's embeddings endpoint on the proxy's
-pass-through, pinned to one zero-data-retention provider with no fallback, and
-the others leave the proxy. A reranker is adopted only if it measurably
-improves retrieval, and only Qwen3 Reranker 8B at Fireworks, the one
-zero-retention reranker listed. Voyage's rerank-3 and rerank-3-lite are
-measured on authored fixtures only and never receive real group messages:
-Voyage's terms allow training on submitted content unless the customer opts
-out.
+merges the two lists. The embedding model is Perplexity Embed V1 4B at
+Perplexity, which ranked best and fastest on the authored question set among
+Qwen3 Embedding 8B, Perplexity Embed V1 4B and bge-m3. Qwen3 Reranker 8B at
+Fireworks, the one zero-retention reranker listed, reorders the fused list's
+first 40, since it measurably improved retrieval. Both run through OpenRouter's
+routers on the proxy's pass-throughs, pinned to their zero-data-retention
+provider with no fallback; the other candidates leave the proxy. Voyage's
+rerank-3 and rerank-3-lite were measured on authored fixtures only and never
+receive real group messages: Voyage's terms allow training on submitted
+content unless the customer opts out.
 
 **Message vectors (Q4).** A message's vector is computed when a question
 first needs it, kept per message revision with the 30-day content cache, and

@@ -516,6 +516,7 @@ async def test_background_sync_and_reconnect_are_independent_per_account(
     monkeypatch.setattr(
         accounts, "EmbeddingEngine", lambda settings, route, user: FakeEmbedder()
     )
+    monkeypatch.setattr(accounts, "RerankEngine", lambda settings, route, user: None)
     registry = AccountRegistry(tmp_path)
     registry.register(1, "one.session")
     registry.register(2, "two.session")
@@ -599,6 +600,7 @@ async def test_identity_withdrawn_during_sync_stops_only_that_account(
     monkeypatch.setattr(
         accounts, "EmbeddingEngine", lambda settings, route, user: FakeEmbedder()
     )
+    monkeypatch.setattr(accounts, "RerankEngine", lambda settings, route, user: None)
     registry = AccountRegistry(tmp_path)
     registry.register(1, "one.session")
     registry.register(2, "two.session")

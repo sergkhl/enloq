@@ -114,7 +114,9 @@ async def test_the_pass_through_pins_one_zero_retention_provider(tmp_path):
 
     engine = retrieval.EmbeddingEngine(
         settings_at(tmp_path),
-        retrieval.EMBEDDING,
+        retrieval.Route(
+            "qwen/qwen3-embedding-8b", "nebius", "nebius", "0.00000001", dimensions=1024
+        ),
         user="u" * 32,
         client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )

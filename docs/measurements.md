@@ -180,6 +180,42 @@ the median and 0.68 s at the 95th percentile, and cost $0.000018 on average:
 $0.018 per thousand claims. The judge took 3.2 s and 6.9 s. MiMo's finals
 took 22 to 60 seconds.
 
+## Ask this group
+
+`scripts/check-ask.py` measured [ADR 59](adr/0059-ask-this-group.md)'s
+retrieval on 27 October 2026 over the same six synthetic groups (665 cached
+messages): 100 authored questions, 80 of them answerable from one or two
+labelled messages (1.3 on average), 11 of those asked in another language
+than the group's.
+
+**Retrieval.** Each configuration ranks a group's messages for each answerable
+question. Recall at k is the share of the relevant messages in the first k;
+MRR the mean reciprocal rank of the first relevant one; nDCG at 10 rewards
+relevant messages ranked early. Fusion is reciprocal rank fusion of the
+keyword and embedding rankings; each reranker reorders the best fusion's
+first 40.
+
+| Retrieval | Recall at 5 | at 10 | at 25 | MRR | nDCG at 10 |
+| --- | --- | --- | --- | --- | --- |
+| Keywords (FTS5 trigram, BM25) | 0.53 | 0.63 | 0.67 | 0.38 | 0.41 |
+| Qwen3 Embedding 8B | 0.80 | 0.85 | 0.92 | 0.63 | 0.66 |
+| Perplexity Embed V1 4B | 0.80 | 0.89 | 0.92 | 0.66 | 0.69 |
+| bge-m3 | 0.76 | 0.87 | 0.94 | 0.58 | 0.62 |
+| Qwen3 Embedding 8B with keywords | 0.75 | 0.81 | 0.88 | 0.61 | 0.63 |
+| Perplexity Embed V1 4B with keywords | 0.75 | 0.83 | 0.87 | 0.62 | 0.63 |
+| bge-m3 with keywords | 0.73 | 0.81 | 0.90 | 0.58 | 0.60 |
+| Perplexity with keywords, Qwen3 Reranker 8B | 0.87 | 0.91 | 0.93 | 0.77 | 0.78 |
+| Perplexity with keywords, Voyage rerank-3 | 0.88 | 0.92 | 0.93 | 0.77 | 0.78 |
+| Perplexity with keywords, Voyage rerank-3-lite | 0.89 | 0.91 | 0.92 | 0.72 | 0.75 |
+
+Across languages keywords found almost nothing (recall at 25 of 0.05 for the
+11 questions), the fusion 0.95 and the Qwen3 reranker all of them. Fusing in
+the keywords lowered every embedder's ranking. One embedding request of up
+to 64 messages took 1.3 s at the median for Perplexity (95th percentile 1.9
+s), 2.4 s for bge-m3 and 9.2 s for Qwen3 at Nebius, whose per-second token
+quota refused bursts until retried. One rerank of 40 messages took 0.9 s
+(1.4 s) for the Qwen3 reranker and 0.5 s (0.6 s) for both Voyage models.
+
 ## Not measured
 
 - The deployment's savings: how often real blocks are hostile, call for

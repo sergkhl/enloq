@@ -45,22 +45,17 @@ class Route:
     zdr: bool = True
 
 
-# ADR 59 Q3: the zero-retention routes the application may use. Which
-# embedder and whether a reranker are decided by measurement; until then the
-# application embeds with Qwen3 Embedding 8B and does not rerank.
+# ADR 59 Q3: the zero-retention routes the measurement chose. Perplexity
+# Embed V1 4B ranked best and fastest of the three embedders, and Qwen3
+# Reranker 8B, the one zero-retention reranker, improved the ranking.
 QWEN_QUERY = (
     "Instruct: Given a question about a group chat, retrieve the messages "
     "that answer it\nQuery: "
 )
 EMBEDDING = Route(
-    "qwen/qwen3-embedding-8b",
-    "nebius",
-    "nebius",
-    "0.00000001",
-    dimensions=1024,
-    query_instruction=QWEN_QUERY,
+    "perplexity/pplx-embed-v1-4b", "perplexity", "perplexity/int8", "0.00000003"
 )
-RERANK = None
+RERANK = Route("qwen/qwen3-reranker-8b", "fireworks", "fireworks", "0.0000002")
 
 
 async def listed(client, route):
