@@ -22,6 +22,7 @@ The report stays in a private .local folder; the terminal shows counts and its
 path, never content.
 """
 
+import argparse
 import asyncio
 import json
 import math
@@ -50,6 +51,7 @@ from enloq.domain.group_questions import (
     validate_answer,
 )
 from enloq.domain.models import Refused
+from enloq.inference import openrouter
 from enloq.inference.decider import DeciderEngine
 from enloq.inference.decider import within_adopted_rates as decider_rates_adopted
 from enloq.inference.guidance import QUESTION_CORE
@@ -87,6 +89,10 @@ LIMITS = {
     "judge": 102,
 }
 SECONDS, MAX_NANOS = 5400, 600_000_000
+# An answers-only run's adopted retrieval and question subset (main), and a
+# measured writer variant; both are recorded in the report.
+ANSWERS_ONLY = {}
+WRITER = {}
 # ADR 59 Q3's candidates, each pinned to one provider. The application may
 # use only zero-retention ones; Voyage is measured here on authored text only.
 EMBEDDERS = (
@@ -585,6 +591,52 @@ def summarize(report):
     return summary
 
 
+async def chosen_pipeline(app, bounds, settings, registry, report, save, groups):
+    """The adopted retrieval only, for an answers-only run: the chosen
+    embedder fused with keywords, then the chosen reranker, for every
+    question that will be answered."""
+    best = next(r for r in EMBEDDERS if r.model == ANSWERS_ONLY["embedder"])
+    reranker = next(r for r in RERANKERS if r.model == ANSWERS_ONLY["reranker"])
+    embedder = ObservedEmbedder(settings, best, user=registry.provider_user())
+    embedder.watch(bounds)
+    await embedder.prepare({})
+    app.questions.embedder = embedder
+    rerank = ObservedReranker(settings, reranker, user=registry.provider_user())
+    rerank.watch(bounds)
+    await rerank.prepare({})
+    fused, reranked = {}, {}
+    for g, entries, questions in groups:
+        vectors = await app.questions.vectors(g["key"], entries)
+        asked = await app.questions.embed(
+            g["key"],
+            [(best.query_instruction or "") + q["question"] for q in questions],
+        )
+        texts = {m.message_id: text for m, _, text in entries}
+        for q, vector in zip(questions, asked, strict=True):
+            lexical = app.questions.lexical(entries, q["question"])
+            fused[id(q)] = fuse(lexical, nearest(vector, vectors, DENSE))[:FUSED]
+            scores = await app.questions._run(
+                rerank,
+                RERANK_ROLE,
+                {
+                    "query": q["question"],
+                    "documents": [texts[i] for i in fused[id(q)]],
+                },
+                g["key"],
+            )
+            reranked[id(q)] = [
+                i
+                for _, i in sorted(
+                    zip(scores, fused[id(q)]), key=lambda p: (-p[0], p[1])
+                )
+            ]
+    report["best_embedder"], report["reranker"] = best.model, reranker.model
+    report["routes"][best.model] = {"seconds": embedder.seconds}
+    report["routes"][reranker.model] = {"seconds": rerank.seconds}
+    save()
+    return best, reranker, fused, {reranker.model: reranked}
+
+
 async def observe(settings=None, *, root=ROOT):
     problems = fixtures.problems()
     if problems:
@@ -608,6 +660,8 @@ async def observe(settings=None, *, root=ROOT):
             "initial_budget": bounds.initial,
             "routes": {},
             "answers": [],
+            "answers_only": dict(ANSWERS_ONLY),
+            "writer": dict(WRITER) or {"thinking": "disabled"},
         }
         judge = Judge(settings, registry, bounds)
 
@@ -666,8 +720,15 @@ async def observe(settings=None, *, root=ROOT):
                                 for q in fixtures.QUESTIONS
                                 if q["group"] == group["name"]
                             ]
+                            if ANSWERS_ONLY:
+                                # An even subset per group, in authored order.
+                                questions = [q for q in questions if q["answerable"]][
+                                    : ANSWERS_ONLY["answerable"]
+                                ] + [q for q in questions if not q["answerable"]][
+                                    : ANSWERS_ONLY["unanswerable"]
+                                ]
                             groups.append(({**group, "key": key}, entries, questions))
-                        chosen = await retrieval(
+                        chosen = await (chosen_pipeline if ANSWERS_ONLY else retrieval)(
                             app, bounds, settings, registry, report, save, groups
                         )
                         await answers(
@@ -719,4 +780,29 @@ async def observe(settings=None, *, root=ROOT):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--answers-only",
+        nargs=2,
+        metavar=("EMBEDDER", "RERANKER"),
+        help="skip the comparison and answer with this adopted retrieval",
+    )
+    parser.add_argument("--answerable", type=int, default=8)
+    parser.add_argument("--unanswerable", type=int, default=2)
+    parser.add_argument("--thinking", choices=("disabled", "enabled"))
+    args = parser.parse_args()
+    if args.answers_only:
+        ANSWERS_ONLY.update(
+            embedder=args.answers_only[0],
+            reranker=args.answers_only[1],
+            answerable=args.answerable,
+            unanswerable=args.unanswerable,
+        )
+        # ADR 59 Q11's 1,200 requests for both checks, less the 712 made
+        # before this run and six diagnostic writer calls.
+        LIMITS.update(embed=20, rerank=62, write=62, check=120, sol=62, judge=62)
+    if args.thinking:
+        # A measured writer variant; the application's setting is Q5's.
+        openrouter.thinking = lambda role: {"type": args.thinking}
+        WRITER["thinking"] = args.thinking
     asyncio.run(observe())

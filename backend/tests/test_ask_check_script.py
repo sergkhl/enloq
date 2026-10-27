@@ -149,3 +149,40 @@ async def test_measures_retrieval_writers_and_the_check_offline(tmp_path, monkey
     assert report["reranker"] in {None, "qwen/qwen3-reranker-8b"}
     saved = next((tmp_path / ".local").glob("ask-check-*/report.json"))
     assert json.loads(saved.read_text())["summary"]["questions"] == 2
+
+
+async def test_an_answers_only_run_uses_the_adopted_retrieval(tmp_path, monkeypatch):
+    for name, value in (
+        ("GROUPS", [GROUP]),
+        ("QUESTIONS", QUESTIONS),
+        ("problems", lambda: []),
+    ):
+        monkeypatch.setattr(runner.fixtures, name, value, raising=False)
+    for name, value in (
+        ("ObservedEmbedder", Embedder),
+        ("ObservedReranker", Reranker),
+        ("ObservedWriter", Writer),
+        ("ObservedDecider", Decider),
+        ("Judge", Judge),
+    ):
+        monkeypatch.setattr(runner, name, value)
+    monkeypatch.setattr(
+        runner,
+        "ANSWERS_ONLY",
+        dict(
+            embedder="perplexity/pplx-embed-v1-4b",
+            reranker="qwen/qwen3-reranker-8b",
+            answerable=1,
+            unanswerable=0,
+        ),
+    )
+    (tmp_path / ".local").mkdir()
+    settings = settings_at(tmp_path)
+    registry = AccountRegistry(settings.data)
+    registry.register(37, "authored.session", directory="authored-account")
+    registry.set_processing(37, True)
+    report = await runner.observe(settings, root=tmp_path)
+    assert "stopped" not in report and "retrieval" not in report
+    assert report["reranker"] == "qwen/qwen3-reranker-8b"
+    assert [a["question"] for a in report["answers"]] == [QUESTIONS[0]["question"]]
+    assert report["requests"]["rerank"] == 1
