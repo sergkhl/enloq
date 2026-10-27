@@ -126,8 +126,8 @@ See [media delivery](docs/media-delivery.md).
 **Generated text stays connected to its sources.** Group briefings and group
 answers cite only messages their inputs held, and a decision model checks that
 each cited message supports what it is cited for before its link appears.
-Answers come from keyword (SQLite FTS5) and embedding search fused by
-reciprocal rank, over the group's own cached messages only. Changed or withdrawn source
+Answers come from embedding search and a reranker over the group's own
+cached messages only. Changed or withdrawn source
 messages invalidate affected work. Originals and observed history remain
 inspectable; model text does not replace the source record. See
 [history](docs/history.md) and [ADR 34](docs/adr/0034-group-chats-and-daily-briefings.md).

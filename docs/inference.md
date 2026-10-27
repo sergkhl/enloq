@@ -551,11 +551,11 @@ access.
   meanings, without ads, ignored or hidden bots, service events and Non-AI
   Media. No Telegram read and no media work. An empty pool answers not found
   with no model call.
-- **Retrieval.** An in-memory SQLite FTS5 trigram index built for the
-  question ranks by BM25 (each word of three or more letters, any of them); the
-  question's embedding ranks by cosine similarity. Reciprocal rank fusion (k
-  60) keeps 40, the reranker reorders them, and the writer reads the best 25
-  in chronological order. A rerank or embedding refusal that did no work, such
+- **Retrieval.** The question's embedding ranks the pool by cosine
+  similarity, the reranker reorders the first 40, and the writer reads the
+  best 25 in chronological order; if reranking fails, the embeddings' order
+  stands. An in-memory SQLite FTS5 trigram index ranks by BM25 only when no
+  embedder is attached (offline mode and tests). A rerank or embedding refusal that did no work, such
   as a provider's per-second quota, is tried again after the wait it names, at
   most twice and five seconds each.
 - **Vectors.** Computed when a question first needs them, in requests of at

@@ -24,9 +24,11 @@ ROLES = frozenset({QUESTION_ROLE, EMBED_ROLE, RERANK_ROLE, ANSWER_CHECK_ROLE})
 MAX_QUESTION = 500
 # ADR 59 Q8: one writer request and at most four check requests.
 MAX_STATEMENTS = 4
-# How many candidates each stage keeps: keyword and vector rankings, their
-# fusion, and what the writer reads.
+# How many candidates each stage keeps: keyword and vector rankings and their
+# fusion (measured in the Ask check), what the reranker reorders, and what the
+# writer reads.
 LEXICAL, DENSE, FUSED, WRITTEN = 50, 50, 40, 25
+CANDIDATES = 40
 # Reciprocal rank fusion's usual constant.
 RRF_K = 60
 WORD = re.compile(r"[^\W_]{3,}", re.UNICODE)

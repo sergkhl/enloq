@@ -239,9 +239,38 @@ said "not found" to 14 of 24 answerable questions whose answer it had.
 citation, found 3 not fully supported, and kept 4 citations of statements the
 judge found unsupported. One check of a statement took 0.6 s.
 
-**Cost per question.** About $0.0009: the reranker $0.00056, MiMo $0.00034,
-the checks $0.00002 and the question's embedding less than $0.00001. Embedding
-a group's cached messages the first time costs $0.000015 per 64 of them.
+**Final run.** After the owner chose gpt-6.1-sol as the writer, all 100
+questions were answered through the application's own steps: embeddings, the
+Qwen3 reranker, gpt-6.1-sol, and the check on every statement. The same run
+compared the reranker's two candidate lists over the 80 answerable questions:
+
+| Candidates | Recall at 40 before reranking | nDCG at 10 before | Recall at 10 after | nDCG at 10 after |
+| --- | --- | --- | --- | --- |
+| The embeddings' first 40 | 0.95 | 0.69 | 0.93 | 0.78 |
+| The keyword fusion's first 40 | 0.94 | 0.63 | 0.91 | 0.77 |
+
+The application now reranks the embeddings' own list. One rerank in the run
+fell back to the unreranked order after an overloaded provider refused it
+four times; a single question moves these means by up to 0.0125, so the two
+lists rank alike after reranking, and the embeddings' list is the better one
+without it.
+
+| Writer | Correct when answerable | Not found when answerable | Not found when unanswerable | Statements judged unsupported | Seconds: median (95th) |
+| --- | --- | --- | --- | --- | --- |
+| gpt-6.1-sol, the application's steps | 73 of 80 (82.8%–96.4%) | 0 of 80 | 3 of 20 | 4 of 132 | 3.5 (5.9) |
+
+Here the judge counted an accurate account of an unsettled discussion as a
+correct answer, so most of the 17 unanswerable questions answered were open
+questions answered that way. The check left none of the 132 statements
+without a citation and found 4 not fully supported, the same 4 the judge
+found unsupported in count. A question took about 5.5 seconds in all: the
+embedding 0.8 s, the rerank 0.6 to 0.9 s, the writer 3.5 s and the checks
+0.6 s.
+
+**Cost per question.** About $0.0006: the reranker $0.00056, the checks
+$0.00002 and the question's embedding less than $0.00001; gpt-6.1-sol's
+receipts record $0 on the owner's subscription. Embedding a group's cached
+messages the first time costs $0.000015 per 64 of them.
 
 ## Not measured
 

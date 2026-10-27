@@ -12,14 +12,12 @@ from zoneinfo import ZoneInfo
 from ..domain import citation_check
 from ..domain.citation_check import ANSWER_CHECK_ROLE, FLOOR
 from ..domain.group_questions import (
-    DENSE,
+    CANDIDATES,
     EMBED_ROLE,
-    FUSED,
     LEXICAL,
     QUESTION_ROLE,
     RERANK_ROLE,
     WRITTEN,
-    fuse,
     match_expression,
     nearest,
     question_text,
@@ -192,38 +190,39 @@ class GroupQuestions:
         return {m.message_id: found[m.key] for m, _, _ in entries}
 
     async def retrieve(self, key, question, entries):
-        """Keyword and vector rankings, fused, then reranked when a reranker is
-        adopted; at most WRITTEN identities, best first."""
-        ranked = [self.lexical(entries, question)]
-        if self.embedder is not None:
-            vectors = await self.vectors(key, entries)
-            route = self.embedder.route
-            query = (
-                f"{route.query_instruction}{question}"
-                if getattr(route, "query_instruction", None)
-                else question
-            )
-            [asked] = await self.embed(key, [query])
-            ranked.append(nearest(asked, vectors, DENSE))
-        fused = fuse(*ranked)[:FUSED]
-        if self.reranker is not None and fused:
+        """The embeddings' ranking, its first 40 reranked when a reranker is
+        adopted; at most WRITTEN identities, best first. Keyword search ranked
+        worse and lowered the fused ranking in the measurement (ADR 59 Q3), so
+        it ranks only when no embedder is attached."""
+        if self.embedder is None:
+            return self.lexical(entries, question)[:WRITTEN]
+        vectors = await self.vectors(key, entries)
+        route = self.embedder.route
+        query = (
+            f"{route.query_instruction}{question}"
+            if getattr(route, "query_instruction", None)
+            else question
+        )
+        [asked] = await self.embed(key, [query])
+        ranked = nearest(asked, vectors, CANDIDATES)
+        if self.reranker is not None and ranked:
             texts = {m.message_id: text for m, _, text in entries}
             try:
                 scores = await self._run(
                     self.reranker,
                     RERANK_ROLE,
-                    {"query": question, "documents": [texts[i] for i in fused]},
+                    {"query": question, "documents": [texts[i] for i in ranked]},
                     key,
                 )
             except Refused:
                 # Reranking only improves the order: without it the question
-                # is still answered from the fused list.
+                # is still answered from the embeddings' ranking.
                 self._admit(key)
-                return fused[:WRITTEN]
-            fused = [
-                i for _, i in sorted(zip(scores, fused), key=lambda p: (-p[0], p[1]))
+                return ranked[:WRITTEN]
+            ranked = [
+                i for _, i in sorted(zip(scores, ranked), key=lambda p: (-p[0], p[1]))
             ]
-        return fused[:WRITTEN]
+        return ranked[:WRITTEN]
 
     def _written(self, projection):
         value = {
