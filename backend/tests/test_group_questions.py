@@ -29,6 +29,7 @@ def test_keyword_expression_fusion_and_question_bounds():
     assert match_expression("Who has the shed key? Ок, ключ у кого") == (
         '"who" OR "has" OR "the" OR "shed" OR "key" OR "ключ" OR "кого"'
     )
+    assert match_expression("Где квартиру снимали?") == '"где" OR "кварти" OR "снима"'
     assert match_expression("a, b?") is None
     assert fuse([3, 1, 2], [1, 4]) == [1, 3, 4, 2]
     assert question_text("  When   is it?  ") == "When is it?"

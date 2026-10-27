@@ -232,8 +232,10 @@ class GroupQuestions:
             (),
             {"title": None, "text": statement.text, "citations": statement.citations},
         )
-        packet = self.app.briefings._check_packet(key, topic, role=ANSWER_CHECK_ROLE)
         try:
+            packet = self.app.briefings._check_packet(
+                key, topic, role=ANSWER_CHECK_ROLE
+            )
             answers = await self._run(self.app.decider, ANSWER_CHECK_ROLE, packet, key)
         except Refused as failure:
             raise Unchecked(str(failure)) from None

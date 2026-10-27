@@ -107,8 +107,14 @@ def searchable(projection):
 
 def match_expression(question):
     """An FTS5 trigram query: each word of three or more letters or digits,
-    quoted, any of them. None when the question has no such word."""
-    words = list(dict.fromkeys(w.lower() for w in WORD.findall(question)))[:24]
+    quoted, any of them. A word of six or more loses its last two letters, so
+    "квартиру" also finds "квартира" and "watering" "waterings". None when the
+    question has no such word."""
+    words = list(
+        dict.fromkeys(
+            w.lower()[:-2] if len(w) >= 6 else w.lower() for w in WORD.findall(question)
+        )
+    )[:24]
     if not words:
         return None
     return " OR ".join('"' + w.replace('"', '""') + '"' for w in words)
