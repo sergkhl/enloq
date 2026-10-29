@@ -1,8 +1,10 @@
-"""ADR 59's Ask this group: retrieval over one group's cached originals, a
-MiMo answer citing only what retrieval found, and the citation check of each
-statement. Nothing about a question or its answer is stored (Q9)."""
+"""ADR 59's Ask this group: retrieval over one group's cached originals, an
+answer citing only what the writer read, and the citation check of each
+statement. With tools (ADR 60) the writer searches and reads the same
+originals itself. Nothing about a question or its answer is stored (Q9)."""
 
 import asyncio
+import dataclasses
 import json
 import sqlite3
 import uuid
@@ -12,18 +14,28 @@ from zoneinfo import ZoneInfo
 from ..domain import citation_check
 from ..domain.citation_check import ANSWER_CHECK_ROLE, FLOOR
 from ..domain.group_questions import (
+    AROUND,
     CANDIDATES,
     EMBED_ROLE,
     LEXICAL,
+    MAX_CALLS,
+    MAX_SEARCHES,
+    MAX_TURNS,
+    NEIGHBOURS,
     QUESTION_ROLE,
+    REPLIES,
     RERANK_ROLE,
+    RETRIEVAL,
+    SEARCH,
+    SEARCHED,
     WRITTEN,
+    GroupAnswer,
     match_expression,
     nearest,
     question_text,
     searchable,
 )
-from ..domain.models import Message, ProcessingPaused, Refused
+from ..domain.models import Message, ProcessingPaused, Refused, reply_target
 from ..inference.base import ProviderRefused
 from ..storage import group_vectors
 from ..storage.store import RETENTION
@@ -41,6 +53,15 @@ class Unchecked(Exception):
     """The citation check could not run: no answer shows (ADR 59 Q6)."""
 
 
+@dataclasses.dataclass
+class Reading:
+    """What one question's writer has read, and its tool calls so far."""
+
+    seen: set = dataclasses.field(default_factory=set)
+    searches: int = 0
+    calls: int = 0
+
+
 class GroupQuestions:
     def __init__(self, app, *, embedder=None, reranker=None, writer=None):
         self.app, self.store = app, app.store
@@ -48,6 +69,8 @@ class GroupQuestions:
         # ADR 59 Q5: gpt-6.1-sol on the owner's subscription; the account
         # manager attaches it, and without it the app's own engine writes.
         self.writer = writer
+        # ADR 60 Q3: how the writer's messages are found, when it calls tools.
+        self.retrieval = RETRIEVAL
         # ADR 59 Q8: one question at a time per account.
         self._busy = asyncio.Lock()
 
@@ -189,21 +212,21 @@ class GroupQuestions:
             found.update(fresh)
         return {m.message_id: found[m.key] for m, _, _ in entries}
 
-    async def retrieve(self, key, question, entries):
+    async def rank(self, key, query, entries):
         """The embeddings' ranking, its first 40 reranked when a reranker is
-        adopted; at most WRITTEN identities, best first. Keyword search ranked
-        worse and lowered the fused ranking in the measurement (ADR 59 Q3), so
-        it ranks only when no embedder is attached."""
+        adopted, best first. Keyword search ranked worse and lowered the fused
+        ranking in the measurement (ADR 59 Q3), so it ranks only when no
+        embedder is attached."""
         if self.embedder is None:
-            return self.lexical(entries, question)[:WRITTEN]
+            return self.lexical(entries, query)
         vectors = await self.vectors(key, entries)
         route = self.embedder.route
-        query = (
-            f"{route.query_instruction}{question}"
+        instructed = (
+            f"{route.query_instruction}{query}"
             if getattr(route, "query_instruction", None)
-            else question
+            else query
         )
-        [asked] = await self.embed(key, [query])
+        [asked] = await self.embed(key, [instructed])
         ranked = nearest(asked, vectors, CANDIDATES)
         if self.reranker is not None and ranked:
             texts = {m.message_id: text for m, _, text in entries}
@@ -211,18 +234,94 @@ class GroupQuestions:
                 scores = await self._run(
                     self.reranker,
                     RERANK_ROLE,
-                    {"query": question, "documents": [texts[i] for i in ranked]},
+                    {"query": query, "documents": [texts[i] for i in ranked]},
                     key,
                 )
             except Refused:
                 # Reranking only improves the order: without it the question
                 # is still answered from the embeddings' ranking.
                 self._admit(key)
-                return ranked[:WRITTEN]
+                return ranked
             ranked = [
                 i for _, i in sorted(zip(scores, ranked), key=lambda p: (-p[0], p[1]))
             ]
-        return ranked[:WRITTEN]
+        return ranked
+
+    async def retrieve(self, key, question, entries):
+        """The fixed pass: at most WRITTEN identities, best first."""
+        return (await self.rank(key, question, entries))[:WRITTEN]
+
+    def _read(self, reading, entries, ids):
+        """The written originals for ids, in their order, now read."""
+        by_id = {m.message_id: projection for m, projection, _ in entries}
+        reading.seen.update(ids)
+        return [self._written(by_id[i]) for i in ids]
+
+    async def tool(self, key, entries, reading, call):
+        """One tool call's result, from this group's searchable originals only
+        (ADR 60 Q1); a call beyond the question's bounds gets an error to
+        answer from, and nothing runs (Q2)."""
+        if reading.calls == MAX_CALLS:
+            return {"error": "No more tool calls: answer from the messages read."}
+        reading.calls += 1
+        if call.name == SEARCH:
+            if reading.searches == MAX_SEARCHES:
+                return {"error": "No more searches: answer from the messages read."}
+            reading.searches += 1
+            ranked = await self.rank(key, call.arguments["query"], entries)
+            return {"messages": self._read(reading, entries, ranked[:SEARCHED])}
+        index = {m.message_id: i for i, (m, _, _) in enumerate(entries)}
+        identity = call.arguments["message_id"]
+        if identity not in index:
+            return {"error": f"Message {identity} is not among the searchable ones."}
+        position = index[identity]
+        if call.name == AROUND:
+            near = entries[max(0, position - NEIGHBOURS) : position + NEIGHBOURS + 1]
+            return {
+                "messages": self._read(
+                    reading, entries, [m.message_id for m, _, _ in near]
+                )
+            }
+        target = reply_target(entries[position][0])
+        replies = [m.message_id for m, _, _ in entries if reply_target(m) == identity]
+        return {
+            "message": self._read(reading, entries, [identity])[0],
+            "replies_to": self._read(reading, entries, [target])[0]
+            if target in index
+            else None,
+            "replies": self._read(reading, entries, replies[:REPLIES]),
+        }
+
+    async def write(self, key, question, today, entries):
+        """The writer's answer, or None when the fixed pass found nothing. A
+        writer that calls tools reads the fixed pass's messages, if this
+        retrieval has them, and whatever its own calls return (ADR 60)."""
+        writer = self.writer or self.app.engine
+        retrieval = self.retrieval if getattr(writer, "tools", False) else "fixed"
+        retrieved = []
+        if retrieval != "tools":
+            retrieved = await self.retrieve(key, question, entries)
+            if not retrieved:
+                return None
+        packet = self.packet(question, today, entries, retrieved)
+        if retrieval == "fixed":
+            return await self._run(writer, QUESTION_ROLE, packet, key)
+        reading = Reading(set(retrieved))
+        packet.update(tools=True, rounds=[])
+        for turn in range(MAX_TURNS):
+            packet["final"] = turn == MAX_TURNS - 1
+            replied = await self._run(writer, QUESTION_ROLE, packet, key)
+            if isinstance(replied, GroupAnswer):
+                return replied
+            results = {
+                call.id: await self.tool(key, entries, reading, call)
+                for call in replied
+            }
+            packet["rounds"].append(
+                {"calls": [call.model_dump() for call in replied], "results": results}
+            )
+            packet["retrieved_ids"] = sorted(reading.seen)
+        raise Refused("The writer did not answer")
 
     def _written(self, projection):
         value = {
@@ -311,14 +410,8 @@ class GroupQuestions:
             entries = self.pool(key, since)
             if not entries:
                 return nothing
-            retrieved = await self.retrieve(key, question, entries)
-            if not retrieved:
-                return nothing
-            packet = self.packet(question, today, entries, retrieved)
-            answer = await self._run(
-                self.writer or self.app.engine, QUESTION_ROLE, packet, key
-            )
-            if answer.outcome == "not_found":
+            answer = await self.write(key, question, today, entries)
+            if answer is None or answer.outcome == "not_found":
                 return nothing
             try:
                 statements = await self.checked(key, answer)

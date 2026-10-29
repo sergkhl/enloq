@@ -1,10 +1,12 @@
 """ADR 59's Ask this group: a member's question about one group, answered from
 that group's cached originals with checked citations, or not answered.
 
-Retrieval fuses keyword and vector rankings; the writer may cite only what
-retrieval found; the citation check (ADR 34) then confirms each statement.
+Retrieval ranks the group's messages; with tools (ADR 60) the writer also
+searches and reads them itself; the writer may cite only what it has read; the
+citation check (ADR 34) then confirms each statement.
 """
 
+import json
 import math
 import re
 import unicodedata
@@ -32,6 +34,18 @@ CANDIDATES = 40
 # Reciprocal rank fusion's usual constant.
 RRF_K = 60
 WORD = re.compile(r"[^\W_]{3,}", re.UNICODE)
+# ADR 60 Q1: the writer's tools, which read only the pool the fixed pass ranks.
+SEARCH, AROUND, LINKED = "search_messages", "messages_around", "linked_messages"
+# ADR 60 Q2, per question: writer requests, the last of which must answer;
+# searches; tool calls in all. Per call: a search's messages, the messages on
+# each side of one, and the replies to one.
+MAX_TURNS, MAX_SEARCHES, MAX_CALLS = 5, 4, 12
+SEARCHED, NEIGHBOURS, REPLIES = 10, 5, 10
+MAX_QUERY = 200
+# How the writer's messages are found (ADR 60 Q3): the fixed pass alone, the
+# writer's tools alone, or the fixed pass and then the tools.
+RETRIEVALS = ("fixed", "tools", "both")
+RETRIEVAL = "fixed"
 
 
 class AnswerError(ValueError):
@@ -80,6 +94,67 @@ def validate_answer(output, retrieved_ids):
     if any(not set(s.citations) <= allowed for s in answer.statements):
         raise AnswerError("answer_citations")
     return answer
+
+
+class SearchArguments(BriefingModel):
+    query: str = Field(min_length=1, max_length=MAX_QUERY)
+
+    _query = field_validator("query")(meaningful)
+
+
+class MessageArguments(BriefingModel):
+    message_id: NativeID
+
+
+ARGUMENTS = {
+    SEARCH: SearchArguments,
+    AROUND: MessageArguments,
+    LINKED: MessageArguments,
+}
+
+
+class ToolCall(Model):
+    id: str
+    name: str
+    arguments: dict
+
+
+def tool_calls(calls):
+    """The writer's tool calls in the chat route's shape: each names a known
+    tool with valid JSON arguments, at most MAX_CALLS in one reply."""
+    if not isinstance(calls, list) or not 1 <= len(calls) <= MAX_CALLS:
+        raise AnswerError("tool_calls")
+    valid = []
+    for call in calls:
+        try:
+            function = call["function"]
+            identity, name = call["id"], function["name"]
+            if not isinstance(identity, str) or not 0 < len(identity) <= 128:
+                raise ValueError(identity)
+            arguments = ARGUMENTS[name].model_validate(
+                json.loads(function["arguments"])
+            )
+        except (KeyError, TypeError, ValueError, UnicodeError):
+            raise AnswerError("tool_calls") from None
+        valid.append(ToolCall(id=identity, name=name, arguments=arguments.model_dump()))
+    if len({call.id for call in valid}) != len(valid):
+        raise AnswerError("tool_calls")
+    return valid
+
+
+def validate_turn(output, packet):
+    """One writer reply: tool calls, while the packet offers tools and this
+    is not the last allowed reply (ADR 60 Q2), or the answer, citing only
+    messages the writer has read."""
+    if isinstance(output, dict) and "tool_calls" in output:
+        if (
+            not packet.get("tools")
+            or packet.get("final")
+            or set(output) != {"tool_calls"}
+        ):
+            raise AnswerError("tool_calls")
+        return tool_calls(output["tool_calls"])
+    return validate_answer(output, packet["retrieved_ids"])
 
 
 def question_text(value):

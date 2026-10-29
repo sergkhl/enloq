@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from enloq.inference.fake import FakeDecider, FakeEmbedder, FakeEngine
 from enloq.storage.accounts import AccountRegistry
 
@@ -43,7 +44,7 @@ class Authored:
     """What the measurement asks of an engine, around an authored one."""
 
     def watch(self, bounds):
-        self.bounds, self.seconds = bounds, []
+        self.bounds, self.seconds, self.nanos = bounds, [], 0
         return self
 
     async def prepare(self, packet):
@@ -232,3 +233,74 @@ async def test_the_final_run_compares_candidates_and_answers_everything(
     # One answerable question reranked twice, the other once.
     assert report["requests"]["rerank"] == 3
     assert all("judge" in a for a in report["answers"])
+
+
+class Graders(Judge):
+    """Grades whatever answers it is given: A right, the others wrong."""
+
+    async def ask(self, system, content, *, kind="judge"):
+        self.bounds.take(kind)
+        letters = json.loads(content)["answers"]
+        return {
+            letter: {"correct": letter == "A", "unsupported": []} for letter in letters
+        }, 0.3
+
+
+async def test_the_tools_run_answers_every_question_three_ways(tmp_path, monkeypatch):
+    for name, value in (
+        ("GROUPS", [GROUP]),
+        ("QUESTIONS", QUESTIONS),
+        ("problems", lambda: []),
+    ):
+        monkeypatch.setattr(runner.fixtures, name, value, raising=False)
+    for name, value in (
+        ("ObservedEmbedder", Embedder),
+        ("ObservedReranker", Reranker),
+        ("ObservedSubscription", Subscription),
+        ("ObservedDecider", Decider),
+        ("Judge", Graders),
+        ("TOOLS_RUN", [None]),
+    ):
+        monkeypatch.setattr(runner, name, value)
+    (tmp_path / ".local").mkdir()
+    settings = settings_at(tmp_path)
+    registry = AccountRegistry(settings.data)
+    registry.register(37, "authored.session", directory="authored-account")
+    registry.set_processing(37, True)
+    report = await runner.observe(settings, root=tmp_path)
+    assert "stopped" not in report and report["within_bounds"]
+    first, second = report["answers"]
+    assert set(first["retrievals"]) == {"fixed", "tools", "both"}
+    # The authored writer searches only when it has read nothing yet.
+    tools, both = first["retrievals"]["tools"], first["retrievals"]["both"]
+    assert [c["name"] for c in tools["calls"]] == ["search_messages"]
+    assert tools["requests"]["write"] == 2 and tools["retrieved"] == []
+    assert both["calls"] == [] and both["requests"]["write"] == 1
+    assert set(tools["read"]) == set(tools["calls"][0]["read"])
+    # Each question's order is shuffled for the one judge request.
+    assert sorted(first["judge"]["order"]) == ["both", "fixed", "tools"]
+    summary = report["summary"]
+    assert summary["graded"] == 2
+    for retrieval in ("fixed", "tools", "both"):
+        assert summary[retrieval]["correct_when_answerable"]["of"] == 1
+    assert summary["tools"]["questions_with_tool_calls"] == 2
+    assert set(summary["paired_with_fixed"]) == {"tools", "both"}
+    assert summary["decision"]["outcome"] in {"adopt", "setting", "drop"}
+    assert report["requests"]["judge"] == 2
+
+
+def test_paired_answers_and_the_exact_mcnemar_p_value():
+    from scripts.measuring import paired
+
+    assert paired([True, True, False, False], [True, False, True, True]) == {
+        "both": 1,
+        "only_first": 1,
+        "only_second": 2,
+        "neither": 0,
+        "p_value": 1.0,
+    }
+    # Six disagreements, all one way: twice 0.5 to the sixth.
+    assert paired([False] * 6, [True] * 6)["p_value"] == pytest.approx(
+        0.03125, abs=1e-4
+    )
+    assert paired([True], [True])["p_value"] == 1.0

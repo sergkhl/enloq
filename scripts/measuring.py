@@ -59,6 +59,27 @@ def rate(k, n):
     }
 
 
+def paired(first, second):
+    """Two ways of answering the same cases, each case right or wrong: how
+    often both, either alone or neither was right, with the exact two-sided
+    McNemar (sign test) p-value of the cases they disagree on."""
+    pairs = list(zip(first, second, strict=True))
+    only_first = sum(1 for a, b in pairs if a and not b)
+    only_second = sum(1 for a, b in pairs if b and not a)
+    differing = only_first + only_second
+    return {
+        "both": sum(1 for a, b in pairs if a and b),
+        "only_first": only_first,
+        "only_second": only_second,
+        "neither": sum(1 for a, b in pairs if not a and not b),
+        "p_value": round(
+            min(1.0, 2 * _at_most(min(only_first, only_second), differing, 0.5)), 4
+        )
+        if differing
+        else 1.0,
+    }
+
+
 def percentile(values, share):
     """Linear interpolation between closest ranks; None for no values."""
     values = sorted(values)

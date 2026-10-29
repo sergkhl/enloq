@@ -139,7 +139,11 @@ def validate_output(role, response, packet):
     if role in DECIDED:
         # Decision answers, not generated text (ADR 30).
         return decider.validate(role, response.content, packet)
-    if response.usage.get("finish_reason") not in (None, "stop"):
+    finished = response.usage.get("finish_reason")
+    # ADR 60: an Ask writer's reply may end in tool calls.
+    if finished not in (None, "stop") and not (
+        finished == "tool_calls" and role == group_questions.QUESTION_ROLE
+    ):
         raise InvalidOutput("incomplete_response")
     content = response.content
     if isinstance(content, str):
@@ -164,7 +168,7 @@ def validate_output(role, response, packet):
             raise InvalidOutput("invalid_json") from None
     if role == group_questions.QUESTION_ROLE:
         try:
-            return group_questions.validate_answer(content, packet["retrieved_ids"])
+            return group_questions.validate_turn(content, packet)
         except group_questions.AnswerError as failure:
             raise InvalidOutput(failure.code) from None
     if role in GROUP_ROLES:

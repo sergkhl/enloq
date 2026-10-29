@@ -1,4 +1,5 @@
 import asyncio
+import json
 import zlib
 
 from ..domain import citation_check
@@ -11,24 +12,48 @@ class FakeEngine:
     """Identity transformations demonstrate mechanics, not semantic quality."""
 
     name, model, provider = "offline", "authored-fixtures", "local"
+    # ADR 60: it calls tools as the subscription route does.
+    tools = True
 
     def __init__(self):
         self.calls = []
-        # ADR 59: None answers from the first retrieved message; a dict is
-        # returned as written.
+        # ADR 59: None answers from the first message read, searching for the
+        # question first when tools are offered and nothing is read yet; a
+        # dict is returned as written, and a list one item per request.
         self.answer = None
 
     async def generate(self, role, packet):
         self.calls.append((role, packet))
         await asyncio.sleep(0.03)
         if role == "group_question":
+            if isinstance(self.answer, list):
+                return self.answer.pop(0)
             if self.answer is not None:
                 return self.answer
-            first = packet["messages"][0]
+            read = list(packet["messages"])
+            for exchange in packet.get("rounds", ()):
+                for result in exchange["results"].values():
+                    read += result.get("messages", [])
+            if not read and packet.get("tools") and not packet.get("final"):
+                search = {"query": packet["question"]}
+                return {
+                    "tool_calls": [
+                        {
+                            "id": f"authored-{len(packet['rounds'])}",
+                            "type": "function",
+                            "function": {
+                                "name": "search_messages",
+                                "arguments": json.dumps(search),
+                            },
+                        }
+                    ]
+                }
             return {
                 "statements": [
-                    {"text": "An authored answer.", "citations": [first["id"]]}
-                ],
+                    {"text": "An authored answer.", "citations": [read[0]["id"]]}
+                ]
+                if read
+                else [],
             }
         if role == "group_briefing_image":
             return {
