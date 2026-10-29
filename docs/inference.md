@@ -567,9 +567,20 @@ access.
 - **Writer.** gpt-6.1-sol in the `group_question` role on the proxy's
   `chatgpt/gpt-6.1-sol` subscription route at its medium default, through the
   chat route, which drops `response_format`: the reply must hold one JSON
-  object, at most four statements whose citations are among the retrieved
-  IDs, none meaning not found, validated strictly. Receipts record $0. Its
+  object, at most four statements whose citations are among the IDs it has
+  read, none meaning not found, validated strictly. Receipts record $0. Its
   instructions are fixed and read no Processing Guidance.
+- **Tools** ([ADR 60](adr/0060-tool-calling-in-ask-this-group.md)). After
+  the best 25, the writer may call `search_messages` (the retrieval above for
+  its own query; the best 10), `messages_around` (up to five originals on
+  each side of one) and `linked_messages` (one original, the one it replies
+  to and up to ten replies), all over the same pool, in the chat route's tool
+  format. Per question: at most five writer requests, the fifth sent with
+  `tool_choice: "none"`; four searches, each one embedding and one rerank
+  request; and twelve tool calls. A call past a bound gets an error result
+  and runs nothing; an unknown tool or invalid arguments fails the reply's
+  format as `tool_calls`. Only a writer whose engine declares tools gets
+  them; MiMo, where no subscription writer is attached, reads the 25 alone.
 - **Check.** Each statement goes through the citation check as
   `group_answer_check`. The answer returns each statement's kept and
   unsupported citations and whether the whole statement is supported. The

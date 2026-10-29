@@ -10,9 +10,9 @@ writing-model steps it replaced or made unnecessary, and the
 [ranges](#miss-rate-ranges) around two gates' published check results.
 
 **These figures are indicative, not a benchmark.** They come from small finite
-checks on 7, 9 and 27 October 2026, each with its own authored test messages,
-some on routes and roles that have since changed. They are not a controlled
-comparison. Savings
+checks on 7, 9, 27 and 29 October 2026, each with its own authored test
+messages, some on routes and roles that have since changed. They are not a
+controlled comparison. Savings
 on real traffic are not measured: they depend on how many blocks are hostile
 or call for suggestions, and receipts do not record latency. The checks'
 private reports hold the authored messages and are not published; only their
@@ -267,10 +267,105 @@ found unsupported in count. A question took about 5.5 seconds in all: the
 embedding 0.8 s, the rerank 0.6 to 0.9 s, the writer 3.5 s and the checks
 0.6 s.
 
-**Cost per question.** About $0.0006: the reranker $0.00056, the checks
+**Cost per question.** About $0.0009, from the run's receipts: the rerank
+$0.0009 (179 reranks of about 4,550 tokens each cost $0.163), the checks
 $0.00002 and the question's embedding less than $0.00001; gpt-6.1-sol's
 receipts record $0 on the owner's subscription. Embedding a group's cached
 messages the first time costs $0.000015 per 64 of them.
+
+## Tool calling in Ask this group
+
+`scripts/check-ask.py --tools` compared [ADR 60](adr/0060-tool-calling-in-ask-this-group.md)'s
+tool calling with ADR 59's fixed pass on 29 October 2026, on the same six
+synthetic groups and 100 authored questions. Every question was answered
+three ways through the application's own steps, with gpt-6.1-sol at medium
+effort and every statement checked:
+
+- **Fixed pass**: the embeddings' first 40 reranked, the best 25 read, as
+  ADR 59 answers today.
+- **Tools alone**: no messages to start with; the writer searches the group,
+  reads around a message or along its replies, and answers.
+- **Fixed pass, then tools**: the same 25 first, and the tools when they do
+  not settle the question.
+
+The ways ran one after another for each question, in a rotating order. For
+each question one judge request, gpt-6.1-sol on the same route, graded the
+three answers together against the authored answer, labelled A, B and C in an
+order shuffled per question, with every message any of them had read. The
+judge counts an accurate account of an unsettled discussion as a correct
+answer, as in the final run above. An answer that failed counts as not
+correct. The decision rule was fixed in the script before the run: a tool
+retrieval qualifies if it answers at least two more of the 80 answerable
+questions correctly than the fixed pass, no fewer of the 20 unanswerable ones,
+and has no more statements judged unsupported; the qualifying one is adopted
+if its median time per question is at most twice the fixed pass's, and kept
+behind a setting otherwise; with none, tool calling is dropped.
+
+| Retrieval | Correct when answerable | Correct when unanswerable | Not found when unanswerable | Statements judged unsupported | Seconds: median (95th) | Writer requests per question: mean (most) | Relevant messages read |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Fixed pass | 73 of 80 (82.8%–96.4%) | 20 of 20 | 3 of 20 | 4 of 135 | 6.5 (12.8) | 1.0 (1) | 0.95 |
+| Tools alone | 74 of 80 (84.4%–97.2%) | 20 of 20 | 3 of 20 | 2 of 124 | 13.8 (25.7) | 2.8 (5) | 0.96 |
+| Fixed pass, then tools | 78 of 80 (91.3%–99.7%) | 20 of 20 | 3 of 20 | 2 of 127 | 7.7 (22.4) | 1.6 (5) | 0.99 |
+
+Ranges are two-sided 95% exact (Clopper–Pearson). No answer said not found
+to an answerable question, none failed and every check ran. Relevant
+messages read is the mean share of a question's labelled messages among those
+its writer read: the fixed pass's 25, the tools' results, or both. The fixed
+pass answered 73 of 80 correctly, as many as in the final run above.
+
+**Paired.** On the 80 answerable questions, the fixed pass then the tools
+answered five the fixed pass missed and missed none it answered: an exact
+two-sided McNemar test gives p = 0.0625. Tools alone answered three the fixed
+pass missed and missed two it answered (p = 1.0). By the rule, the fixed pass
+then the tools is adopted ([ADR 60](adr/0060-tool-calling-in-ask-this-group.md)
+Q3): it met the rule's bar, not significance at 5% on 80 questions.
+
+**How the writer used the tools.** After the fixed pass it called tools on 31
+questions: all 20 unanswerable ones, searching before it said the messages
+hold no answer, and 11 answerable ones, of which it answered 10 correctly,
+where the fixed pass answered 5. It made 53 searches, read around a message 7
+times and along replies 5 times; one question reached the fifth request,
+which must answer. Alone, it searched once for 68 questions and two to four
+times for 32, and made 137 searches, 37 reads around a message and 15 along
+replies; 5 questions reached the fifth request. No call went past a bound. A
+search, one embedding and one rerank, took 1.8 seconds at the median.
+
+**The misses.**
+
+- **The fixed pass's five that the tools found.** In each, the message that
+  settles the question was not among the fixed pass's 25: a correction posted
+  right after an instruction (the altos breathe at bar 23, not 32), the size
+  of a hose in the message another replies to, the next message saying who
+  takes a shelf, the reply confirming which board is the sample board, and
+  the reply claiming a lost multimeter. After the fixed pass, the writer found
+  them by searching again, reading along replies or reading around a message.
+  Without them the fixed pass reported the earlier instruction, or said the
+  messages did not settle the rest.
+- **Missed all three ways.** Two school questions. One asks for a room a
+  later message corrected from 214 to 241; no way read the correction. The
+  other asks when a test is; all three dated it by a reminder posted the day
+  before, where the authored answer is an earlier corrected date.
+- **Tools alone.** Besides those two, it reported the landlord's visit at its
+  original time, its one search not returning the change; gave the altos'
+  uncorrected bar; did not settle the sample board; and added a start time to
+  a member's reason for coming late, which the judge counted wrong.
+- **Statements judged unsupported.** All four of the fixed pass's are in its
+  misses above. Both tool retrievals added "that date has passed" to the
+  basement power cut, which the messages do not say, and tools alone and the
+  fixed pass then the tools each have one more.
+
+**The check on answers.** It left no statement without a citation; it found
+5 of the fixed pass's 135 statements not fully supported, 9 of 124 for tools
+alone and 6 of 127 for the fixed pass then the tools.
+
+**Time and cost.** After the fixed pass, a question took 6.7 seconds at the
+median when the writer called no tools and 17.9 seconds when it did. A
+question cost $0.0009 with the fixed pass, $0.0012 with tools alone and
+$0.0014 with the fixed pass then the tools: each search adds a rerank, about
+$0.0009 each here. The run's 1,873 requests counted $0.354, all but $0.006
+of it for reranks. The rerank provider refused 53 requests at no cost, each
+tried again as ADR 59 allows; one of 390 reranks fell back to the embeddings'
+order. gpt-6.1-sol's receipts record $0.
 
 ## Not measured
 
@@ -281,3 +376,5 @@ messages the first time costs $0.000015 per 64 of them.
 - Quality beyond these small authored sets. The larger finite checks' results,
   including their Low quality notes, are in
   [inference](inference.md#retained-acceptance-limits).
+- Tool calling on real groups, whose 30 days hold more messages than the
+  authored groups' 70 to 140, and how long members wait there.

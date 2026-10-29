@@ -42,10 +42,11 @@ SEARCH, AROUND, LINKED = "search_messages", "messages_around", "linked_messages"
 MAX_TURNS, MAX_SEARCHES, MAX_CALLS = 5, 4, 12
 SEARCHED, NEIGHBOURS, REPLIES = 10, 5, 10
 MAX_QUERY = 200
-# How the writer's messages are found (ADR 60 Q3): the fixed pass alone, the
-# writer's tools alone, or the fixed pass and then the tools.
+# How the writer's messages are found: the fixed pass alone, the writer's
+# tools alone, or the fixed pass and then the tools, which ADR 60 Q3 adopted;
+# the Ask check measures all three.
 RETRIEVALS = ("fixed", "tools", "both")
-RETRIEVAL = "fixed"
+RETRIEVAL = "both"
 
 
 class AnswerError(ValueError):

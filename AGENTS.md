@@ -260,7 +260,9 @@ The adopted routes, which need no further authorization within their roles:
   through the proxy, a paid call in the Daily Budget. Offline mode and
   `scripts/check-voice.py` use the Mac's `mlx-community/whisper-large-v3-turbo`.
 - `chatgpt/gpt-6.1-sol`, the proxy's ChatGPT-subscription route, writes Ask
-  this group's answers ([ADR 59](docs/adr/0059-ask-this-group.md) Q5), with $0
+  this group's answers ([ADR 59](docs/adr/0059-ask-this-group.md) Q5),
+  searching the group further with read-only tools
+  ([ADR 60](docs/adr/0060-tool-calling-in-ask-this-group.md)), with $0
   receipts and no limit, and judges inside the finite checks.
 - Ask this group embeds with `perplexity/pplx-embed-v1-4b` and reranks with
   `qwen/qwen3-reranker-8b` through the proxy's OpenRouter pass-throughs, both

@@ -39,9 +39,12 @@ zero-data-retention provider with no fallback; the other candidates left the
 proxy. Keyword search (an in-memory SQLite FTS5 trigram index) was measured and
 left out: fused with the embeddings by reciprocal rank it ranked worse, and it
 found almost nothing across languages. When reranking fails the embeddings'
-order stands. Voyage's rerank-3 and rerank-3-lite were measured on authored
-fixtures only and never receive real group messages: Voyage's terms allow
-training on submitted content unless the customer opts out.
+order stands. The writer reads the best 25, and when they do not settle the
+question it searches further with its own tools
+([ADR 60](0060-tool-calling-in-ask-this-group.md)). Voyage's rerank-3 and
+rerank-3-lite were measured on authored fixtures only and never receive real
+group messages: Voyage's terms allow training on submitted content unless the
+customer opts out.
 
 **Message vectors (Q4).** A message's vector is computed when a question
 first needs it, kept per message revision with the 30-day content cache, and
@@ -49,11 +52,11 @@ deleted with edits and deletions. Its cost is part of that question's.
 
 **Writer (Q5).** gpt-6.1-sol at its medium default writes the answer in a
 `group_question` role, on the proxy's `chatgpt/gpt-6.1-sol` subscription
-route: up to four statements, each citing messages from the retrieved set, and
-none when the messages do not address the question; any other ID fails
-validation. It answers in the question's language and says what is still open
-when the group left a question open. Nothing streams: an answer shows once
-checked. It replaced MiMo after the measurement: MiMo answered 27 of 48
+route: up to four statements, each citing messages it has read, in the
+retrieved set or its tools' results (ADR 60), and none when the messages do
+not address the question; any other ID fails validation. It answers in the
+question's language and says what is still open when the group left a
+question open. Nothing streams: an answer shows once checked. It replaced MiMo after the measurement: MiMo answered 27 of 48
 answerable questions correctly with thinking on, and with thinking off said
 "not found" to most of them; gpt-6.1-sol answered 43 of 48 in less than half
 the time. Its receipts record $0, so no budget limits it, and no other limit
@@ -75,8 +78,9 @@ in this group's messages from 3 Oct to today."
 
 **Budget and limits (Q8).** The member's Group Briefing Budget pays.
 Questions run in the manual-suggestion class, one at a time per account. Each
-makes the embedding requests its vectors need, at most one rerank request, one
-writer request and at most four check requests.
+makes the embedding requests its vectors need, one rerank request, at most
+five writer requests and four searches of one embedding and one rerank
+request each (ADR 60 Q2), and at most four check requests.
 
 **Not stored (Q9).** The question and answer exist only on the open screen,
 and receipts keep usage without content. Back from a source link returns to

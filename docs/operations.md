@@ -297,6 +297,18 @@ comparison and 102 judge requests, 5,400 seconds and $0.60. A candidate that
 fails leaves its row empty and the rest run. The report is
 `.local/ask-check-*/report.json`.
 
+`--tools` ([ADR 60](adr/0060-tool-calling-in-ask-this-group.md) Q4) answers
+every question three ways through the application's own steps with
+gpt-6.1-sol: the fixed pass alone, the writer's tools alone, and the fixed
+pass and then the tools, one after another in a rotating order. Every
+statement is checked, and one judge request per question grades the three
+answers, in an order shuffled per question, against the authored answer. The
+summary applies ADR 60 Q4's rule, which the script fixes before the run. At
+most 1,020 embedding, 1,000 rerank, 1,100 writer, 1,200 check and 100 judge
+requests, 7,200 seconds and $0.80; `--tools N` answers only the first N
+questions, as a smoke run. The run stops early, and still grades what it
+answered, at a request bound or when no retrieval could answer a question.
+
 `scripts/check-group-briefings.py`, the briefing path's check, is described in
 [inference](inference.md), and `scripts/check-voice.py` in
 [local credentials](local-credentials.md#other-local-requirements).

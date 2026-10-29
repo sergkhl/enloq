@@ -1267,8 +1267,10 @@ A Member's question about one Group Chat, answered from that group's cached
 originals since its first opt-in day, within the 30-day cache, as up to four
 statements with checked source links (ADR 59). It opens from the group's
 Conversation Menu while Group AI Processing is On, searches by embeddings and
-a reranker, writes with gpt-6.1-sol and runs the Citation Check on every
-statement, dropping one left with no supported citation.
+a reranker, writes with gpt-6.1-sol, which searches the same messages further
+with its own tools when the best 25 do not settle the question (ADR 60), and
+runs the Citation Check on every statement, dropping one left with no
+supported citation.
 When nothing answers, one line names the searched range. Nothing is stored:
 the answer lives on the open screen. It is paid from the Group Briefing
 Budget, one question at a time per account.
@@ -1336,7 +1338,8 @@ notification delivery uses its explicit original fallback. The routes:
   are unpublished, and a later
   checkpoint needs the owner.
 - **gpt-6.1-sol** (`chatgpt/gpt-6.1-sol`, the proxy's ChatGPT-subscription
-  route, medium effort): Ask This Group answers. Its receipts record $0.
+  route, medium effort): Ask This Group answers and their tool calls. Its
+  receipts record $0.
 - **Perplexity Embed V1 4B** and **Qwen3 Reranker 8B** (through OpenRouter's
   embeddings and rerank routers, at Perplexity and Fireworks, zero data
   retention): Ask This Group's retrieval.
