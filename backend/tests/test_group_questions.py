@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+import uvicorn
 from enloq.api.routes import while_connected
 from enloq.application.group_questions import GroupQuestions, Reading
 from enloq.domain.citation_check import ANSWER_CHECK_ROLE
@@ -31,6 +32,8 @@ from enloq.domain.group_questions import (
 from enloq.domain.models import ProcessingPaused, Refused, Syncing
 from enloq.inference import retrieval
 from enloq.inference.base import EngineResponse, InvalidOutput, ProviderRefused
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from backend.tests.proxy_helpers import ENDPOINT
 from backend.tests.test_group_briefing_check import settings_at
@@ -558,39 +561,76 @@ async def test_telegrams_connection_does_not_hold_a_question_back(rig):
         await rig.app.questions.ask(KEY, "Who has the key?")
 
 
-async def test_a_question_ends_with_its_client(rig):
+async def test_a_question_ends_with_its_client_behind_the_real_stack():
     # ADR 59 Q8: nobody is left to read the answer, and the account can ask
-    # again at once.
-    gone, ended = [False], []
+    # again at once. Real uvicorn and the service's kind of middleware, whose
+    # request.is_disconnected() never reports a client that has gone.
+    ended, started = asyncio.Event(), asyncio.Event()
+    app = FastAPI()
 
-    async def is_disconnected():
-        return gone[0]
+    @app.middleware("http")
+    async def passing(request, call_next):
+        return await call_next(request)
+
+    @app.exception_handler(Refused)
+    async def refused(request, error):
+        return JSONResponse({"detail": str(error)}, status_code=400)
 
     async def work():
+        started.set()
         try:
             await asyncio.sleep(30)
         finally:
-            ended.append(True)
+            ended.set()
 
-    request = SimpleNamespace(is_disconnected=is_disconnected)
-    running = asyncio.create_task(while_connected(request, work()))
-    await asyncio.sleep(0)
-    gone[0] = True
-    with pytest.raises(Refused, match="client has gone"):
-        await asyncio.wait_for(running, 5)
-    assert ended == [True]
+    @app.post("/ask")
+    async def ask(body: dict, request: Request):
+        return await while_connected(request, work())
 
-    # An answer comes back while the client stays; so does a refusal.
-    gone[0] = False
+    @app.post("/answered")
+    async def answered(body: dict, request: Request):
+        async def value():
+            return {"status": "answer"}
 
-    async def answered():
-        return {"status": "answer"}
+        return await while_connected(request, value())
 
-    assert await while_connected(request, answered()) == {"status": "answer"}
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="127.0.0.1", port=0, log_config=None, lifespan="off")
+    )
+    serving = asyncio.create_task(server.serve())
+    while not server.started:
+        await asyncio.sleep(0.01)
+    port = server.servers[0].sockets[0].getsockname()[1]
+    post = (
+        "POST {} HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+        "Content-Length: 2\r\n\r\n{{}}"
+    )
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(post.format("/answered").encode())
+        await writer.drain()
+        assert b"200 OK" in await reader.readline()
+        writer.close()
+
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(post.format("/ask").encode())
+        await writer.drain()
+        await asyncio.wait_for(started.wait(), 5)
+        writer.close()
+        await asyncio.wait_for(ended.wait(), 5)
+    finally:
+        server.should_exit = True
+        await serving
+
+
+async def test_a_refusal_comes_back_through_a_connected_client():
+    async def receive():
+        await asyncio.sleep(30)
 
     async def refused():
         raise Refused("Group AI processing is Off")
 
+    request = SimpleNamespace(receive=receive)
     with pytest.raises(Refused, match="Group AI processing"):
         await while_connected(request, refused())
 
@@ -620,3 +660,36 @@ async def test_cancelling_a_question_frees_the_account_and_keeps_its_receipt(rig
     assert row["error"] == "Attempt interrupted; use explicit Retry"
     questions.embedder.generate = generate
     assert (await questions.ask(KEY, "Who has the key?"))["status"] == "answer"
+
+
+async def test_an_abandoned_question_keeps_the_vectors_it_paid_for(rig):
+    for identity in range(1, 66):
+        source(rig, identity, text=f"Authored point {identity}.")
+    rig.app.engine.answer = {
+        "statements": [{"text": "A point.", "citations": [1]}],
+    }
+    questions = rig.app.questions
+    second = asyncio.Event()
+    generate = questions.embedder.generate
+    calls = []
+
+    async def counted(role, packet):
+        calls.append(len(packet["texts"]))
+        if len(calls) == 2:
+            second.set()
+            await asyncio.sleep(30)
+        return await generate(role, packet)
+
+    questions.embedder.generate = counted
+    running = asyncio.create_task(questions.ask(KEY, "Which point?"))
+    await asyncio.wait_for(second.wait(), 5)
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert calls == [64, 1]
+    # The next question embeds only what the first did not finish.
+    questions.embedder.generate = generate
+    embedded = len(questions.embedder.calls)
+    assert (await questions.ask(KEY, "Which point?"))["status"] == "answer"
+    asked = [len(c[1]["texts"]) for c in questions.embedder.calls[embedded:]]
+    assert asked == [1, 1]

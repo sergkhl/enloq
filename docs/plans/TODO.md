@@ -39,7 +39,13 @@ None of these is adopted, implemented or authorized.
   intake commits each recent group's intake row around every poll (about 0.65
   journal writes a second). Options, none adopted: reuse proofs within one
   round, record group-relevant changes, or skip the replay mark for an empty
-  difference. Then measure CPU once a group's seven-day window has filled.
+  difference. On the VPS, with two groups' AI On and the scheduler planning for
+  memory only when a memory job is next, the service idles around 4% CPU, down
+  from 38%. What stays is a stall of about 3.3 s every 30 to 40 seconds: the
+  100-message page of a group's re-read, one commit per message on the event
+  loop. One busy group is why, and the likely place to start: at intake epoch
+  1,857, it re-reads its seven-day window almost constantly, at 833 history
+  pages a day, within about 23,400 Telegram requests a day for the account.
 - **Route-listing freshness** ([inference](../inference.md)): background work
   re-reads the exact-route listing only when it is over 24 hours old, so an
   outage that begins between refreshes fails as a counted `Provider

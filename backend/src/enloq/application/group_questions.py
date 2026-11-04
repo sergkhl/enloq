@@ -194,22 +194,30 @@ class GroupQuestions:
             engine, job, packet, valid, klass="suggestions", admit=self._ai
         )
 
+    @staticmethod
+    def _batches(items, text_of):
+        """Items in bounded embedding requests, in order."""
+        batch, size = [], 0
+        for item in items:
+            length = len(text_of(item)[:EMBEDDED_CHARACTERS].encode())
+            if batch and (len(batch) == BATCH or size + length > BATCH_BYTES):
+                yield batch
+                batch, size = [], 0
+            batch.append(item)
+            size += length
+        if batch:
+            yield batch
+
     async def embed(self, key, texts):
         """Vectors for texts, in order, in bounded requests."""
-        vectors, batch, size = [], [], 0
-        for text in texts:
-            text = text[:EMBEDDED_CHARACTERS]
-            if batch and (
-                len(batch) == BATCH or size + len(text.encode()) > BATCH_BYTES
-            ):
-                vectors += await self._run(
-                    self.embedder, EMBED_ROLE, {"texts": batch}, key
-                )
-                batch, size = [], 0
-            batch.append(text)
-            size += len(text.encode())
-        if batch:
-            vectors += await self._run(self.embedder, EMBED_ROLE, {"texts": batch}, key)
+        vectors = []
+        for batch in self._batches(texts, lambda text: text):
+            vectors += await self._run(
+                self.embedder,
+                EMBED_ROLE,
+                {"texts": [text[:EMBEDDED_CHARACTERS] for text in batch]},
+                key,
+            )
         return vectors
 
     async def vectors(self, key, entries):
@@ -230,10 +238,12 @@ class GroupQuestions:
         # A busy group has thousands: off the event loop, as is ranking them.
         found = await asyncio.to_thread(read)
         missing = [(m, text) for m, _, text in entries if m.key not in found]
-        if missing:
-            computed = await self.embed(key, [text for _, text in missing])
+        # Each request's vectors are kept at once: a busy group's first question
+        # takes a minute, and one abandoned meanwhile leaves that much done.
+        for batch in self._batches(missing, lambda item: item[1]):
+            computed = await self.embed(key, [text for _, text in batch])
             fresh = {
-                m.key: vector for (m, _), vector in zip(missing, computed, strict=True)
+                m.key: vector for (m, _), vector in zip(batch, computed, strict=True)
             }
             await asyncio.to_thread(save, fresh)
             found.update(fresh)

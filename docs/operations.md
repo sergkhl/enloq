@@ -341,6 +341,8 @@ that look-up writes nothing and plans no group work:
 - Native intake keeps polling every recent group. For a group whose AI is Off
   those intake and access rows still commit and still reach clients, but they
   leave group planning answers standing; planning reads only groups with AI On.
+- The scheduler asks whether group work keeps memory waiting only when a memory
+  job is next.
 - A group planning answer (nothing to run, and whether group work keeps memory
   waiting) stands until the first of: the next local commit, a change in the
   account's connection or sign-in state, a queued group stage's due time, the

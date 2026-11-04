@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, openTestGroup, test } from "./maya";
+import { expect, MAYA, openTestGroup, TEST_GROUP, test } from "./maya";
 
 // ADR 59 and ADR 60 in the test group of the Owner Account and Maya, on the
 // real routes, from Maya's side: an answer with a source that opens the group,
@@ -23,29 +23,32 @@ const FACTS: ["owner" | "maya", string][] = [
   ["owner", "(test) Noted. The parcel for flat 12 is at the front desk."],
 ];
 
+// The authored messages the service holds from Maya's side.
+async function held(page: Page) {
+  const answer = await page.request.get(
+    `/api/accounts/${MAYA}/chats/${encodeURIComponent(TEST_GROUP!)}`,
+  );
+  expect(answer.status()).toBe(200);
+  const { messages } = (await answer.json()) as {
+    messages: { text: string }[];
+  };
+  return new Set(messages.map((message) => message.text));
+}
+
 async function ensureMessages(page: Page) {
-  await openTestGroup(page, "maya");
-  // The Originals view lists every message of the day.
-  const view = page.getByRole("button", { name: "AI view" });
-  if ((await view.getAttribute("aria-pressed")) === "true") await view.tap();
-  const present = await page
-    .getByText(FACTS[0]![1], { exact: true })
-    .first()
-    .isVisible({ timeout: 5000 })
-    .catch(() => false);
-  if (present) return;
+  const present = await held(page);
   let side: "owner" | "maya" | null = null;
   for (const [author, text] of FACTS) {
+    if (present.has(text)) continue;
     if (side !== author) {
       await openTestGroup(page, author);
       side = author;
     }
-    const box = page.getByRole("textbox", { name: "Message" });
-    await box.fill(text);
+    await page.getByRole("textbox", { name: "Message" }).fill(text);
     await page.getByRole("button", { name: "Send", exact: true }).tap();
-    await expect(page.getByText(text, { exact: true }).first()).toBeVisible({
-      timeout: 60000,
-    });
+    await expect
+      .poll(async () => (await held(page)).has(text), { timeout: 60000 })
+      .toBe(true);
   }
 }
 

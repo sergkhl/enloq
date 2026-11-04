@@ -38,8 +38,6 @@ from .scope import MEMBER_ACCOUNT
 from .traits import ScaleEdit, TraitsView
 
 SPOKEN_EXTENSIONS = {"audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a"}
-# How often a running question checks that its client is still there.
-DISCONNECT_POLL = 1.0
 
 
 def download_name(message, timezone="UTC"):
@@ -214,24 +212,31 @@ class Question(Model):
     question: str = Field(min_length=1, max_length=MAX_QUESTION)
 
 
+async def client_gone(request):
+    """Returns once the request's client has gone. ``is_disconnected`` never
+    says so behind a ``BaseHTTPMiddleware``, whose cancelled poll drops the
+    message; waiting for the message itself works."""
+    while (await request.receive())["type"] != "http.disconnect":
+        pass
+
+
 async def while_connected(request, work):
     """Run a question until it ends or its client goes (ADR 59 Q8): nobody is
     left to read the answer, nothing stores it, and the next question from that
     account would be refused until this one finished, spending all the while."""
     task = asyncio.ensure_future(work)
+    gone = asyncio.ensure_future(client_gone(request))
     try:
-        while True:
-            done, _ = await asyncio.wait({task}, timeout=DISCONNECT_POLL)
-            if done:
-                if task.cancelled():
-                    raise Refused("The question was cancelled")
-                return task.result()
-            if await request.is_disconnected():
-                raise Refused("The question's client has gone")
-    finally:
+        await asyncio.wait({task, gone}, return_when=asyncio.FIRST_COMPLETED)
         if not task.done():
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            raise Refused("The question's client has gone")
+        if task.cancelled():
+            raise Refused("The question was cancelled")
+        return task.result()
+    finally:
+        for running in (task, gone):
+            running.cancel()
+        await asyncio.gather(task, gone, return_exceptions=True)
 
 
 class SuggestionFold(Model):
