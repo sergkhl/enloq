@@ -706,7 +706,7 @@ private supergroup's Send.
 Maya joined at the owner's word (`real_group`): from her side only, sending
 nothing, with her Group AI On for the run and Off again after it. It asks general
 questions in Russian and English and one nothing answers, opens a source, and
-prints only statuses and counts. At most 40 model requests besides the embeddings
+prints only statuses and counts. At most 60 model requests besides the embeddings
 its messages need. A failed run's page snapshot under `.local/live-results/` holds
 other people's words: leave it unread and delete it.
 

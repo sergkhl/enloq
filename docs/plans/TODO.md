@@ -45,7 +45,10 @@ None of these is adopted, implemented or authorized.
   100-message page of a group's re-read, one commit per message on the event
   loop. One busy group is why, and the likely place to start: at intake epoch
   1,857, it re-reads its seven-day window almost constantly, at 833 history
-  pages a day, within about 23,400 Telegram requests a day for the account.
+  pages a day, within about 23,400 Telegram requests a day for the account. Maya
+  has been in that group too since the live checks needed real traffic: her
+  session went from about 60 to about 85 requests per ten minutes, with no
+  visible rise in CPU or stalls so far.
 - **Route-listing freshness** ([inference](../inference.md)): background work
   re-reads the exact-route listing only when it is over 24 hours old, so an
   outage that begins between refreshes fails as a counted `Provider
@@ -195,4 +198,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 5,543 are used. Add each check's requests here.
+total; 5,643 are used. Add each check's requests here.

@@ -5,7 +5,7 @@ import { expect, MAYA, openRealGroup, REAL_GROUP, test } from "./maya";
 // guard in maya.ts refuses any other write). Group AI goes On for the run and
 // back Off, so her copy spends nothing on briefings between runs. It prints only
 // statuses and counts: answers hold other people's words, and never leave this
-// page. At most 40 model requests besides the embeddings its messages need.
+// page. At most 60 model requests besides the embeddings its messages need.
 test.setTimeout(600000);
 
 const QUESTIONS = [
@@ -75,14 +75,19 @@ test("Ask answers in the real group, and nothing is sent", async ({ page }) => {
     for (const words of QUESTIONS) {
       const view = await asking(words);
       if (!view.statements.some((s) => s.citations.length)) continue;
-      await ask
-        .getByRole("button", { name: /^Source \d+$/ })
-        .first()
-        .tap();
+      const source = ask.getByRole("button", { name: /^Source \d+$/ }).first();
+      const id = (await source.getAttribute("aria-label"))!.split(" ")[1];
+      await source.tap();
       await expect(ask).toBeHidden();
-      await expect(page.locator("article.app-bubble.highlighted")).toHaveCount(
-        1,
-      );
+      await expect(
+        page
+          .locator(
+            `section.native-source[data-source-id="${id}"], ` +
+              `article.message-bubble[data-source-ids~="${id}"], ` +
+              "article.app-bubble.highlighted",
+          )
+          .first(),
+      ).toBeInViewport();
       await page.getByRole("button", { name: "Back to answer" }).tap();
       await expect(
         ask.getByRole("button", { name: /^Source \d+$/ }).first(),
