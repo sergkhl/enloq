@@ -40,8 +40,8 @@ None of these is adopted, implemented or authorized.
   journal writes a second). Options, none adopted: reuse proofs within one
   round, record group-relevant changes, or skip the replay mark for an empty
   difference. On the VPS, with two groups' AI On and the scheduler planning for
-  memory only when a memory job is next, the service idles around 4% CPU, down
-  from 38%. What stays is a stall of about 3.3 s every 30 to 40 seconds: the
+  memory only when a memory job is next, the service averages about 20% CPU,
+  down from 38%. What stays is a stall of 2 to 3.5 s every 30 to 45 seconds: the
   100-message page of a group's re-read, one commit per message on the event
   loop. One busy group is why, and the likely place to start: at intake epoch
   1,857, it re-reads its seven-day window almost constantly, at 833 history
