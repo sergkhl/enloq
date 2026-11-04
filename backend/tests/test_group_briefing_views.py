@@ -608,3 +608,22 @@ def test_authenticated_http_sources_and_retry_are_account_and_peer_bound(tmp_pat
     client.close()
     for runtime in manager.runtimes.values():
         runtime.assistant.store.close()
+
+
+def test_a_view_proves_the_groups_work_once_however_many_days_it_lists(
+    rig, monkeypatch
+):
+    # Each day proving all of it again kept a view on the event loop for
+    # seconds, in a group with a month of briefings.
+    for identity in range(3):
+        source(rig, identity + 1, date=NOW - identity * 86400)
+    passes = []
+    reconcile = rig.storage._reconcile
+
+    def counted(db, key=None):
+        passes.append(key)
+        return reconcile(db, key)
+
+    monkeypatch.setattr(rig.storage, "_reconcile", counted)
+    assert len(rig.view.view(KEY)) == 3
+    assert passes == [KEY]

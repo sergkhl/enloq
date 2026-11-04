@@ -31,6 +31,11 @@ def main():
             workers=1,
             access_log=False,
             log_config=None,
+            # Longer than the edge's two minutes, so the edge always closes an
+            # idle connection first. At uvicorn's default 5 seconds, a stalled
+            # event loop closed connections the edge was already reusing, and
+            # a POST on one came back as 502 "connection reset by peer".
+            timeout_keep_alive=130,
         )
 
 

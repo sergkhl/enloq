@@ -7,7 +7,12 @@ import { expect, test as base, type Page } from "@playwright/test";
 const TARGETS_FILE = "../.local/live-targets.json";
 
 function targets() {
-  let found: { origin?: unknown; owner?: unknown; maya?: unknown };
+  let found: {
+    origin?: unknown;
+    owner?: unknown;
+    maya?: unknown;
+    group?: unknown;
+  };
   try {
     found = JSON.parse(readFileSync(TARGETS_FILE, "utf8"));
   } catch {
@@ -15,7 +20,7 @@ function targets() {
       `Live checks need ${TARGETS_FILE} (AGENTS.md, Live Telegram sends)`,
     );
   }
-  const { origin, owner, maya } = found;
+  const { origin, owner, maya, group } = found;
   const id = (value: unknown) =>
     typeof value === "number" && Number.isSafeInteger(value) && value > 0;
   if (
@@ -27,12 +32,23 @@ function targets() {
     throw new Error(
       `${TARGETS_FILE} needs an https origin and two account IDs`,
     );
-  return { origin, owner: owner as number, maya: maya as number };
+  return {
+    origin,
+    owner: owner as number,
+    maya: maya as number,
+    group: typeof group === "string" ? group : null,
+  };
 }
 
-// The one chat live checks may open or send in (AGENTS.md, Live Telegram
-// sends): between the Owner Account and Maya, from either side.
-export const { origin: ORIGIN, owner: OWNER_ACCOUNT, maya: MAYA } = targets();
+// The chats live checks may open or send in (AGENTS.md, Live Telegram sends):
+// the one between the Owner Account and Maya, from either side, and the test
+// group of those two alone, `channel:<id>` under `group` in the same file.
+export const {
+  origin: ORIGIN,
+  owner: OWNER_ACCOUNT,
+  maya: MAYA,
+  group: TEST_GROUP,
+} = targets();
 const OTHER = new Map([
   [OWNER_ACCOUNT, MAYA],
   [MAYA, OWNER_ACCOUNT],
@@ -47,10 +63,12 @@ export function permitted(pathname: string) {
   const account = Number(named[1]);
   const peer = decodeURIComponent(named[2]);
   const other = OTHER.get(account);
-  // The Maya chat, or the account's own avatar in the header.
+  // The Maya chat, the test group, or the account's own avatar in the header.
   return (
     other !== undefined &&
-    (peer === `user:${other}` || peer === `user:${account}`)
+    (peer === `user:${other}` ||
+      peer === `user:${account}` ||
+      peer === TEST_GROUP)
   );
 }
 
@@ -84,6 +102,19 @@ export async function openMayaChat(page: Page, side: "owner" | "maya") {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     side === "maya" ? /^(?!Maya)\S/ : /^Maya/,
   );
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
+  return page;
+}
+
+// Opens the test group as `side` by its chat link (ADR 36), where a supergroup
+// is `-100` and its ID.
+export async function openTestGroup(page: Page, side: "owner" | "maya") {
+  if (!TEST_GROUP) throw new Error("Name the test group in live-targets.json");
+  const account = side === "maya" ? MAYA : OWNER_ACCOUNT;
+  const id = TEST_GROUP.replace(/^channel:/, "-100").replace(/^chat:/, "-");
+  await page.goto(`/?account=${account}#${id}`);
+  const ask = page.getByRole("button", { name: "Not now" });
+  if (await ask.isVisible().catch(() => false)) await ask.click();
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
   return page;
 }

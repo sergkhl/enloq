@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from datetime import datetime
@@ -37,6 +38,8 @@ from .scope import MEMBER_ACCOUNT
 from .traits import ScaleEdit, TraitsView
 
 SPOKEN_EXTENSIONS = {"audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a"}
+# How often a running question checks that its client is still there.
+DISCONNECT_POLL = 1.0
 
 
 def download_name(message, timezone="UTC"):
@@ -209,6 +212,26 @@ class SuggestionGenerate(Revision):
 
 class Question(Model):
     question: str = Field(min_length=1, max_length=MAX_QUESTION)
+
+
+async def while_connected(request, work):
+    """Run a question until it ends or its client goes (ADR 59 Q8): nobody is
+    left to read the answer, nothing stores it, and the next question from that
+    account would be refused until this one finished, spending all the while."""
+    task = asyncio.ensure_future(work)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=DISCONNECT_POLL)
+            if done:
+                if task.cancelled():
+                    raise Refused("The question was cancelled")
+                return task.result()
+            if await request.is_disconnected():
+                raise Refused("The question's client has gone")
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
 
 
 class SuggestionFold(Model):
@@ -412,11 +435,13 @@ def routes(manager, settings):
         )
 
     @router.post("/chats/{peer}/ask", response_model=AskView)
-    async def ask_group(account_id: int, peer: str, body: Question):
+    async def ask_group(account_id: int, peer: str, body: Question, request: Request):
         """Ask this group (ADR 59): an answer with checked citations, a range
         searched without an answer, or unchecked. Nothing is stored."""
         async with manager.lease(account_id) as app:
-            return await app.questions.ask(key(account_id, peer), body.question)
+            return await while_connected(
+                request, app.questions.ask(key(account_id, peer), body.question)
+            )
 
     @router.get("/chats/{peer}/suggestions/settings", response_model=SuggestionSettings)
     def suggestion_settings(account_id: int, peer: str):

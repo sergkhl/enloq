@@ -26,7 +26,12 @@ verified access are all in place. It searches the cached originals from the
 group's first opt-in day, within the 30-day cache: text, captions, cached
 transcripts and image meanings. Hidden and ignored bots, validated ads,
 service events and Non-AI Media stay out. It reads no Telegram history, starts
-no media work and sends a model nothing a Daily Briefing could not.
+no media work and sends a model nothing a Daily Briefing could not. An earlier
+intake epoch's proof of an original stands, as it does for published work
+([ADR 34](0034-group-chats-and-daily-briefings.md)): a busy group opens epochs
+all the time, and each hid almost everything from a stricter search. Telegram's
+connection coming and going does not hold a question back, since it reads only
+the cache and reaches only models.
 
 **Retrieval (Q3).** A question is matched by similarity between embeddings
 of the question and of the messages, and a reranker reorders the first 40.
@@ -80,7 +85,9 @@ in this group's messages from 3 Oct to today."
 Questions run in the manual-suggestion class, one at a time per account. Each
 makes the embedding requests its vectors need, one rerank request, at most
 five writer requests and four searches of one embedding and one rerank
-request each (ADR 60 Q2), and at most four check requests.
+request each (ADR 60 Q2), and at most four check requests. A question ends when
+its client goes, by leaving the screen or losing its connection: nothing stores
+the answer, and the account can ask again at once.
 
 **Not stored (Q9).** The question and answer exist only on the open screen,
 and receipts keep usage without content. Back from a source link returns to

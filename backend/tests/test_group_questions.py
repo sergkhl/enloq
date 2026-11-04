@@ -1,9 +1,12 @@
 """ADR 59's Ask this group with authored engines, offline only."""
 
+import asyncio
 import json
+from types import SimpleNamespace
 
 import httpx
 import pytest
+from enloq.api.routes import while_connected
 from enloq.application.group_questions import GroupQuestions, Reading
 from enloq.domain.citation_check import ANSWER_CHECK_ROLE
 from enloq.domain.group_questions import (
@@ -25,7 +28,7 @@ from enloq.domain.group_questions import (
     validate_answer,
     validate_turn,
 )
-from enloq.domain.models import ProcessingPaused, Refused
+from enloq.domain.models import ProcessingPaused, Refused, Syncing
 from enloq.inference import retrieval
 from enloq.inference.base import EngineResponse, InvalidOutput, ProviderRefused
 
@@ -501,3 +504,119 @@ async def test_the_subscription_writer_offers_tools_and_returns_their_calls(tmp_
         "content": json.dumps(result, ensure_ascii=False),
     }
     await engine.client.aclose()
+
+
+async def test_a_new_intake_epoch_leaves_the_originals_searchable(rig):
+    # A busy group's epochs change no original: ADR 59 Q2 searches what's
+    # cached, and an earlier proof stands as it does for published work.
+    source(rig, 1, text="The shed key is with Eli now.")
+    source(rig, 2, text="Watering moved to Sunday.")
+    source(rig, 3, text="The plumber charged 40 euros.")
+    questions = rig.app.questions
+    assert len(questions.pool(KEY, 0)) == 3
+    intake = rig.store.groups.mark_gap(KEY)
+    assert not rig.store.groups.current(rig.store.message(KEY, 1))
+    assert len(questions.pool(KEY, 0)) == 3
+    rig.app.engine.answer = {
+        "statements": [{"text": "Eli has it.", "citations": [1]}],
+    }
+    result = await questions.ask(KEY, "Who has the key?")
+    assert result["status"] == "answer"
+    # An original the new read passed without finding is gone.
+    rig.store.groups.scanned(
+        KEY,
+        epoch=intake.epoch,
+        before=2,
+        top=3,
+        cutoff=0,
+        oldest=rig.store.message(KEY, 2).date,
+        count=2,
+        complete=False,
+    )
+    assert [m.message_id for m, _, _ in questions.pool(KEY, 0)] == [1]
+
+
+async def test_telegrams_connection_does_not_hold_a_question_back(rig):
+    source(rig, 1, text="The shed key is with Eli now.")
+    rig.app.engine.answer = {
+        "statements": [{"text": "Eli has it.", "citations": [1]}],
+    }
+
+    def disconnected():
+        raise Syncing("Waiting for this account's Telegram connection")
+
+    rig.app.admit_ai = rig.app.rewriting.work.admit = disconnected
+    result = await rig.app.questions.ask(KEY, "Who has the key?")
+    assert result["status"] == "answer"
+
+    # Account AI still holds it back.
+    def off():
+        raise ProcessingPaused("AI processing is Off for this account")
+
+    rig.app.admit_ai = rig.app.rewriting.work.admit = off
+    with pytest.raises(ProcessingPaused):
+        await rig.app.questions.ask(KEY, "Who has the key?")
+
+
+async def test_a_question_ends_with_its_client(rig):
+    # ADR 59 Q8: nobody is left to read the answer, and the account can ask
+    # again at once.
+    gone, ended = [False], []
+
+    async def is_disconnected():
+        return gone[0]
+
+    async def work():
+        try:
+            await asyncio.sleep(30)
+        finally:
+            ended.append(True)
+
+    request = SimpleNamespace(is_disconnected=is_disconnected)
+    running = asyncio.create_task(while_connected(request, work()))
+    await asyncio.sleep(0)
+    gone[0] = True
+    with pytest.raises(Refused, match="client has gone"):
+        await asyncio.wait_for(running, 5)
+    assert ended == [True]
+
+    # An answer comes back while the client stays; so does a refusal.
+    gone[0] = False
+
+    async def answered():
+        return {"status": "answer"}
+
+    assert await while_connected(request, answered()) == {"status": "answer"}
+
+    async def refused():
+        raise Refused("Group AI processing is Off")
+
+    with pytest.raises(Refused, match="Group AI processing"):
+        await while_connected(request, refused())
+
+
+async def test_cancelling_a_question_frees_the_account_and_keeps_its_receipt(rig):
+    source(rig, 1, text="The shed key is with Eli now.")
+    rig.app.engine.answer = {
+        "statements": [{"text": "Eli has it.", "citations": [1]}],
+    }
+    questions = rig.app.questions
+    started = asyncio.Event()
+    generate = questions.embedder.generate
+
+    async def slow(role, packet):
+        started.set()
+        await asyncio.sleep(30)
+        return await generate(role, packet)
+
+    questions.embedder.generate = slow
+    running = asyncio.create_task(questions.ask(KEY, "Who has the key?"))
+    await asyncio.wait_for(started.wait(), 5)
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert not questions._busy.locked()
+    [row] = rig.store.rows("SELECT error FROM receipts WHERE role=?", (EMBED_ROLE,))
+    assert row["error"] == "Attempt interrupted; use explicit Retry"
+    questions.embedder.generate = generate
+    assert (await questions.ask(KEY, "Who has the key?"))["status"] == "answer"

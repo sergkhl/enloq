@@ -415,6 +415,7 @@ async def test_group_waiting_for_its_next_update_is_planned_once(
     manager, now, app, key = await waiting(rig)
     calls = derivations(app, monkeypatch)
     manager.dispatch()
+    assert manager.memory_idle() is False
     planned, touched, requested = len(calls), folders(tmp_path), len(app.engine.calls)
     assert planned and not manager.active
     for _ in range(20):
@@ -575,4 +576,30 @@ async def test_other_groups_intake_does_not_replan_a_waiting_group(rig, monkeypa
     assert len(calls) > planned and manager.memory_idle()
     app.store.groups.checkpoint(key, 1, epoch=epoch)
     assert not manager.memory_idle()
+    await manager.close()
+
+
+async def test_no_memory_job_means_no_planning_for_memory(rig, monkeypatch):
+    # The answer costs a planning pass of every group, and with no memory job
+    # next it changes nothing: it took a third of the event loop's time.
+    manager, now, app, key = await waiting(rig)
+    asked = []
+    idle = manager.memory_idle
+
+    def counted(job_id=None):
+        asked.append(job_id)
+        return idle(job_id)
+
+    monkeypatch.setattr(manager, "memory_idle", counted)
+    for _ in range(5):
+        manager.dispatch()
+    assert not asked
+    # A queued memory job asks, and waits while the group waits.
+    with app.store.transaction() as db:
+        db.execute(
+            "INSERT INTO jobs VALUES ('fold','1/user:42','chat_memory','0','queued',?,?,NULL)",
+            (now[0], json.dumps({"class": "memory"})),
+        )
+    manager.dispatch()
+    assert asked and not manager.active
     await manager.close()

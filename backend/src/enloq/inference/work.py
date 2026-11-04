@@ -569,15 +569,20 @@ class ModelWork:
         group_admission=None,
         group_accounting=None,
         group_guidance=None,
+        admit=None,
     ):
+        """One dispatch. ``admit`` replaces the account's own admission for
+        work that does not need what that checks, as Ask this group does not
+        need Telegram's connection (ADR 59 Q2)."""
         if job["role"] not in ROLES:
             raise Refused("Unsupported model role")
+        admit = admit or self.admit
         group = self._group_options(
             job, group_admission, group_accounting, group_guidance
         )
         klass = klass or json.loads(job["payload"] or "{}").get("class", "new")
         async with self.capacity.slot(klass):
-            self.admit()
+            admit()
             if group:
                 with self.store.transaction() as db:
                     packet["guidance"] = self._group_preparation(
@@ -596,7 +601,7 @@ class ModelWork:
                         await engine.prepare(packet)
             except ProviderRefused as refusal:
                 if job["role"] in BACKGROUND:
-                    self.admit()
+                    admit()
                     current = valid()
                     # Background no-work retries need a terminal old attempt,
                     # but a route listing is not a model dispatch or a receipt.
@@ -628,7 +633,7 @@ class ModelWork:
                         ) from None
                 # Outgoing keeps its immediate failure and draft restoration.
                 raise
-            self.admit()
+            admit()
             if on_dispatch is not None:
                 on_dispatch()
             if not valid():

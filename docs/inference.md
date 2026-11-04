@@ -546,13 +546,13 @@ prove the real staging, accounting and guard mechanics; the
 [ADR 59](adr/0059-ask-this-group.md)'s `POST /chats/{peer}/ask` answers one
 question at a time per account, in the manual-suggestion class, paid from the
 member's Group Briefing Budget. It needs account AI, the group's AI and verified
-access.
+access, not Telegram's connection, and a question ends when its client goes.
 
-- **Pool.** Eligible current originals from the group's first opt-in day,
-  within the 30-day cache: text and captions, cached transcripts and image
-  meanings, without ads, ignored or hidden bots, service events and Non-AI
-  Media. No Telegram read and no media work. An empty pool answers not found
-  with no model call.
+- **Pool.** Eligible standing originals (ADR 34's intake epochs) from the
+  group's first opt-in day, within the 30-day cache: text and captions, cached
+  transcripts and image meanings, without ads, ignored or hidden bots, service
+  events and Non-AI Media. No Telegram read and no media work. An empty pool
+  answers not found with no model call.
 - **Retrieval.** The question's embedding ranks the pool by cosine
   similarity, the reranker reorders the first 40, and the writer reads the
   best 25 in chronological order; if reranking fails, the embeddings' order

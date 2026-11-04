@@ -405,7 +405,9 @@ class AccountManager:
                 low_allowed = (low < limit - 1) if limit >= 2 else not self.active
                 private_job = runtime.assistant.rewriting.next_job(
                     low_allowed=low_allowed,
-                    memory_allowed=not self.active and self.memory_idle(),
+                    # Asked only when a memory job is next: each answer can
+                    # re-derive every group's plan on the event loop.
+                    memory_allowed=lambda: not self.active and self.memory_idle(),
                 )
                 group_job = runtime.assistant.briefings.next_job(
                     low_allowed=low_allowed

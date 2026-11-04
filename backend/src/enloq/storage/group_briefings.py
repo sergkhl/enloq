@@ -1320,12 +1320,15 @@ class GroupBriefings:
             self._scope(db, key, day)
             return self._cached_final(db, key, day)
 
-    def state(self, key, day, *, cached_access=False):
+    def state(self, key, day, *, cached_access=False, reconciled=False):
+        """One day's briefing state. ``reconciled`` says the caller has just
+        proved the whole group's work, as a view of all its days does once."""
         from ..application.group_context import day_bounds, eligible
 
         with self.store.transaction() as db:
             scope = self._scope(db, key, day)
-            self._reconcile(db, key)
+            if not reconciled:
+                self._reconcile(db, key)
             start, end = day_bounds(self.store, day)
             sources = [
                 message.message_id

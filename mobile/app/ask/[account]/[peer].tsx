@@ -52,10 +52,13 @@ function AskScreen({ account, peer }: { account: number; peer: string }) {
   const [answer, setAnswer] = useState<Schemas["AskView"] | null>(null);
   const [refusal, setRefusal] = useState("");
   const live = useRef(true);
+  const asked = useRef<AbortController | null>(null);
   useEffect(() => {
     live.current = true;
     return () => {
       live.current = false;
+      // Leaving the screen ends its question (ADR 59 Q8).
+      asked.current?.abort();
     };
   }, []);
   // The not-found line's "today" is the service's calendar day.
@@ -71,10 +74,11 @@ function AskScreen({ account, peer }: { account: number; peer: string }) {
     setAsking(true);
     setAnswer(null);
     setRefusal("");
+    asked.current = new AbortController();
     try {
       const value = await api<Schemas["AskView"]>(
         `accounts/${account}/chats/${encodeURIComponent(peer)}/ask`,
-        { body: { question: question.trim() } },
+        { body: { question: question.trim() }, signal: asked.current.signal },
       );
       if (live.current) setAnswer(value);
     } catch (problem) {

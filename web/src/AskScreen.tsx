@@ -40,10 +40,13 @@ export function AskScreen({
   const [answer, setAnswer] = useState<AskView | null>(null);
   const [error, setError] = useState("");
   const alive = useRef(true);
+  const asked = useRef<AbortController | null>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      // Leaving the screen ends its question (ADR 59 Q8).
+      asked.current?.abort();
     };
   }, []);
   const shown = answer && shownAnswer(answer, dayKey(new Date(), timezone));
@@ -56,10 +59,15 @@ export function AskScreen({
     setAsking(true);
     setAnswer(null);
     setError("");
+    asked.current = new AbortController();
     try {
-      const value = await chatApi<AskView>(account, peer, "/ask", {
-        question: question.trim(),
-      });
+      const value = await chatApi<AskView>(
+        account,
+        peer,
+        "/ask",
+        { question: question.trim() },
+        asked.current.signal,
+      );
       if (alive.current) setAnswer(value);
     } catch (e) {
       if (alive.current) setError((e as Error).message);

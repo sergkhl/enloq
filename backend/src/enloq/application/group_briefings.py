@@ -236,16 +236,22 @@ class GroupBriefings:
             if context.day_bounds(self.store, row["day"])[1] > cutoff
         )
         result = []
+        # Proving the group's work once is enough for all its days: each day
+        # proving all of it again kept a view on the event loop for seconds.
+        self.storage.reconcile(key)
         for day in sorted(days):
             value = self.storage.state(
-                key, day, cached_access=state.access != "available"
+                key, day, cached_access=state.access != "available", reconciled=True
             )
             final, attempt = value.final, value.attempt
             if not value.source_ids and final is None:
                 continue
             prefix = (
                 self.storage.prefix(attempt.id)
-                if attempt and self.app.authorized() and state.access == "available"
+                if attempt
+                and attempt.state == "active"
+                and self.app.authorized()
+                and state.access == "available"
                 else None
             )
             result.append(
@@ -1478,6 +1484,12 @@ class GroupBriefings:
     def _check_packet(self, key, topic, *, role=CHECK_ROLE):
         """A topic and its cited originals as the briefing read them, with the
         cached messages they reply to as bounded context."""
+        # Ask's pool holds standing originals; a new stage needs current ones.
+        proven = (
+            self.store.groups.standing
+            if role == citation_check.ANSWER_CHECK_ROLE
+            else self.store.groups.current
+        )
         cited, replies = [], []
         for identity in topic.citations:
             message = self.store.message(key, identity)
@@ -1498,7 +1510,7 @@ class GroupBriefings:
                 parent is None
                 or parent.deleted
                 or not context.eligible(parent)
-                or not self.store.groups.current(parent)
+                or not proven(parent)
                 # Ads and ignored bots never reach a model as context either.
                 or any(self.filtering.annotations(parent).values())
             ):

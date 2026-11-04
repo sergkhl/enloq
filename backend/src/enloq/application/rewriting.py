@@ -164,15 +164,15 @@ class Rewriting:
 
     def next_job(self, *, low_allowed=True, memory_allowed=True):
         """The highest-priority due job of this account, if any. A role paused
-        by repeated format failures runs only deliberate per-block clicks."""
+        by repeated format failures runs only deliberate per-block clicks.
+        ``memory_allowed`` may be a callable, asked only once a memory job is
+        next: its answer can cost a whole group planning pass."""
         # Expired arrival screens must not occupy a worker or delay block work.
         self.app.notifications.advance()
         reconcile_admission(self.store)
         # Held blocks get their decision request after the quiet (ADR 49 Q3).
         self.app.emotion.decide_held()
         low = "" if low_allowed else f" AND {rank_sql()}<{RANK['older']}"
-        if not memory_allowed:
-            low += " AND role NOT IN ('chat_memory','trait_scales','trait_notes')"
         paused = sorted(self.paused_roles())
         hold = (
             f" AND (role NOT IN ({','.join('?' * len(paused))}) OR json_extract(payload,'$.explicit_retry'))"
@@ -184,11 +184,20 @@ class Rewriting:
             (self.store.clock(), *paused),
         )
 
+        allowed = []
+
+        def memory_turn():
+            if not allowed:
+                allowed.append(
+                    memory_allowed() if callable(memory_allowed) else memory_allowed
+                )
+            return allowed[0]
+
         def ready(job):
             if job["role"] == "chat_memory":
-                return self.app.memory.ready(job)
+                return memory_turn() and self.app.memory.ready(job)
             if job["role"] in ("trait_scales", "trait_notes"):
-                return self.app.traits.ready(job)
+                return memory_turn() and self.app.traits.ready(job)
             return True
 
         return next((r for r in rows if ready(r)), None)

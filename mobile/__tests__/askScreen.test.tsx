@@ -232,3 +232,15 @@ test("a refusal shows its reason and keeps the question", async () => {
     ).toMatchObject({ disabled: false }),
   );
 });
+
+test("leaving the screen ends its question", async () => {
+  const { unmount } = await mount();
+  await ask("Who has the key?");
+  await waitFor(() => expect(asked).toHaveLength(1));
+  const { signal } = (global.fetch as jest.Mock).mock.calls.find(([url]) =>
+    String(url).endsWith("/ask"),
+  )![1] as { signal: AbortSignal };
+  expect(signal.aborted).toBe(false);
+  await act(async () => unmount());
+  expect(signal.aborted).toBe(true);
+});

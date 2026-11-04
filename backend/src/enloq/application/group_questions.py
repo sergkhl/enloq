@@ -6,7 +6,9 @@ originals itself. Nothing about a question or its answer is stored (Q9)."""
 import asyncio
 import dataclasses
 import json
+import logging
 import sqlite3
+import time
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -35,12 +37,14 @@ from ..domain.group_questions import (
     question_text,
     searchable,
 )
-from ..domain.models import Message, ProcessingPaused, Refused, reply_target
+from ..domain.models import Message, ProcessingPaused, Refused, Syncing, reply_target
 from ..inference.base import ProviderRefused
 from ..storage import group_vectors
 from ..storage.store import RETENTION
 from . import group_context as context
 from .group_briefings import checked_view
+
+_LOG = logging.getLogger("enloq.questions")
 
 # Embedding and rerank refusals that did no work are tried again (_run).
 RETRIED_TRIES, RETRIED_WAIT = 3, 5
@@ -73,10 +77,21 @@ class GroupQuestions:
         self.retrieval = RETRIEVAL
         # ADR 59 Q8: one question at a time per account.
         self._busy = asyncio.Lock()
+        # What the running question is doing, for its log line.
+        self.step = ""
+
+    def _ai(self):
+        """Account AI and the Member Agreement. A question reads only cached
+        originals and reaches only models, so Telegram's connection coming and
+        going does not hold it back (Q2)."""
+        try:
+            self.app.admit_ai()
+        except Syncing:
+            pass
 
     def _admit(self, key):
         """Account AI, the group's AI and verified access (Q2)."""
-        self.app.admit_ai()
+        self._ai()
         if not self.app.authorized():
             raise Refused("Account authorization changed")
         state = context.group_chat(self.store, key)
@@ -96,8 +111,10 @@ class GroupQuestions:
         return max(start, self.store.clock() - RETENTION)
 
     def pool(self, key, since):
-        """What may be searched: eligible current originals, without hidden
-        or ignored bots and validated ads, as the briefing reads them."""
+        """What may be searched: eligible standing originals, without hidden
+        or ignored bots and validated ads, as the briefing reads them. A new
+        intake epoch changes no original, and a busy group opens many, so an
+        earlier proof stands here as it does for published work (ADR 34)."""
         entries = []
         for row in self.store.rows(
             "SELECT body FROM messages WHERE chat_key=? AND date>=? AND deleted=0 "
@@ -105,7 +122,7 @@ class GroupQuestions:
             (key, since),
         ):
             message = Message.model_validate_json(row["body"])
-            if not context.eligible(message) or not self.store.groups.current(message):
+            if not context.eligible(message) or not self.store.groups.standing(message):
                 continue
             if any(self.app.group_filtering.annotations(message).values()):
                 continue
@@ -152,6 +169,7 @@ class GroupQuestions:
                 await asyncio.sleep(max(1, wait))
 
     async def _attempt(self, engine, role, packet, key):
+        self.step = role
         job = dict(
             id=uuid.uuid4().hex,
             scope=key,
@@ -173,7 +191,7 @@ class GroupQuestions:
             return True
 
         return await self.app.rewriting.work.run(
-            engine, job, packet, valid, klass="suggestions"
+            engine, job, packet, valid, klass="suggestions", admit=self._ai
         )
 
     async def embed(self, key, texts):
@@ -199,16 +217,25 @@ class GroupQuestions:
         its revision (Q4)."""
         model = self.embedder.route.model
         revisions = {m.key: m.revision for m, _, _ in entries}
-        with self.store.transaction() as db:
-            found = group_vectors.cached(db, model, revisions)
+
+        def read():
+            with self.store.transaction() as db:
+                stored = group_vectors.stored(db, model, revisions)
+            return {source: group_vectors.unpack(b) for source, b in stored.items()}
+
+        def save(fresh):
+            with self.store.transaction() as db:
+                group_vectors.save(db, model, fresh, revisions, self.store.clock())
+
+        # A busy group has thousands: off the event loop, as is ranking them.
+        found = await asyncio.to_thread(read)
         missing = [(m, text) for m, _, text in entries if m.key not in found]
         if missing:
             computed = await self.embed(key, [text for _, text in missing])
             fresh = {
                 m.key: vector for (m, _), vector in zip(missing, computed, strict=True)
             }
-            with self.store.transaction() as db:
-                group_vectors.save(db, model, fresh, revisions, self.store.clock())
+            await asyncio.to_thread(save, fresh)
             found.update(fresh)
         return {m.message_id: found[m.key] for m, _, _ in entries}
 
@@ -227,7 +254,7 @@ class GroupQuestions:
             else query
         )
         [asked] = await self.embed(key, [instructed])
-        ranked = nearest(asked, vectors, CANDIDATES)
+        ranked = await asyncio.to_thread(nearest, asked, vectors, CANDIDATES)
         if self.reranker is not None and ranked:
             texts = {m.message_id: text for m, _, text in entries}
             try:
@@ -402,19 +429,54 @@ class GroupQuestions:
         if self._busy.locked():
             raise Refused("Another question is being answered")
         async with self._busy:
-            state = self._admit(key)
-            since = self._since(state)
-            today = self._day(self.store.clock())
-            searched = {"start": self._day(since), "end": today}
-            nothing = {"status": "not_found", "searched": searched, "statements": []}
-            entries = self.pool(key, since)
-            if not entries:
-                return nothing
-            answer = await self.write(key, question, today, entries)
-            if answer is None or answer.outcome == "not_found":
-                return nothing
+            started = time.monotonic()
             try:
-                statements = await self.checked(key, answer)
-            except Unchecked:
-                return {"status": "unchecked", "searched": searched, "statements": []}
-            return {"status": "answer", "searched": searched, "statements": statements}
+                result = await self._answer(key, question)
+            except asyncio.CancelledError:
+                _LOG.info(
+                    "Ask in %s cancelled during %s after %.1fs",
+                    key,
+                    self.step,
+                    time.monotonic() - started,
+                )
+                raise
+            except Exception:
+                _LOG.warning(
+                    "Ask in %s failed during %s after %.1fs",
+                    key,
+                    self.step,
+                    time.monotonic() - started,
+                    exc_info=True,
+                )
+                raise
+            _LOG.info(
+                "Ask in %s: %s with %d statements in %.1fs",
+                key,
+                result["status"],
+                len(result["statements"]),
+                time.monotonic() - started,
+            )
+            return result
+
+    async def _answer(self, key, question):
+        self.step = "admission"
+        state = self._admit(key)
+        since = self._since(state)
+        today = self._day(self.store.clock())
+        searched = {"start": self._day(since), "end": today}
+        nothing = {"status": "not_found", "searched": searched, "statements": []}
+        self.step = "pool"
+        entries = await asyncio.to_thread(self.pool, key, since)
+        if not entries:
+            return nothing
+        answer = await self.write(key, question, today, entries)
+        if answer is None or answer.outcome == "not_found":
+            return nothing
+        try:
+            statements = await self.checked(key, answer)
+        except Unchecked:
+            _LOG.warning(
+                "Ask in %s: the citation check could not run", key, exc_info=True
+            )
+            return {"status": "unchecked", "searched": searched, "statements": []}
+        return {"status": "answer", "searched": searched, "statements": statements}

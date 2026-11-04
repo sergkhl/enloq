@@ -20,8 +20,9 @@ def unpack(blob):
     return list(value)
 
 
-def cached(db, model, revisions):
-    """Stored vectors for the given {source: revision}, by source."""
+def stored(db, model, revisions):
+    """Stored packed vectors for the given {source: revision}, by source; the
+    caller unpacks them once its transaction has ended."""
     found = {}
     for source, revision in revisions.items():
         row = db.execute(
@@ -29,7 +30,7 @@ def cached(db, model, revisions):
             (source, revision, model),
         ).fetchone()
         if row:
-            found[source] = unpack(row[0])
+            found[source] = row[0]
     return found
 
 
