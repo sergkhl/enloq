@@ -809,12 +809,13 @@ or the connected phone (Enloq Dev) against that fixture only: pairing by
 pasted link, with the notification ask that follows it dismissed on Android;
 both reading views; a Reply with Suggestions, a replacing choice, Undo and
 Send whose quote shows in the composer and after sending; a group with its
-Group Profile, Group AI processing, Update briefing through the fixture's fake
-engine, a citation and Return to briefing, a Reply and today's new-messages
-spoiler; Saved; on Android, reminders (the tab's rows, a pending reminder's
+Group Profile, Group AI processing, Ask this group, Update briefing through the
+fixture's fake engine, a citation and Return to briefing, a Reply and today's
+new-messages spoiler; Saved; on Android, reminders (the tab's rows, a pending reminder's
 chat with its Reminder Bar, set, Undo and Dismiss, the editor's Repeat, day
 grid and native time picker, and Remove's question); Settings
-through its menu to Budget, AI, Guidance and Privacy's Pair a phone QR code;
+through its menu to Budget, AI, Guidance, Privacy's Pair a phone QR code and
+Logs;
 media (a voice note's speed, a video message taking over, Copy transcript and
 Share from the sheet, a video, a GIF and stickers); the Media Carousel; New
 Message; message details (versions, forwarded and imported lines, cards,
