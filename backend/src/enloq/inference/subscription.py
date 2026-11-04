@@ -32,8 +32,8 @@ MODEL = "chatgpt/gpt-6.1-sol"
 SECONDS = 120
 JSON_REPLY = (
     ' Reply with only a JSON object: {"statements": [{"text": "...", '
-    '"citations": [message ids]}]}, with no statements when the messages do not '
-    "address the question."
+    '"citations": [at most ten message ids, the ones it rests on most]}]}, with no '
+    "statements when the messages do not address the question."
 )
 OBJECT = re.compile(r"\{.*\}", re.S)
 USAGE = {"prompt_tokens", "completion_tokens", "total_tokens"}

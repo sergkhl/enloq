@@ -12,6 +12,7 @@ function targets() {
     owner?: unknown;
     maya?: unknown;
     group?: unknown;
+    real_group?: unknown;
   };
   try {
     found = JSON.parse(readFileSync(TARGETS_FILE, "utf8"));
@@ -20,7 +21,7 @@ function targets() {
       `Live checks need ${TARGETS_FILE} (AGENTS.md, Live Telegram sends)`,
     );
   }
-  const { origin, owner, maya, group } = found;
+  const { origin, owner, maya, group, real_group } = found;
   const id = (value: unknown) =>
     typeof value === "number" && Number.isSafeInteger(value) && value > 0;
   if (
@@ -37,17 +38,21 @@ function targets() {
     owner: owner as number,
     maya: maya as number,
     group: typeof group === "string" ? group : null,
+    realGroup: typeof real_group === "string" ? real_group : null,
   };
 }
 
 // The chats live checks may open or send in (AGENTS.md, Live Telegram sends):
 // the one between the Owner Account and Maya, from either side, and the test
 // group of those two alone, `channel:<id>` under `group` in the same file.
+// `real_group` names the real group Maya joined at the owner's word: her side
+// only, and read-only, for other people are there.
 export const {
   origin: ORIGIN,
   owner: OWNER_ACCOUNT,
   maya: MAYA,
   group: TEST_GROUP,
+  realGroup: REAL_GROUP,
 } = targets();
 const OTHER = new Map([
   [OWNER_ACCOUNT, MAYA],
@@ -57,12 +62,21 @@ const OTHER = new Map([
 // API paths that name one correspondent: a chat's own routes and avatars.
 const NAMED = /^\/api\/accounts\/(\d+)\/(?:chats|avatars)\/([^/?]+)/;
 
-export function permitted(pathname: string) {
+// The only POSTs the real group's screen may make, reads and local switches:
+// none reaches Telegram as a write.
+const REAL_GROUP_POSTS =
+  /\/(ask|processing|viewed|originals\/(replies|current|forwarding))$/;
+
+export function permitted(pathname: string, method = "GET") {
   const named = NAMED.exec(pathname);
   if (!named) return true;
   const account = Number(named[1]);
   const peer = decodeURIComponent(named[2]);
   const other = OTHER.get(account);
+  if (peer === REAL_GROUP)
+    return (
+      account === MAYA && (method === "GET" || REAL_GROUP_POSTS.test(pathname))
+    );
   // The Maya chat, the test group, or the account's own avatar in the header.
   return (
     other !== undefined &&
@@ -82,7 +96,7 @@ export const test = base.extend<{ refused: string[] }>({
     await page.route("**/api/**", async (route) => {
       const request = route.request();
       const { pathname } = new URL(request.url());
-      if (permitted(pathname)) return route.continue();
+      if (permitted(pathname, request.method())) return route.continue();
       refused.push(`${request.method()} ${pathname}`);
       return route.abort("blockedbyclient");
     });
@@ -116,6 +130,19 @@ export async function openTestGroup(page: Page, side: "owner" | "maya") {
   const ask = page.getByRole("button", { name: "Not now" });
   if (await ask.isVisible().catch(() => false)) await ask.click();
   await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
+  return page;
+}
+
+// Opens the real group from Maya's side by its chat link (ADR 36).
+export async function openRealGroup(page: Page) {
+  if (!REAL_GROUP) throw new Error("Name the group in live-targets.json");
+  const id = REAL_GROUP.replace(/^channel:/, "-100");
+  await page.goto(`/?account=${MAYA}#${id}`);
+  const ask = page.getByRole("button", { name: "Not now" });
+  if (await ask.isVisible().catch(() => false)) await ask.click();
+  await expect(
+    page.getByRole("button", { name: "Conversation actions" }),
+  ).toBeVisible();
   return page;
 }
 

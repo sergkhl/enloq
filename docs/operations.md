@@ -702,6 +702,14 @@ then four asks in a row around the old 5-second keep-alive. At most 60 model
 requests. Its group send goes through the app's own path, so it also proves a
 private supergroup's Send.
 
+`live/ask-real-group.spec.ts` checks the same on real traffic, in the real group
+Maya joined at the owner's word (`real_group`): from her side only, sending
+nothing, with her Group AI On for the run and Off again after it. It asks general
+questions in Russian and English and one nothing answers, opens a source, and
+prints only statuses and counts. At most 40 model requests besides the embeddings
+its messages need. A failed run's page snapshot under `.local/live-results/` holds
+other people's words: leave it unread and delete it.
+
 `live/reminders.spec.ts` checks ADR 58 in the Maya chat. It sends the day's
 authored test message, then saves two exact-time Once reminders due a few
 minutes later: one whose Message Idea names that day and one without an idea.

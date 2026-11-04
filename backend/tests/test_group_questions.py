@@ -61,12 +61,36 @@ def test_an_answer_cites_only_retrieved_messages():
             {**answer, "statements": [{"text": "x", "citations": [4]}]},
             "answer_citations",
         ),
-        ({"statements": [{"text": "x", "citations": [3]}] * 5}, "answer_schema"),
+        ({"statements": [{"text": "x", "citations": ["three"]}]}, "answer_schema"),
         ({"outcome": "not_found", "statements": []}, "answer_schema"),
     ):
         with pytest.raises(AnswerError) as failure:
             validate_answer(broken, [3, 5])
         assert failure.value.code == code
+
+
+def test_what_the_rules_would_drop_costs_only_itself():
+    # Real questions about a day's talk produced each of these.
+    one = {"text": "One thing.", "citations": [3]}
+    ids = list(range(1, 21))
+    answer = validate_answer({"statements": [one] * 5}, ids)
+    assert len(answer.statements) == 4
+    many = {"text": "A long thread.", "citations": ids}
+    assert (
+        validate_answer({"statements": [many]}, ids).statements[0].citations
+        == (ids[:10])
+    )
+    twice = {"text": "Said twice.", "citations": [3, 3, 4]}
+    assert validate_answer({"statements": [twice]}, ids).statements[0].citations == [
+        3,
+        4,
+    ]
+    nothing = {"text": "Nobody asked about it.", "citations": []}
+    kept = validate_answer({"statements": [nothing, one]}, ids)
+    assert [s.text for s in kept.statements] == ["One thing."]
+    # A statement left with no citation is dropped, and an answer with none
+    # abstains (Q6).
+    assert validate_answer({"statements": [nothing]}, ids).outcome == "not_found"
 
 
 def test_vectors_and_scores_are_validated():
@@ -693,3 +717,17 @@ async def test_an_abandoned_question_keeps_the_vectors_it_paid_for(rig):
     assert (await questions.ask(KEY, "Which point?"))["status"] == "answer"
     asked = [len(c[1]["texts"]) for c in questions.embedder.calls[embedded:]]
     assert asked == [1, 1]
+
+
+async def test_a_member_reads_plain_words_when_the_writer_fails(rig):
+    source(rig, 1, text="The shed key is with Eli now.")
+    rig.app.engine.answer = {"statements": [{"text": "x", "citations": [999]}]}
+    with pytest.raises(Refused, match="^The answer came back unreadable. Ask again.$"):
+        await rig.app.questions.ask(KEY, "Who has the key?")
+
+    async def broken(role, packet):
+        raise RuntimeError("Authored outage")
+
+    rig.app.engine.generate = broken
+    with pytest.raises(Refused, match="^The model didn't answer. Ask again.$"):
+        await rig.app.questions.ask(KEY, "Who has the key?")

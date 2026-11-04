@@ -46,6 +46,12 @@ from .group_briefings import checked_view
 
 _LOG = logging.getLogger("enloq.questions")
 
+# ModelWork's words for a failed attempt, and what a member reads for them.
+PLAIN_FAILURES = {
+    "Invalid structured output": "The answer came back unreadable. Ask again.",
+    "Provider unavailable": "The model didn't answer. Ask again.",
+    "Attempt interrupted": "The question was interrupted. Ask again.",
+}
 # Embedding and rerank refusals that did no work are tried again (_run).
 RETRIED_TRIES, RETRIED_WAIT = 3, 5
 # A long transcript is embedded by its beginning: the vector only ranks it.
@@ -190,9 +196,20 @@ class GroupQuestions:
                 return False
             return True
 
-        return await self.app.rewriting.work.run(
-            engine, job, packet, valid, klass="suggestions", admit=self._ai
-        )
+        try:
+            return await self.app.rewriting.work.run(
+                engine, job, packet, valid, klass="suggestions", admit=self._ai
+            )
+        except ProviderRefused:
+            raise
+        except Refused as failure:
+            # What a member reads: this screen has no Retry; asking again is it.
+            reason = str(failure)
+            for start, plain in PLAIN_FAILURES.items():
+                if reason.startswith(start):
+                    _LOG.warning("Ask's %s: %s", role, reason)
+                    raise Refused(plain) from None
+            raise
 
     @staticmethod
     def _batches(items, text_of):

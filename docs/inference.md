@@ -567,9 +567,10 @@ access, not Telegram's connection, and a question ends when its client goes.
 - **Writer.** gpt-6.1-sol in the `group_question` role on the proxy's
   `chatgpt/gpt-6.1-sol` subscription route at its medium default, through the
   chat route, which drops `response_format`: the reply must hold one JSON
-  object, at most four statements whose citations are among the IDs it has
-  read, none meaning not found, validated strictly. Receipts record $0. Its
-  instructions are fixed and read no Processing Guidance.
+  object, statements whose citations are among the IDs it has read, none meaning
+  not found, validated strictly. Past four statements or ten citations, and a
+  statement citing nothing, are dropped rather than failing the answer. Receipts
+  record $0. Its instructions are fixed and read no Processing Guidance.
 - **Tools** ([ADR 60](adr/0060-tool-calling-in-ask-this-group.md)). After
   the best 25, the writer may call `search_messages` (the retrieval above for
   its own query; the best 10), `messages_around` (up to five originals on

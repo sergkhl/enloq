@@ -57,9 +57,12 @@ deleted with edits and deletions. Its cost is part of that question's.
 
 **Writer (Q5).** gpt-6.1-sol at its medium default writes the answer in a
 `group_question` role, on the proxy's `chatgpt/gpt-6.1-sol` subscription
-route: up to four statements, each citing messages it has read, in the
-retrieved set or its tools' results (ADR 60), and none when the messages do
-not address the question; any other ID fails validation. It answers in the
+route: up to four statements, each citing up to ten messages it has read, in
+the retrieved set or its tools' results (ADR 60), and none when the messages do
+not address the question; any other ID fails validation. A statement past the
+fourth, a citation past the tenth and a statement citing nothing are dropped
+without failing the answer, since questions about a day's talk produce them. It
+answers in the
 question's language and says what is still open when the group left a
 question open. Nothing streams: an answer shows once checked. It replaced MiMo after the measurement: MiMo answered 27 of 48
 answerable questions correctly with thinking on, and with thinking off said

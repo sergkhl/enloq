@@ -7,6 +7,7 @@ citation check (ADR 34) then confirms each statement.
 """
 
 import json
+import logging
 import math
 import re
 import unicodedata
@@ -19,6 +20,8 @@ from .briefing_contract import BriefingModel, NativeID, meaningful
 from .citation_check import ANSWER_CHECK_ROLE
 from .models import Model, Refused
 
+_LOG = logging.getLogger("enloq.questions")
+
 QUESTION_ROLE = "group_question"
 EMBED_ROLE = "group_embeddings"
 RERANK_ROLE = "group_rerank"
@@ -26,6 +29,8 @@ ROLES = frozenset({QUESTION_ROLE, EMBED_ROLE, RERANK_ROLE, ANSWER_CHECK_ROLE})
 MAX_QUESTION = 500
 # ADR 59 Q8: one writer request and at most four check requests.
 MAX_STATEMENTS = 4
+# A statement about a whole day's talk rests on many messages (Q5).
+MAX_CITED = 10
 # How many candidates each stage keeps: keyword and vector rankings and their
 # fusion (measured in the Ask check), what the reranker reorders, and what the
 # writer reads.
@@ -59,7 +64,7 @@ class AnswerError(ValueError):
 
 class AnswerStatement(BriefingModel):
     text: str = Field(min_length=1, max_length=600)
-    citations: list[NativeID] = Field(min_length=1, max_length=5)
+    citations: list[NativeID] = Field(min_length=1, max_length=MAX_CITED)
 
     _text = field_validator("text")(meaningful)
 
@@ -83,11 +88,40 @@ class GroupAnswer(BriefingModel):
         return "answer" if self.statements else "not_found"
 
 
+def tidied(output):
+    """An answer without what the rules would drop anyway, so that excess costs
+    only itself: a statement citing nothing (ADR 59 Q6), a statement past the
+    fourth and a citation past the tenth or repeated (Q5). Real questions about a
+    day's talk produced these, and each used to fail the whole answer."""
+    if not isinstance(output, dict) or not isinstance(output.get("statements"), list):
+        return output
+    statements = []
+    for statement in output["statements"]:
+        if isinstance(statement, dict) and isinstance(statement.get("citations"), list):
+            if not statement["citations"]:
+                continue
+            statement = {
+                **statement,
+                "citations": list(dict.fromkeys(statement["citations"]))[:MAX_CITED],
+            }
+        statements.append(statement)
+    return {**output, "statements": statements[:MAX_STATEMENTS]}
+
+
 def validate_answer(output, retrieved_ids):
     """The writer's answer, citing only the messages retrieval gave it."""
     try:
-        answer = GroupAnswer.model_validate(output)
-    except ValidationError:
+        answer = GroupAnswer.model_validate(tidied(output))
+    except ValidationError as failure:
+        _LOG.warning(
+            "The writer's answer failed its shape: %s",
+            [
+                (".".join(map(str, error["loc"])), error["type"])
+                for error in failure.errors(
+                    include_input=False, include_context=False, include_url=False
+                )
+            ],
+        )
         raise AnswerError("answer_schema") from None
     except (TypeError, UnicodeError):
         raise AnswerError("answer_schema") from None

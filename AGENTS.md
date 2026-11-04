@@ -189,6 +189,11 @@ login is a MacHelm setting, and install does not change it.
   The one other chat allowed is the test group, a private supergroup of those
   two accounts alone, named `group` in the same file: `openTestGroup` opens it,
   and Maya's Group AI processing stands On there.
+- Maya also joined a real group at the owner's word, named `real_group` in the
+  same file, for checks that need real traffic. Other people are there: only
+  Maya's side, never send anything there, keep what its messages and answers say
+  out of tests' output, and leave her Group AI Off between runs, so her copy
+  spends nothing on briefings. `openRealGroup` and its guard hold these.
 - Both accounts are signed in on the VPS service with AI processing On, and
   Remember this chat is On for the Maya chat in the Owner Account (ADR 55
   Q29), so live sends there are processed on both sides and teach Maya's
