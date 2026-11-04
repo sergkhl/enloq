@@ -506,3 +506,28 @@
   color: var(--muted);
   text-align: center;
 }
+
+/* Settings → Logs (ADR 61). */
+.log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px;
+}
+.log-empty {
+  padding: 8px 16px;
+  color: var(--muted);
+}
+.log-line {
+  margin: 0;
+  padding: 6px 16px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.log-warn {
+  color: #8a5a00;
+}
+.log-error {
+  color: var(--danger);
+}

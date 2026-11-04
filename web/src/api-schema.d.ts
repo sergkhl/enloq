@@ -619,6 +619,35 @@ export interface components {
              */
             code: string;
         };
+        /** ClientLogEntry */
+        ClientLogEntry: {
+            /** Time */
+            time: number;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "info" | "warn" | "error";
+            /** Source */
+            source: string;
+            /** Message */
+            message: string;
+            /**
+             * Stack
+             * @default null
+             */
+            stack: string | null;
+        };
+        /** ClientLogs */
+        ClientLogs: {
+            /**
+             * Build
+             * @default
+             */
+            build: string;
+            /** Entries */
+            entries: components["schemas"]["ClientLogEntry"][];
+        };
         /** CodeAttempt */
         CodeAttempt: {
             /** Id */
@@ -2190,6 +2219,11 @@ export interface components {
              * @default null
              */
             animation_url: string | null;
+        };
+        /** ServerLogs */
+        ServerLogs: {
+            /** Lines */
+            lines: string[];
         };
         /** Settings */
         Settings: {

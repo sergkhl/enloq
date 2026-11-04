@@ -229,6 +229,8 @@ with icons:
   Decision-Model Outage notice while one lasts.
 - **Privacy**: Pair a phone and the member's trusted browsers and devices with
   Forget.
+- **Logs**: this client's log with Send to server, and for the owner the
+  service's last lines ([ADR 61](docs/adr/0061-extended-logs.md)).
 - **People** (the owner only).
 
 Below them come Leave Enloq for a member, Disconnect for this client and, in
@@ -1272,8 +1274,8 @@ with its own tools when the best 25 do not settle the question (ADR 60), and
 runs the Citation Check on every statement, dropping one left with no
 supported citation.
 When nothing answers, one line names the searched range. Nothing is stored:
-the answer lives on the open screen. It is paid from the Group Briefing
-Budget, one question at a time per account.
+the answer lives on the open screen, and leaving the screen ends the question.
+It is paid from the Group Briefing Budget, one question at a time per account.
 
 ### Notifications
 

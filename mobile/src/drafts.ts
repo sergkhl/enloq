@@ -1,5 +1,12 @@
 import { useEffect, useReducer, useRef } from "react";
-import { Refused, Unreachable, type Schemas } from "./api";
+import { SERVER_ERROR } from "../../shared/serverErrors";
+import {
+  Refused,
+  ServerFailed,
+  Unreachable,
+  offline,
+  type Schemas,
+} from "./api";
 import { readCached, removeCached, writeCached } from "./cache";
 import { useConnection } from "./connection";
 import type { CatalogItem } from "./catalog";
@@ -117,9 +124,7 @@ export function useComposer(
       : "the server";
 
   function failed(error: unknown) {
-    return error instanceof Unreachable
-      ? `${origin} can't be reached.`
-      : message(error);
+    return offline(error) ? `${origin} can't be reached.` : message(error);
   }
 
   // The local copy is restored once, against the first draft the phone
@@ -183,9 +188,11 @@ export function useComposer(
         s.saveNote = "";
       } catch (error) {
         const conflict = error instanceof Refused && error.status === 409;
-        s.retry = conflict || error instanceof Unreachable;
+        // A busy server refuses for now, as an unanswered one might.
+        const busy = error instanceof Refused && error.status === 503;
+        s.retry = conflict || busy || error instanceof Unreachable;
         s.saveNote =
-          error instanceof Unreachable
+          busy || error instanceof Unreachable
             ? "Kept on this phone until the server answers."
             : message(error);
         // A newer draft lets the next save write these edits over it.
@@ -378,7 +385,11 @@ export function useComposer(
             // second Send of the same revision returns that send, never a
             // new one, so the draft stays for it.
             if (!(error instanceof Unreachable)) throw error;
-            s.note = `${origin} can't be reached. Your draft is kept; check the chat before sending again.`;
+            s.note = `${
+              error instanceof ServerFailed
+                ? SERVER_ERROR
+                : `${origin} can't be reached.`
+            } Your draft is kept; check the chat before sending again.`;
             return;
           }
           s.pending = sent.operation;

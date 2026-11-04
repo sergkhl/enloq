@@ -1,49 +1,24 @@
 import json
 import logging
+import sqlite3
+import sys
 
 import pytest
 from enloq.config import Settings, private_read, private_write
 from enloq.domain.models import Refused
-from enloq.logs import SafeFormatter
+from enloq.logs import ExtendedFormatter, RecentLines
 
 
-def test_suggestion_diagnostics_allow_only_bounded_content_free_fields():
+def test_a_suggestion_decision_line_carries_its_fields():
     record = logging.LogRecord(
         "enloq.suggestions", logging.DEBUG, "", 0, "suggestion_decision", (), None
     )
-    record.suggestion_decision = {
+    record.suggestion_decision = {"attempt": "a" * 32, "reason": "automatic_signal"}
+    line = ExtendedFormatter().format(record)
+    assert json.loads(line.split("suggestion_decision ")[1]) == {
         "attempt": "a" * 32,
-        "trigger": "automatic",
         "reason": "automatic_signal",
-        "emotion": "angry",
-        "probability": 0.8,
-        "usefulness": 0.2,
-        "threshold": 0.7,
-        "body": "Private canary",
-        "chat_key": "Private canary",
-        "prompt": "Private canary",
-        "style": "Private canary",
-        "outcome": "Private canary",
-        "options": 100000,
     }
-    line = SafeFormatter().format(record)
-    assert "Private canary" not in line and "chat_key" not in line
-    fields = json.loads(line.split("suggestion_decision ")[1])
-    assert fields == {
-        "attempt": "a" * 32,
-        "trigger": "automatic",
-        "reason": "automatic_signal",
-        "emotion": "angry",
-        "probability": 0.8,
-        "usefulness": 0.2,
-        "threshold": 0.7,
-    }
-    record.suggestion_decision = {
-        "attempt": "1/user:42",
-        "reason": "Private canary",
-        "usefulness": float("nan"),
-    }
-    assert SafeFormatter().format(record).endswith("suggestion_decision {}")
 
 
 def test_offline_does_not_read_credentials(tmp_path, monkeypatch):
@@ -56,90 +31,62 @@ def test_offline_does_not_read_credentials(tmp_path, monkeypatch):
         settings.secret("MUSE_API_KEY_REF")
 
 
-def test_private_file_and_log_boundary(tmp_path):
+def test_private_files_stay_private(tmp_path):
     path = tmp_path / "secret"
     private_write(path, "private canary")
     assert private_read(path) == "private canary"
     path.chmod(0o644)
     with pytest.raises(Refused):
         private_read(path)
-    record = logging.LogRecord(
-        "httpx", logging.ERROR, "", 0, "Bearer secret message body", (), None
-    )
-    line = SafeFormatter().format(record)
-    assert line.endswith(" ERROR httpx event_redacted")
-    assert "secret" not in line
 
 
-def test_log_lines_carry_event_codes_and_safe_metadata_only():
-    import sys
+def log_line(name, message, args=(), level=logging.WARNING, error=None):
+    exc_info = None
+    if error is not None:
+        try:
+            raise error
+        except type(error):
+            exc_info = sys.exc_info()
+    record = logging.LogRecord(name, level, "", 0, message, args, exc_info)
+    record.created = 1790740952.5
+    return ExtendedFormatter().format(record)
 
-    def line(name, message, args=(), level=logging.WARNING, error=None):
-        exc_info = None
-        if error is not None:
-            try:
-                raise error
-            except type(error):
-                exc_info = sys.exc_info()
-        record = logging.LogRecord(name, level, "", 0, message, args, exc_info)
-        record.created = 1790740952.5
-        return SafeFormatter().format(record)
 
-    # App loggers pass their fixed event codes with time, level, logger and class.
-    assert line("enloq.scheduler", "dispatch_unavailable") == (
+def test_log_lines_carry_their_message_and_traceback():
+    # ADR 61: time, level, logger, message and arguments, then the traceback.
+    assert log_line("enloq.scheduler", "dispatch_unavailable") == (
         "2026-09-30T04:02:32Z WARNING enloq.scheduler dispatch_unavailable"
     )
-    assert line(
-        "enloq.mtproto",
-        "mtproto_reconnect_stopped",
+    assert log_line("httpx", "reading %s", ("a body",)).endswith(
+        "WARNING httpx reading a body"
+    )
+    line = log_line(
+        "uvicorn.error",
+        "Exception in ASGI application",
         level=logging.ERROR,
-        error=ConnectionError("authored canary detail"),
-    ).endswith("mtproto_reconnect_stopped error=ConnectionError")
-    # Arguments, free text, other loggers and exception messages stay redacted.
-    redacted = [
-        line("enloq.scheduler", "dispatch_unavailable", ("canary",)),
-        line("enloq.scheduler", "authored canary text"),
-        line("enloqx", "dispatch_unavailable"),
-        line("asyncio", "Task failed: canary", error=RuntimeError("canary")),
-        line("enloq", {"canary": 1}),
-    ]
-    assert all("event_redacted" in r and "canary" not in r for r in redacted)
-    assert redacted[3].endswith("asyncio event_redacted error=RuntimeError")
+        error=sqlite3.OperationalError("database is locked"),
+    )
+    assert "Exception in ASGI application\nTraceback" in line
+    assert "log_line" in line
+    assert line.endswith("sqlite3.OperationalError: database is locked")
 
 
-def test_app_warning_call_sites_use_fixed_event_codes():
-    import ast
-    from pathlib import Path
+def test_anything_shaped_like_a_credential_is_masked():
+    line = log_line(
+        "httpx",
+        "Authorization: Bearer abc.DEF-123 for sk-or-v1-0123456789 at https://x/v1",
+    )
+    assert "abc.DEF" not in line and "0123456789" not in line
+    assert line.endswith("Authorization: Bearer … for sk-… at https://x/v1")
 
-    import enloq
-    from enloq.logs import EVENTS
 
-    used = set()
-    for path in Path(enloq.__file__).parent.rglob("*.py"):
-        for node in ast.walk(ast.parse(path.read_text())):
-            where = f"{path.name}:{getattr(node, 'lineno', 0)}"
-            if isinstance(node, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == "_LOG" for t in node.targets
-            ):
-                name = node.value.args[0].value
-                assert name == "enloq" or name.startswith("enloq."), where
-            if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "_LOG"
-                and node.func.attr
-                in {"debug", "warning", "error", "critical", "exception"}
-            ):
-                code = node.args[0] if node.args else None
-                assert (
-                    len(node.args) == 1
-                    and isinstance(code, ast.Constant)
-                    and code.value in EVENTS
-                ), where
-                used.add(code.value)
-    # Every warning-level app call uses a fixed code, and no code is stale.
-    assert used == EVENTS
+def test_recent_lines_keep_the_newest():
+    recent = RecentLines(size=2)
+    recent.setFormatter(ExtendedFormatter())
+    for text in ("first", "second", "third"):
+        recent.emit(logging.LogRecord("enloq", logging.INFO, "", 0, text, (), None))
+    assert [line.rsplit(" ", 1)[1] for line in recent.read()] == ["second", "third"]
+    assert len(recent.read(1)) == 1
 
 
 def test_media_lease_validation_and_cleanup(tmp_path):

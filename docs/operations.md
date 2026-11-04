@@ -90,18 +90,33 @@ send identities and spending records. Never remove a session to get past it.
 
 `./scripts/service uninstall` removes the definition from MacHelm while
 preserving credentials and local data. In `.local/service/`, `service.log`
-(stdout) holds only the start-up banner. Lines the app's log handler writes to
-`service-error.log` (stderr) read `<UTC time> <level> <logger> <event>`,
-optionally followed by `error=<exception class>`. Only the app's fixed event
-codes (listed in `backend/src/enloq/logs.py`) appear; library messages, Python
-warnings and arguments show as `event_redacted`, and tracebacks are dropped
-except for the exception class. Errors raised before the server starts and
-uncaught thread tracebacks bypass the handler and can still reach
-`service-error.log` raw, so do not dump logs or configuration that might
-contain content. `./scripts/doctor --redacted` reports dependency versions,
+(stdout) holds only the start-up banner, and `service-error.log` (stderr) holds
+the [logs](#logs). `./scripts/doctor --redacted` reports dependency versions,
 the model routes and configured proxy endpoint, account-state counts and each
 reference's presence and permissions, without authenticating or printing
 secrets.
+
+### Logs
+
+[ADR 61](adr/0061-extended-logs.md): each line reads `<UTC time> <level>
+<logger> <message>`, then any traceback. On the VPS, `docker compose logs app`
+in the service folder reads them, rotated at five files of 50 MB. Besides warnings
+and errors:
+
+- `enloq.http`: a line per request, with method, path, status, seconds, member
+  and client; each refusal a client is shown; a store's lock timeout; and
+  `Event loop stalled for N s`, whenever something held the loop for a second or
+  more.
+- `enloq.questions`: each Ask this group question, its outcome and time, or the
+  step it failed at: admission, pool or a model role.
+- `enloq.client`: what the app and browsers sent, named by member, client, kind
+  and build. Errors and warnings arrive by themselves; **Settings → Logs → Send
+  to server** sends a client's whole log. A crash on a phone arrives at its next
+  start.
+
+Logs can hold private content. Read only what a diagnosis needs, and keep them
+out of the repository. Telegram's per-request lines stay in the session's pacing
+database, for 72 hours.
 
 ### Finite checks
 

@@ -29,6 +29,7 @@ from enloq.api.auth import (
     TrustedBrowser,
 )
 from enloq.api.deletions import DeletionSubmit, DeletionTarget
+from enloq.api.logs import ClientLogs, ServerLogs
 from enloq.api.memory import AccountMemoryView, MemoryView, Remembering
 from enloq.api.notifications import (
     DeviceNotificationStatus,
@@ -219,6 +220,8 @@ _, schema = models_json_schema(
             SelectedMediaView,
             SelectMedia,
             SelectedMediaAction,
+            ClientLogs,
+            ServerLogs,
         )
     ],
     ref_template="#/components/schemas/{model}",

@@ -1570,6 +1570,80 @@
         "title": "ClientDecision",
         "type": "object"
       },
+      "ClientLogEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "time": {
+            "minimum": 0,
+            "title": "Time",
+            "type": "number"
+          },
+          "level": {
+            "enum": [
+              "info",
+              "warn",
+              "error"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 40,
+            "title": "Source",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 20000,
+            "title": "Message",
+            "type": "string"
+          },
+          "stack": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stack"
+          }
+        },
+        "required": [
+          "time",
+          "level",
+          "source",
+          "message"
+        ],
+        "title": "ClientLogEntry",
+        "type": "object"
+      },
+      "ClientLogs": {
+        "additionalProperties": false,
+        "properties": {
+          "build": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Build",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ClientLogEntry"
+            },
+            "maxItems": 200,
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "ClientLogs",
+        "type": "object"
+      },
       "CodeAttempt": {
         "additionalProperties": false,
         "properties": {
@@ -5362,6 +5436,23 @@
           "status"
         ],
         "title": "SelectedMediaView",
+        "type": "object"
+      },
+      "ServerLogs": {
+        "additionalProperties": false,
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "ServerLogs",
         "type": "object"
       },
       "Settings": {

@@ -9,7 +9,7 @@ from enloq.domain.models import Conflict, Refused
 from enloq.domain.suggestions import bracketed
 from enloq.inference.base import EngineResponse, InvalidOutput
 from enloq.inference.work import validate_output
-from enloq.logs import SafeFormatter
+from enloq.logs import ExtendedFormatter
 from enloq.storage.accounts import AccountRegistry
 
 from backend.tests.test_rebuild import attach, fixture, message
@@ -341,7 +341,7 @@ async def test_debug_log_explains_scheduling_and_outcome_without_correspondence(
     for _ in range(8):
         await app.process_due()
     lines = [
-        SafeFormatter().format(r)
+        ExtendedFormatter().format(r)
         for r in caplog.records
         if r.name == "enloq.suggestions"
     ]

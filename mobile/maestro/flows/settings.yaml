@@ -74,5 +74,17 @@ appId: ${APP_ID}
     timeout: 15000
 - tapOn: "Back"
 - tapOn: "Back"
+# Settings → Logs (ADR 61): this phone's log goes to the service's, whose lines
+# the owner reads here too.
+- tapOn: "Logs"
+- tapOn: "Send to server"
+- extendedWaitUntil:
+    visible: "Sent to the server's log."
+    timeout: 15000
+- tapOn: "Server"
+- extendedWaitUntil:
+    visible: ".*POST /api/logs/client 204.*"
+    timeout: 15000
+- tapOn: "Back"
 - tapOn: "Back"
 - assertVisible: "Account: Demo account. Switch account"

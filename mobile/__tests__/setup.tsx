@@ -500,6 +500,9 @@ export function serve(route: Route) {
       url: string,
       init: { method: string; headers: Record<string, string>; body?: string },
     ) => {
+      // A client's log (ADR 61) goes along with whatever a test asks.
+      if (url.endsWith("/api/logs/client"))
+        return { ok: true, status: 204, json: async () => null };
       calls.push({ url, ...init });
       let answer: { status: number; body: unknown };
       try {
@@ -524,6 +527,7 @@ export function serve(route: Route) {
 }
 
 export function reset() {
+  (require("../src/logs") as typeof import("../src/logs")).forgetLogs();
   mockStore.clear();
   mockRouter.replace.mockReset();
   mockRouter.push.mockReset();

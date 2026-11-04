@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import re
 import shutil
@@ -80,6 +81,8 @@ def remove_abandoned_fixture():
 
 os.umask(0o077)
 configure_logging()
+# Settings → Logs reads every line; the terminal running the journeys, warnings.
+logging.getLogger().handlers[0].setLevel(logging.WARNING)
 private_directory(ROOT / ".local")
 remove_abandoned_fixture()
 # Playwright stops the server with SIGTERM, which uvicorn re-raises after its

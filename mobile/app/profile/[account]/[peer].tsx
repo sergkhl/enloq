@@ -10,7 +10,7 @@ import {
   SUGGESTION_STYLES,
   type SuggestionStyle,
 } from "../../../../shared/suggestions";
-import { Unreachable, type Schemas } from "../../../src/api";
+import { offline as isOffline, type Schemas } from "../../../src/api";
 import { Avatar } from "../../../src/Avatar";
 import { chatKey, readCached } from "../../../src/cache";
 import { useConnection } from "../../../src/connection";
@@ -91,7 +91,7 @@ function useRead<T>(path: string) {
       (answer) => live && setValue(answer),
       (error) => {
         if (!live) return;
-        if (error instanceof Unreachable) setOffline(true);
+        if (isOffline(error)) setOffline(true);
         else setProblem(error instanceof Error ? error.message : String(error));
       },
     );

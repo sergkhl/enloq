@@ -72,7 +72,10 @@ import {
   SettingsScreen,
 } from "./SettingsScreen";
 import { GuidanceFieldScreen, GuidanceScreen } from "./GuidanceScreen";
+import { installLogging } from "./logs";
+import { LogsScreen } from "./LogsScreen";
 import { PrivacyScreen } from "./DevicesScreen";
+import { ScreenBoundary } from "./ScreenBoundary";
 import { PairPhoneScreen } from "./PairPhoneScreen";
 import { PeopleScreen } from "./PeopleScreen";
 import { STAGE_TARGETS, type SettingsTarget } from "../../shared/settings";
@@ -1322,6 +1325,7 @@ function App() {
     | { kind: "budget"; section: "daily" | "group" | null }
     | { kind: "ai" }
     | { kind: "privacy" }
+    | { kind: "logs" }
     | { kind: "people" }
     | { kind: "pair" }
     | { kind: "guidance" }
@@ -2080,6 +2084,7 @@ function App() {
       {top?.kind === "people" && (
         <PeopleScreen timezone={overview?.timezone || "UTC"} onBack={back} />
       )}
+      {top?.kind === "logs" && <LogsScreen onBack={back} />}
       {top?.kind === "pair" && <PairPhoneScreen onBack={back} />}
       {top?.kind === "guidance" && (
         <GuidanceScreen
@@ -2227,8 +2232,11 @@ function App() {
     </main>
   );
 }
+installLogging();
 createRoot(document.getElementById("root")!).render(
   <BrowserGate>
-    <App />
+    <ScreenBoundary>
+      <App />
+    </ScreenBoundary>
   </BrowserGate>,
 );

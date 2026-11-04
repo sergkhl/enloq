@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
+  FileText,
   Lock,
   Minus,
   Pencil,
@@ -111,7 +112,7 @@ export function SettingsScreen({
 }: {
   onBack: () => void;
   onOpen: (
-    page: "notifications" | "budget" | "ai" | "privacy" | "people",
+    page: "notifications" | "budget" | "ai" | "privacy" | "logs" | "people",
   ) => void;
 }) {
   const { settings } = useSettings();
@@ -168,6 +169,7 @@ export function SettingsScreen({
           detail={trusted === null ? undefined : String(trusted)}
           onOpen={() => onOpen("privacy")}
         />
+        <MenuRow icon={FileText} label="Logs" onOpen={() => onOpen("logs")} />
         {owner && <PeopleRow onOpen={() => onOpen("people")} />}
       </Section>
       {me?.role === "member" && <LeaveEnloq />}

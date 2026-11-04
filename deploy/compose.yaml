@@ -11,6 +11,12 @@ services:
     init: true
     stop_grace_period: 30s
     mem_limit: 4g
+    # A line per request and each client's errors (ADR 61).
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: "5"
     volumes:
       - type: bind
         source: ./data

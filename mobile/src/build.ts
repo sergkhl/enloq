@@ -11,10 +11,14 @@ export function buildLine(version: string, build?: BuildDetails | null) {
   return [`Enloq ${version}`, build.commit, date].filter(Boolean).join(" · ");
 }
 
+const details = () =>
+  (Constants.expoConfig?.extra as { build?: BuildDetails } | undefined)?.build;
+
 export function thisBuild() {
-  const config = Constants.expoConfig;
-  return buildLine(
-    config?.version ?? "",
-    (config?.extra as { build?: BuildDetails } | undefined)?.build,
-  );
+  return buildLine(Constants.expoConfig?.version ?? "", details());
+}
+
+// The commit a Saved Build was made from; a development build has none.
+export function buildCommit() {
+  return details()?.commit ?? "";
 }

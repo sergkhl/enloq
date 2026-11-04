@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system";
+import { buildCommit } from "./build";
 
 // ADR 38 Q20: what this phone last loaded stays readable when its server
 // can't be reached, across restarts. It lives in the cache directory, which
@@ -9,8 +10,17 @@ const MAX_AGE = 30 * 86_400_000;
 // Opened conversations kept; accounts, lists and the reading choice are few.
 const MAX_CHATS = 20;
 const CHATS = "chats-opened";
+// The phone's own words and records, which every build reads. The rest are the
+// server's answers, whose shape belongs to the build that kept them (ADR 61):
+// a copy from another build is not read, or a screen would draw it, and fail,
+// before the server's fresh answer could replace it.
+const OWN = /^(draft:|deletion:|push-events$|logs$)/;
 
-type Saved<T> = { saved: number; value: T };
+type Saved<T> = { saved: number; build?: string; value: T };
+
+const readable = <T>(key: string, saved: Saved<T>) =>
+  Date.now() - saved.saved <= MAX_AGE &&
+  (OWN.test(key) || (saved.build ?? "") === buildCommit());
 
 const folder = () => new Directory(Paths.cache, "enloq");
 export const cacheFolder = (name: string) => new Directory(folder(), name);
@@ -29,8 +39,21 @@ export async function readCached<T>(key: string): Promise<T | null> {
     const file = entry(key);
     if (!file.exists) return null;
     const saved = JSON.parse(await file.text()) as Saved<T>;
-    if (Date.now() - saved.saved <= MAX_AGE) return saved.value;
+    if (readable(key, saved)) return saved.value;
     file.delete();
+  } catch {
+    // An unreadable copy is no copy.
+  }
+  return null;
+}
+
+// For the log, which a crash's handler must extend before anything can wait.
+export function readCachedSync<T>(key: string): T | null {
+  try {
+    const file = entry(key);
+    if (!file.exists) return null;
+    const saved = JSON.parse(file.textSync()) as Saved<T>;
+    if (readable(key, saved)) return saved.value;
   } catch {
     // An unreadable copy is no copy.
   }
@@ -42,7 +65,9 @@ export function writeCached(key: string, value: unknown) {
     const directory = folder();
     if (!directory.exists)
       directory.create({ intermediates: true, idempotent: true });
-    entry(key).write(JSON.stringify({ saved: Date.now(), value }));
+    entry(key).write(
+      JSON.stringify({ saved: Date.now(), build: buildCommit(), value }),
+    );
     if (key.startsWith("chat:")) keepRecent(key);
   } catch {
     // A full disk costs only the offline copy.

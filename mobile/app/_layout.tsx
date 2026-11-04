@@ -6,8 +6,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AgreementGate } from "../src/AgreementGate";
 import { ConnectionProvider, useConnection } from "../src/connection";
 import type { Schemas } from "../src/api";
+import { installLogging } from "../src/logs";
 import { usePushUpkeep } from "../src/push";
 import { phonePush } from "../src/phonePush";
+import { ScreenBoundary } from "../src/ScreenBoundary";
+
+installLogging();
 
 function PushUpkeep() {
   usePushUpkeep();
@@ -75,12 +79,19 @@ function PushTaps() {
 export default function Layout() {
   return (
     <SafeAreaProvider>
-      <ConnectionProvider>
-        <PushUpkeep />
-        <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }} />
-        <AgreementGate />
-      </ConnectionProvider>
+      <ScreenBoundary>
+        <ConnectionProvider>
+          <PushUpkeep />
+          <StatusBar style="auto" />
+          <Stack
+            screenOptions={{ headerShown: false }}
+            screenLayout={({ children }) => (
+              <ScreenBoundary navigable>{children}</ScreenBoundary>
+            )}
+          />
+          <AgreementGate />
+        </ConnectionProvider>
+      </ScreenBoundary>
     </SafeAreaProvider>
   );
 }

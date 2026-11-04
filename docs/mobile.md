@@ -318,7 +318,10 @@ Photos and avatars in the platform's own image cache are not part of the copy
 and stay until the system evicts them or the app's data is cleared.
 Replied-to messages that a conversation's Reply Quotes looked up are kept
 beside its copy, under `replies:{account}/{peer}`, limited to the last 30 days
-and deleted with the conversation's copy.
+and deleted with the conversation's copy. A server's answer kept by another
+build is not read, since its shape belongs to that build; the phone's own drafts,
+deletion records and log survive a new build
+([ADR 61](adr/0061-extended-logs.md) Q7).
 
 ## The list and New Message
 
@@ -680,6 +683,11 @@ icon and what it holds on the right, and opens a page of its own:
   them says since when.
 - **Privacy** (a lock; the trusted count): **Pair a phone**
   ([above](#pairing)), then **Trusted browsers and devices**.
+- **Logs** (a page of text): this phone's last 500 entries, every request with
+  its answer and errors with their stacks, and **Send to server**; the owner
+  also reads the service's last lines under **Server**. Errors and warnings go
+  to the service's log by themselves
+  ([ADR 61](adr/0061-extended-logs.md)).
 - **People** (two people, the owner's only; "N waiting" while Join Requests
   wait, then the member count): requests with Approve and Decline, and members
   with their accounts, last activity and today's spending against each budget,
@@ -693,6 +701,9 @@ owner sets your budgets.", and **Leave Enloq** above Disconnect signs the
 server out of their Telegram accounts, deletes everything it keeps for them
 and returns to pairing. A changed Member Agreement covers the app until they
 accept it.
+
+A screen that fails while drawing shows its error in full, with **Try again**
+and **Back to chats**, instead of closing the app.
 
 Switches and the stepper apply at once; amounts and text apply with Save.
 Every write is followed by a fresh read, and another client's change rereads

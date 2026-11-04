@@ -9,8 +9,22 @@ import React, {
   useState,
 } from "react";
 import { AppState } from "react-native";
-import { Revoked, Unreachable, request, type Schemas } from "./api";
+import {
+  LOG_PATH,
+  Revoked,
+  Unreachable,
+  offline as isOffline,
+  request,
+  type Schemas,
+} from "./api";
 import { clearCached, readCached, writeCached } from "./cache";
+import {
+  forgetLogs,
+  hasUnsentLogs,
+  sendLogs,
+  setLogSender,
+  type LogPost,
+} from "./logs";
 import {
   clearCredential,
   loadCredential,
@@ -128,6 +142,8 @@ export function ConnectionProvider({
     setAgreement(null);
     current.current = null;
     clearCached();
+    forgetLogs();
+    setLogSender(null);
     // Its FCM registration goes with it (ADR 38).
     void dropRegistration();
     await clearCredential();
@@ -171,6 +187,7 @@ export function ConnectionProvider({
             state.unreachable ? { ...state, unreachable: false } : state,
           );
           if (keep) writeCached(keep, answer);
+          if (hasUnsentLogs()) void sendLogs();
           // The server is back: a stream still waiting out its retry delay
           // reopens now, and its first refresh rereads every screen.
           if (offline.current) {
@@ -182,7 +199,7 @@ export function ConnectionProvider({
       } catch (error) {
         if (current.current === credential) {
           if (error instanceof Revoked) await forget();
-          else if (error instanceof Unreachable) {
+          else if (isOffline(error)) {
             offline.current = true;
             update((state) => ({ ...state, unreachable: true }));
           }
@@ -241,6 +258,13 @@ export function ConnectionProvider({
   const start = useCallback(
     (credential: Credential) => {
       current.current = credential;
+      // What this phone logged goes to the service it is paired with (ADR 61).
+      setLogSender((post: LogPost) =>
+        request(credential.origin, LOG_PATH, {
+          token: credential.token,
+          body: post,
+        }),
+      );
       setConnection({
         status: "paired",
         credential,

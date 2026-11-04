@@ -5,7 +5,9 @@ import type { components } from "./api-schema";
 import { AboutYou } from "./AboutYou";
 import { Avatar } from "./Avatar";
 import { CodeInput } from "./CodeInput";
+import { loggedPath, record } from "./logs";
 import { servicePlace } from "./serviceHost";
+import { SERVER_BUSY, SERVER_ERROR } from "../../shared/serverErrors";
 
 export type Account = components["schemas"]["AccountSummary"];
 export type Overview = components["schemas"]["Accounts"];
@@ -51,6 +53,14 @@ export async function workspaceApi<T>(
   signal?: AbortSignal,
   options?: { recoverableUnavailable?: readonly string[]; method?: "DELETE" },
 ): Promise<T> {
+  const started = Date.now();
+  const method = body === undefined ? "GET" : options?.method || "POST";
+  const note = (level: "info" | "warn" | "error", outcome: string) =>
+    record(
+      level,
+      "api",
+      `${method} ${loggedPath(path)} ${outcome} ${Date.now() - started} ms`,
+    );
   const response = await fetch(
     `/api/${path}`,
     body === undefined
@@ -62,35 +72,51 @@ export async function workspaceApi<T>(
           body: JSON.stringify(body),
         },
   ).catch((error) => {
-    if (signal?.aborted) throw error;
+    if (signal?.aborted) {
+      note("info", "aborted");
+      throw error;
+    }
+    note("warn", `no answer (${String(error)})`);
     window.dispatchEvent(new Event("browser-service-unavailable"));
     throw new Error("Enloq is unavailable. Start the service and try again.");
   });
   if (response.status === 401)
     window.dispatchEvent(new Event("browser-auth-lost"));
-  // A media endpoint may report a recoverable source/verification refusal as
-  // 503 while the application is healthy. Only a caller's exact documented
-  // details opt into local handling; other server/network failures stay global.
-  const inspectUnavailable =
-    response.status === 503 && !!options?.recoverableUnavailable?.length;
-  if (response.status >= 500 && !inspectUnavailable)
-    window.dispatchEvent(new Event("browser-service-unavailable"));
   const data = await response.json().catch((error) => {
-    if (inspectUnavailable && !signal?.aborted)
-      window.dispatchEvent(new Event("browser-service-unavailable"));
+    // A 500's body is the server's plain text.
+    if (response.status === 500) return null;
+    if (response.status >= 500) {
+      note("error", String(response.status));
+      if (!signal?.aborted)
+        window.dispatchEvent(new Event("browser-service-unavailable"));
+    }
     throw error;
   });
+  const reason = typeof data?.detail === "string" ? data.detail : "";
+  note(
+    response.status >= 500 ? "error" : response.status >= 400 ? "warn" : "info",
+    `${response.status}${reason ? `: ${reason}` : ""}`,
+  );
+  // A 500 is one request's error, and a busy store a moment's. A media endpoint
+  // may also report a recoverable source/verification refusal as 503 while the
+  // application is healthy: only a caller's exact documented details opt into
+  // local handling. Other server failures stay global.
   if (
-    inspectUnavailable &&
-    !options?.recoverableUnavailable?.includes(data?.detail)
+    response.status > 500 &&
+    !(
+      response.status === 503 &&
+      (reason === SERVER_BUSY ||
+        options?.recoverableUnavailable?.includes(reason))
+    )
   )
     window.dispatchEvent(new Event("browser-service-unavailable"));
   if (!response.ok)
     throw new ApiError(
       response.status,
-      typeof data?.detail === "string"
-        ? data.detail
-        : "Please check this action and try again.",
+      reason ||
+        (response.status === 500
+          ? SERVER_ERROR
+          : "Please check this action and try again."),
     );
   return data;
 }

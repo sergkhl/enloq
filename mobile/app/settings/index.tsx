@@ -99,6 +99,12 @@ function SettingsMenu() {
           detail={trusted === null ? undefined : String(trusted)}
           onPress={() => router.push("/settings/privacy")}
         />
+        <Divider />
+        <MenuRow
+          icon="document-text-outline"
+          label="Logs"
+          onPress={() => router.push("/settings/logs")}
+        />
         {role === "owner" ? (
           <>
             <Divider />

@@ -215,6 +215,8 @@ API IDs and hashes, tokens, session files and strings, model keys and populated
 env files are live credentials. Never print their values or commit them. Do not
 dump resolved environments or container configuration, even through a later
 redaction filter. Inspect presence, permissions and explicitly safe metadata.
+The service's logs ([ADR 61](docs/adr/0061-extended-logs.md)) can hold private
+content: read only what a diagnosis needs, and never commit them.
 
 Create ignore rules and placeholder examples before any new private file. Use a
 private directory and `umask 077`; secret files must be mode `600`. Prefer

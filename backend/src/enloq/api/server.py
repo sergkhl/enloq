@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import sqlite3
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -25,6 +28,7 @@ from .catalog_assets import catalog_asset_routes
 from .deletions import deletion_routes
 from .group_filters import group_filter_routes
 from .limits import RefusalLimit
+from .logs import log_routes
 from .notifications import notification_routes
 from .people import people_routes
 from .reminders import reminder_routes
@@ -38,6 +42,37 @@ from .sticker_media import sticker_media_routes
 WAITING_PATHS = frozenset(
     {"/api/auth/session", "/api/auth/disconnect", "/api/members/me"}
 )
+_LOG = logging.getLogger("enloq.http")
+# What a client shows when a store's lock outlasts its 10-second wait; the web
+# tells it from an outage by these words (shared/serverErrors.ts).
+BUSY = "The server is busy. Try again in a moment."
+# How long the event loop may stay away before the log says so.
+STALL_SECONDS = 1.0
+
+
+def busy(request, error):
+    """The answer for a store's lock timeout, or None for any other error."""
+    if "locked" not in str(error):
+        return None
+    _LOG.warning("%s %s: %s", request.method, logged_path(request), error)
+    return JSONResponse({"detail": BUSY}, status_code=503)
+
+
+def logged_path(request):
+    """A request's path, without what follows /api/auth/<operation>: pairing
+    routes name their attempts there."""
+    path = request.url.path
+    return "/".join(path.split("/")[:4]) if path.startswith("/api/auth/") else path
+
+
+async def watch_stalls():
+    """Say when something held the event loop, which every request waits for."""
+    while True:
+        started = time.monotonic()
+        await asyncio.sleep(0.25)
+        late = time.monotonic() - started - 0.25
+        if late >= STALL_SECONDS:
+            _LOG.warning("Event loop stalled for %.1fs", late)
 
 
 def create_app(
@@ -69,12 +104,16 @@ def create_app(
         await manager.start()
         recovery = asyncio.create_task(logins.recover())
         notification_worker = asyncio.create_task(notifications.run())
+        stalls = asyncio.create_task(watch_stalls())
         try:
             yield
         finally:
             recovery.cancel()
             notification_worker.cancel()
-            await asyncio.gather(recovery, notification_worker, return_exceptions=True)
+            stalls.cancel()
+            await asyncio.gather(
+                recovery, notification_worker, stalls, return_exceptions=True
+            )
             await logins.close()
             await manager.close()
 
@@ -102,6 +141,7 @@ def create_app(
     app.include_router(notification_routes(notifications))
     app.include_router(people_routes(manager, auth))
     app.include_router(reminder_routes(manager))
+    app.include_router(log_routes())
 
     expected_origin = settings.origin
     expected_host = urlsplit(expected_origin).netloc
@@ -125,7 +165,25 @@ def create_app(
                 )
         # Sign-ins are also limited per client address (ADR 48 Q11).
         request.state.client_address = address
-        response = await checked(request, call_next)
+        started = time.monotonic()
+        try:
+            response = await checked(request, call_next)
+        except sqlite3.OperationalError as error:
+            # The trust lookups above the routes wait on the same locks.
+            response = busy(request, error)
+            if response is None:
+                raise
+        if request.url.path != "/health":
+            # A line per request (ADR 61). A stream's time is until it opened.
+            _LOG.info(
+                "%s %s %d %.2fs member=%s client=%s",
+                request.method,
+                logged_path(request),
+                response.status_code,
+                time.monotonic() - started,
+                getattr(request.state, "member", None),
+                getattr(request.state, "local_session", None),
+            )
         if address and response.status_code in {400, 401, 403, 404, 422}:
             if public_auth_path(request.url.path) or response.status_code == 401:
                 limit.record(address)
@@ -234,7 +292,16 @@ def create_app(
 
     @app.exception_handler(Refused)
     async def refused(request, error):
+        # What a client shows also reaches the log (ADR 61).
+        _LOG.info("%s %s refused: %s", request.method, logged_path(request), error)
         return JSONResponse({"detail": str(error)}, status_code=400)
+
+    @app.exception_handler(sqlite3.OperationalError)
+    async def store_busy(request, error):
+        response = busy(request, error)
+        if response is None:
+            raise error
+        return response
 
     @app.exception_handler(OwnerSignedOut)
     async def owner_signed_out(request, error):
