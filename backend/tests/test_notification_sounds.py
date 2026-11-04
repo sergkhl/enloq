@@ -15,6 +15,7 @@ from enloq.api.notifications import (
 from enloq.application.notification_delivery import NotificationDelivery
 from enloq.application.notification_sounds import MAX_AUDIO_BYTES
 from enloq.config import Settings
+from enloq.domain.models import Chat
 from enloq.storage.accounts import AccountRegistry
 from fastapi.testclient import TestClient
 
@@ -532,6 +533,20 @@ async def test_preset_change_keeps_one_existing_chime_claim(rig):
     await hub.tick()
     assert presence(clients[0], peer="user:101")["events"] == []
     assert not hub.transport.sent
+
+
+async def test_a_groups_screen_reports_its_presence_and_alerts_nothing(rig):
+    app, clients, hub, conversation, now = rig
+    conversation.store.put_chat(
+        Chat(
+            account_id=conversation.store.account_id,
+            peer="channel:42",
+            title="Authored group",
+            kind="group",
+        ),
+        activity=now[0],
+    )
+    assert presence(clients[0], peer="channel:42")["events"] == []
 
 
 def test_additive_legacy_registry_migration_keeps_switch_subscription_and_claims(

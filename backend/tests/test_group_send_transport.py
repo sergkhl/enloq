@@ -36,6 +36,7 @@ class GroupRPC:
         self.app, self.now, self.peer, self.metadata = app, now, peer, metadata
         self.user = types.User(id=app.store.account_id, access_hash=20, is_self=True)
         self.offered = app.store.account_id
+        self.send_as_failure = None
         self.send_as_metadata = []
         self.calls, self.uploads, self.final = [], [], []
         self.before_wire = self.after_upload = None
@@ -110,6 +111,8 @@ class GroupRPC:
                 raise self.metadata
             return types.messages.Chats([self.metadata])
         if isinstance(request, functions.channels.GetSendAsRequest):
+            if self.send_as_failure:
+                raise self.send_as_failure
             return types.channels.SendAsPeers(
                 [types.SendAsPeer(types.PeerUser(self.offered))],
                 self.send_as_metadata,
@@ -727,3 +730,25 @@ async def test_group_network_media_stops_on_lost_access_or_stale_material_and_ne
     assert all(
         isinstance(value, functions.channels.GetMessagesRequest) for value in rpc.calls
     )
+
+
+async def test_a_private_supergroup_offers_no_senders_and_the_account_sends_as_itself(
+    tmp_path,
+):
+    # Telegram answers PEER_ID_INVALID to GetSendAs there; an actual live send
+    # to a private supergroup found this.
+    app, _, _, rpc, description, _ = setup(tmp_path)
+    rpc.send_as_failure = errors.PeerIdInvalidError(request=None)
+    result = await app.transport.send(description, Evidence())
+    assert result.pairs == ((description.random_ids[0], 700),)
+    assert len(rpc.final) == 1 and rpc.final[0].send_as is None
+
+
+async def test_an_anonymous_admin_is_still_refused_in_a_private_supergroup(tmp_path):
+    app, _, _, rpc, description, _ = setup(tmp_path)
+    rpc.send_as_failure = errors.PeerIdInvalidError(request=None)
+    rpc.metadata.admin_rights = types.ChatAdminRights(anonymous=True)
+    evidence = Evidence()
+    with pytest.raises(Refused):
+        await app.transport.send(description, evidence)
+    assert rpc.final == [] and "exposed" not in evidence.events

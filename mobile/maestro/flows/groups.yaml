@@ -35,7 +35,18 @@ appId: ${APP_ID}
       text: "Group AI processing"
       checked: true
     timeout: 15000
-- tapOn: "Close"
+# Ask this group (ADR 59), with the fixture's authored answer and its source.
+- tapOn: "Ask this group"
+- tapOn: "Question"
+- inputText: "When is the planning session?"
+- hideKeyboard
+- tapOn: "Ask"
+- extendedWaitUntil:
+    visible: "An authored answer\\."
+    timeout: 30000
+- assertVisible: "Source .*"
+- takeScreenshot: groups-ask
+- tapOn: "Back"
 - tapOn: "Update briefing.*"
 - extendedWaitUntil:
     visible: "Briefing up to date"

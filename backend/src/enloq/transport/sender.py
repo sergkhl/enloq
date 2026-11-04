@@ -1,6 +1,6 @@
 """Select the connected account without applying channel-only flags to DMs."""
 
-from telethon import utils
+from telethon import errors, utils
 from telethon.tl import functions, types
 
 from ..domain.models import Refused
@@ -17,7 +17,13 @@ async def account_sender(client, peer, account_id, *, observe=None):
             raise Refused("Connected group sender query changed")
 
     request._enloq_final_guard = exact_sender_query
-    choices = await client(request)
+    try:
+        choices = await client(request)
+    except errors.PeerIdInvalidError:
+        # A private supergroup has no senders to choose from, and Telegram
+        # answers so: the account's own identity is the only one there. The
+        # rights check has already refused an anonymous admin.
+        return None
     if observe:
         for entity in getattr(choices, "chats", ()):
             observe(entity)

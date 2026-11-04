@@ -691,6 +691,15 @@ Docker, using no second Telegram client. It checks early clean eligibility and
 silent later updates; OS-banner display is a separate phone check. Both save
 private evidence under `.local/live-evidence/`.
 
+`live/ask.spec.ts` checks ADR 59 and ADR 60 in the test group of the Owner
+Account and Maya alone (`group` in `.local/live-targets.json`), from Maya's
+side, on the real routes: it sends its authored messages once if the group lacks
+them, then asks for facts in English and Russian, a question nothing answers,
+and one it abandons by leaving the screen, whose successor must not be refused;
+then four asks in a row around the old 5-second keep-alive. At most 60 model
+requests. Its group send goes through the app's own path, so it also proves a
+private supergroup's Send.
+
 `live/reminders.spec.ts` checks ADR 58 in the Maya chat. It sends the day's
 authored test message, then saves two exact-time Once reminders due a few
 minutes later: one whose Message Idea names that day and one without an idea.

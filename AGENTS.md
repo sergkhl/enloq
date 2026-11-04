@@ -186,6 +186,9 @@ login is a MacHelm setting, and install does not change it.
   and both account IDs (`origin`, `owner`, `maya`); it is never committed.
 - Keep every other chat out of tests: never send there, and never make another
   person's messages test content. Keep test messages recognisable as tests.
+  The one other chat allowed is the test group, a private supergroup of those
+  two accounts alone, named `group` in the same file: `openTestGroup` opens it,
+  and Maya's Group AI processing stands On there.
 - Both accounts are signed in on the VPS service with AI processing On, and
   Remember this chat is On for the Maya chat in the Owner Account (ADR 55
   Q29), so live sends there are processed on both sides and teach Maya's

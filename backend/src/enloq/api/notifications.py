@@ -101,7 +101,8 @@ class NotificationAttentionStatus(Model):
 class Attention(Model):
     tab: str = Field(pattern=r"^[a-f0-9-]{32,36}$")
     account_id: int | None = Field(default=None, gt=0)
-    peer: str | None = Field(default=None, pattern=r"^user:[1-9][0-9]*$")
+    # Any chat on screen: a group's reports its presence too, and alerts nothing.
+    peer: str | None = Field(default=None, pattern=r"^(user|chat|channel):[1-9][0-9]*$")
     focused: bool
     audio: bool
     push_permission: Literal["granted", "denied", "default", "unsupported"] | None = (
