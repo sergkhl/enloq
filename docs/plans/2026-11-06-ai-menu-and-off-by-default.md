@@ -1,8 +1,8 @@
 # The AI Menu and private-chat AI Off by default
 
 Last meaningful update: 2026-11-06
-Status: active since the owner's go-ahead on 2026-11-06; Phase 1 is being
-delivered.
+Status: active since the owner's go-ahead on 2026-11-06; Phase 1 is
+delivered, Phases 2 and 3 are being built.
 
 Deliver the adopted
 [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md), with
@@ -184,6 +184,19 @@ quality in [inference](../inference.md#retained-acceptance-limits).
   4,039, the 66 web journeys, the app's typecheck, Prettier and 361 Jest
   tests), and the Android journeys passed on the S9+ in 38 minutes with
   Enloq Dev against the fixture, the AI Menu steps included.
+- 2026-11-06, Phase 1 delivered: `77952b0` deployed from clean main as
+  `enloq:77952b084787`, healthy. `web/live/ai-menu.spec.ts` passed twice in
+  the VPS browser (08:50 and 08:53 UTC, 13 and 33 seconds): the AI Menu from
+  both sides of the Maya chat and from Maya's side of the test group, AI view
+  switched and put back, every page opened, Soften hostile messages flipped
+  and put back in the owner's menu, and in the second run all 13 Guidance
+  editors opened unsaved (the first counted them before the settings were
+  read, which the check now waits for), the guidance version unchanged. The
+  Reading View (Originals), both sides' switches, Style and drafts read the
+  same afterwards. No sends and no model requests; the browser's routes were
+  the AI Menu's own and the Maya chat's and test group's. The README's header
+  screenshot needs no retake: its filled robot is what the header still
+  shows.
 
 ## Open findings
 

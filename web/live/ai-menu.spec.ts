@@ -72,10 +72,14 @@ async function budget(page: Page) {
 }
 
 // Each Guidance field of the open page opens its editor and closes unsaved.
+// Every page but AI view's holds at least one, once the settings are read.
 async function openFields(page: Page, name: string) {
-  const fields = page
-    .getByRole("region", { name, exact: true })
-    .getByRole("button", { name: /for all chats$/i });
+  const region = page.getByRole("region", { name, exact: true });
+  if (name !== "AI view")
+    await expect(
+      region.getByRole("heading", { name: "Guidance", exact: true }),
+    ).toBeVisible();
+  const fields = region.getByRole("button", { name: /for all chats$/i });
   const count = await fields.count();
   for (let index = 0; index < count; index++) {
     const field = fields.nth(index);
@@ -216,6 +220,9 @@ test("the AI Menu in the Maya chat from both sides and in the test group", async
   }
   const now = await budget(page);
   expect(now.version).toBe(spent.version);
+  // Q17's fields: 13 on the private pages, Faithfulness rules twice, and the
+  // group's briefings.
+  expect(fields).toBe(13);
   console.log(
     `${fields} Guidance editors opened unsaved; guidance version ${now.version} unchanged; ${now.calls - spent.calls} calls counted meanwhile across the server's chats`,
   );
