@@ -199,4 +199,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 5,643 are used. Add each check's requests here.
+total; 5,649 are used. Add each check's requests here.

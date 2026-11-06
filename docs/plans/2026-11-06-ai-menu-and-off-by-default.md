@@ -1,8 +1,7 @@
 # The AI Menu and private-chat AI Off by default
 
 Last meaningful update: 2026-11-06
-Status: active since the owner's go-ahead on 2026-11-06; Phases 1 and 2
-are delivered, Phase 3 is being delivered.
+Status: delivered on 2026-11-06; all three phases are deployed and checked.
 
 Deliver the adopted
 [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md), with
@@ -254,6 +253,30 @@ quality in [inference](../inference.md#retained-acceptance-limits).
   Switches Off chat on the reminder fixture's peer (it has its own now);
   pairing and every flow from AI controls on (19 minutes); and pairing with
   AI controls again after the review's fixes (5 minutes).
+- 2026-11-06, Phase 3 delivered: `719ecf0` deployed from clean main as
+  `enloq:719ecf02ed77`, healthy, its health route ready and no errors logged.
+  The rollout ran through the service's API right after, with the routes and
+  rates verified first: of the Owner Account's other private chats, own
+  choices On were 0 for Soften hostile messages, 2 for Automatic suggestions
+  and 1 for Remember this chat, all turned Off with their Style kept; the
+  Maya chat's Automatic suggestions, Emotion, Soften hostile messages and
+  Voice and images were set On on both sides, Remember this chat left On in
+  the Owner Account and Off in Maya's. The rollout asked no model.
+  `web/live/switches.spec.ts` passed in the VPS browser in 1.3 minutes: with
+  every switch Off in the Owner Account's side, Maya's plain text and
+  captioned photo, each its own block after the owner's answer, asked no
+  model there, showed their combined originals with no status, and the list
+  showed the unseen dot with the photo's original preview. Emotion turned On
+  decided the photo's block from its caption alone, asking only `emotion`,
+  with no image meaning; Voice and images turned On rewrote it while the
+  text stayed as sent. Requests on both sides since the rollout: 6 (the Owner
+  Account's side 4: the Emotion decision, the rewrite, the decision after it
+  and one asking usefulness when Automatic suggestions turned back On at the
+  end; Maya's side 2: the decision of the owner's answer and its arrival
+  screen), $0.0004 counted, three authored sends, 95 seconds. The switches,
+  Style and the Reading View (Originals) read as before afterwards. The
+  Android Saved Build `enloq-0.1.0-719ecf0.apk` replaced the one in the
+  Owner Account's Saved Messages, still pinned.
 
 ## Open findings
 
