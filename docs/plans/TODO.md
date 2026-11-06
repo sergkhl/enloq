@@ -114,15 +114,17 @@ Act only if they recur or grow.
 
 ## Waiting on the owner
 
-- **The AI Menu and private-chat AI Off by default** ([ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)):
-  adopted in an interview, not implemented. The code, journeys and runbooks
-  keep the earlier behavior until the owner authorizes a plan: the robot as a
-  one-tap Reading View toggle and the "AI off" tag, the per-chat switches in
-  the Correspondent Profile with Soften hostile messages and Automatic
-  suggestions On by default, emotion and voice and image rewriting in every
-  recent chat, reminders paused by Automatic suggestions Off, memory learning
-  only what other stages sent, Guidance in Settings → AI, the group ⋮ and the
-  hidden `text_rewriting` switch.
+- **The AI Menu and private-chat AI Off by default**
+  ([ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)):
+  adopted, not implemented; [its plan](2026-11-06-ai-menu-and-off-by-default.md)
+  awaits the owner's go-ahead. Until a phase is delivered, the code, journeys
+  and runbooks keep the earlier behavior: the robot as a one-tap Reading View
+  toggle and the "AI off" tag, the per-chat switches in the Correspondent
+  Profile with Soften hostile messages and Automatic suggestions On by
+  default, emotion and voice and image rewriting in every recent chat,
+  reminders paused by Automatic suggestions Off, memory learning only what
+  other stages sent, Guidance in Settings → AI, the group ⋮ and the hidden
+  `text_rewriting` switch.
 
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the
