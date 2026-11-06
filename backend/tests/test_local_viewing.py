@@ -9,7 +9,7 @@ from enloq.storage.viewing import ViewedSources
 from fastapi.testclient import TestClient
 
 from backend.tests.auth_helpers import trust_browser
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 
 @pytest.fixture
@@ -107,7 +107,8 @@ def test_late_original_ack_after_edit_is_rejected_atomically(rig):
 
 async def test_rewrite_ack_is_bound_to_final_rendering_and_exact_sources(rig):
     app, now = rig
-    app.sync.ingest(message(app, 1))
+    # A photo with its caption: text alone stays combined (ADR 54).
+    app.sync.ingest(picture(app, 1))
     now[0] += 31
     await app.process_due()
     await app.process_due()  # The Emotion Classification that follows it.

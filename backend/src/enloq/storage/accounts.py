@@ -585,23 +585,6 @@ class AccountRegistry:
             )
         return value
 
-    def text_rewriting(self):
-        """ADR 54: whether incoming text is rewritten automatically. Off, the
-        shipped choice, text bursts stay combined originals and only calming
-        rewrites them; voice notes, video circles and images still are."""
-        rows = self.rows("SELECT value FROM metadata WHERE key='text_rewriting'")
-        return bool(rows and rows[0]["value"] == "1")
-
-    def set_text_rewriting(self, enabled):
-        if type(enabled) is not bool:
-            raise Refused("Text rewriting is on or off")
-        with self.transaction() as db:
-            db.execute(
-                "INSERT OR REPLACE INTO metadata VALUES ('text_rewriting',?)",
-                ("1" if enabled else "0",),
-            )
-        return enabled
-
     def set_concurrency(self, value):
         from ..application.capacity import MAX_LIMIT
 

@@ -162,10 +162,12 @@ seconds and $0.20 counted.
 **Suggestions** ([ADR 25](adr/0025-emotion-response-suggestions.md)):
 `scripts/check-suggestions.py` runs eight authored cases (the seven qualifying
 emotions and one mixed-language block) through the production scheduling and
-generation path. Emotions are authored and stand in with a useful decision, so
-no incoming rewrite or decision is requested. It keeps the owner's
-Suggestions switch and guidance and allows at most eight requests, 900 seconds
-and $0.05 counted, reporting to `.local/suggestions-first-pass-*/report.json`.
+generation path. Each latest block is held and decided as text is
+([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)), its decision
+answered with the case's authored emotion and a useful yes, so no incoming
+rewrite or decision is requested. It keeps the owner's Suggestions switch and
+guidance and allows at most eight requests, 900 seconds and $0.05 counted,
+reporting to `.local/suggestions-first-pass-*/report.json`.
 
 **Useful suggestions** ([ADR 49](adr/0049-useful-response-suggestions.md) Q13):
 `scripts/check-useful-suggestions.py`. Its 16 authored private blocks are
@@ -178,9 +180,11 @@ short and long, Russian, English and mixed:
 - a forwarded link.
 
 Each goes through the real Emotion Classification with its usefulness
-question: a block under the saved threshold by the held path, a longer one
-after an authored rewrite stand-in, so no incoming rewrite is requested. Each
-block with a usable non-neutral emotion, or a yes on usefulness at 0.7 or more
+question by the held path, as the app decides text of any length
+([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)): held as it
+arrives and decided from its originals after its quiet, which the check skips,
+so no incoming rewrite is requested. Each block with a usable non-neutral
+emotion, or a yes on usefulness at 0.7 or more
 ([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)'s
 either signal and Q19), then runs the real Response Suggestions request.
 Memory is off. It allows at most 40 decision and 16 suggestion requests, 1,800
@@ -239,11 +243,14 @@ ADR 49 Q1): `scripts/check-emotion.py` runs 30 authored cases:
 - 6 group ad-filter cases, one authored group with AI on per case, whose posts
   form one real classifier request.
 
-Each incoming case stands in an authored rewrite and image meaning where the
-rewrite would publish them and then runs the real classification job, so no
-MiMo request is made. Reactions run the real assessment path and ad cases the
-real group filter, which never judges bots here. Suggestion and memory calls
-are off. It allows at most 40 first attempts within 1,200 seconds and $0.01
+Each text block is held and decided from its originals by the app's held
+path, as text is ([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md));
+each block with an image or a voice note stands in an authored rewrite and
+image meaning where the rewrite would publish them and then runs the real
+classification job. No MiMo request is made. Reactions run the real
+assessment path and ad cases the real group filter, which never judges bots
+here. Suggestion and memory calls are off. It allows at most 40 first
+attempts within 1,200 seconds and $0.01
 counted across both budgets, and writes `.local/emotion-decider-check-*/report.json`.
 A request starts only when its worst-case cost (every request byte a token,
 plus a framing allowance) fits the remaining bound; an unknown outcome counts
@@ -259,8 +266,13 @@ current guidance, except the decision roles above (at most 16 requests, 1,800
 seconds and $0.05 counted); `--check 2` covers structured incoming and speech
 rewriting (at most 12 requests, 1,200 seconds and $0.03); `--check 3` runs all
 thirteen authored incoming cases of both (at most 16 requests, 1,800 seconds
-and $0.03). Voice notes carry authored transcripts through a stand-in
-recognizer, so no audio exists. Format outcomes go only to its report, never to
+and $0.03). Every incoming case holds a voice note or an image, since MiMo
+rewrites only such blocks
+([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)), and typed
+messages in the same block are rewritten with it; Check 1's suggestion follows
+a held text block's authored useful decision. Voice notes carry authored
+transcripts through a stand-in recognizer, so no audio exists. Format outcomes
+go only to its report, never to
 the running route's format counts; the report,
 `.local/route-check-<n>-*/report.json`, includes the authored raw output of
 each streamed rewrite for diagnosis. After a concrete contract correction,
@@ -270,14 +282,15 @@ remaining recorded allowance; the helper refuses any value above the recorded
 bound. Record the hypothesis and bounds before the run.
 
 **Incoming format** ([ADR 35](adr/0035-processing-character-threshold-and-empty-rewrites.md)):
-`scripts/check-threshold.py` runs six authored cases through real incoming
-stream and final validation: combined 199- and 200-character blocks, trimmed
-Cyrillic and emoji, a prepared transcript, text with an authored image, and an
-image-only target with textual Supporting Context. No audio exists.
-Deliberate cached processing keeps the saved threshold and the older-work
-reserve; emotion, suggestions and memory are off in its fixture. It allows at
-most six first attempts, 600 seconds and $0.05 counted within the Daily
-Budget, and needs room for the larger of the conservative prepared
+`scripts/check-threshold.py` runs three authored media blocks through real
+incoming stream and final validation, the empty-output rule both ways: a
+prepared transcript and text with an authored image, which need a visible
+part, and an image-only target with textual Supporting Context, which may
+have none. The threshold governs group briefings only, so no case counts
+characters. No audio exists. Deliberate cached processing keeps the
+older-work reserve; emotion, suggestions and memory are off in its fixture.
+It allows at most three first attempts, 600 seconds and $0.05 counted within
+the Daily Budget, and needs room for the larger of the conservative prepared
 input/output cost and the ordinary unknown estimate before dispatch. Bounds can
 only be lowered. An unknown outcome stops further requests, unfinished cases
 stay unverified, and no unchanged failed case is resampled. The report is
@@ -1160,8 +1173,9 @@ What the AI does with an incoming private block
 
 Settings → AI → **Minimum characters** (the Processing Character Threshold, 0
 to 10,000, initially 200, applied with Save across accounts and clients)
-governs group briefings only. The registry's `text_rewriting` switch, off and
-not in Settings, would restore private text rewriting under it. Save rechecks
+governs group briefings only; private text is never rewritten for reading
+except by softening ([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+Q21). Save rechecks
 cached pending work without scanning history or retrying unchanged failures,
 and already dispatched valid work may finish.
 

@@ -5,7 +5,7 @@ from enloq.domain.models import ProcessingPaused
 
 from backend.tests.test_local_viewing import ack, rows, see
 from backend.tests.test_notifications import complete
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 
 @pytest.fixture
@@ -49,13 +49,12 @@ def test_quiet_extension_streams_then_validated_result(rig):
 def test_original_fallback_latches_once_and_keeps_early_view(rig, reason):
     app, now = rig
     for i in (1, 2):
+        # Photos, which the rewrite reads: a text block would instead wait
+        # for its held decision (ADR 54, ADR 53 Q7).
         app.sync.ingest(
-            message(
-                app,
-                i,
-                text="" if reason == "nothing" else "Authored",
-                media="document" if reason == "nothing" else None,
-            ),
+            message(app, i, text="", media="document")
+            if reason == "nothing"
+            else picture(app, i, text="Authored"),
             live=True,
         )
     ack(app, see(app, 1))

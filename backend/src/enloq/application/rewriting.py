@@ -11,13 +11,11 @@ from ..inference.work import BudgetReserve, ModelWork
 from ..storage.store import RETENTION, WINDOW
 from . import context
 from .blocks import (
+    analysed,
     cached_sources,
-    character_admitted,
     defer,
     enqueue,
-    processing_threshold,
     reconcile_admission,
-    text_rewriting,
 )
 from .capacity import RANK, rank_sql
 
@@ -219,7 +217,9 @@ class Rewriting:
             )
 
     def character_gate(self, job):
-        """Check before preparation and at the final provider dispatch boundary.
+        """Check before preparation and at the final provider dispatch boundary
+        that the block is still admitted: only one with an image, a voice note
+        or a video circle is, and text waits as its originals (ADR 54).
 
         This gate intentionally never participates in publication validation:
         a valid attempt that has reached the provider may finish after a Save.
@@ -240,11 +240,7 @@ class Rewriting:
             if not block or block["revision"] != job["input_revision"]:
                 return
             sources = cached_sources(db, block)
-            if sources and not character_admitted(
-                sources,
-                processing_threshold(self.store, db),
-                text_rewriting(self.store, db),
-            ):
+            if sources and not analysed(sources):
                 defer(
                     db,
                     job["scope"],
@@ -468,9 +464,7 @@ class Rewriting:
                 packet["calm"] = True
                 if sarcastic:
                     packet["sarcastic"] = True
-            elif not self.rewrites_text() and not any(
-                m.get("media") in ANALYSED_MEDIA for m in packet["messages"]
-            ):
+            elif not any(m.get("media") in ANALYSED_MEDIA for m in packet["messages"]):
                 # ADR 54: text stays combined; only calming rewrites it.
                 self.combined(job, block, packet, emotion, first)
                 return
@@ -608,10 +602,6 @@ class Rewriting:
         finally:
             self.store.streams.finish(job["id"])
 
-    def rewrites_text(self):
-        with self.store.transaction() as db:
-            return text_rewriting(self.store, db)
-
     def combined(self, job, block, packet, emotion, first):
         """A text block that isn't calmed ends without a rewrite (ADR 54): it
         shows as its combined originals. A decision made first publishes as
@@ -649,28 +639,21 @@ class Rewriting:
         return None
 
     def older(self, chat_key):
-        """Never-processed blocks a click may still process, newest first;
-        with text rewriting off (ADR 54), only those with an image, a voice
-        note or a video circle, since text stays combined."""
+        """Never-processed blocks a click may still process, newest first:
+        only those with an image, a voice note or a video circle, since text
+        stays combined (ADR 54)."""
         if not self.chat_eligible(chat_key):
             return []
         with self.store.transaction() as db:
-            if text_rewriting(self.store, db):
-                rows = db.execute(
-                    "SELECT * FROM blocks WHERE chat_key=? AND state='original' "
-                    "ORDER BY date DESC,id DESC",
-                    (chat_key,),
-                ).fetchall()
-            else:
-                rows = db.execute(
-                    "SELECT * FROM blocks b WHERE chat_key=? AND state='original' "
-                    "AND EXISTS (SELECT 1 FROM messages m WHERE m.chat_key=b.chat_key "
-                    "AND m.message_id IN (SELECT value FROM json_each(b.sources)) "
-                    "AND m.deleted=0 AND json_extract(m.body,'$.media') IN "
-                    f"({','.join('?' * len(ANALYSED_MEDIA))})) "
-                    "ORDER BY date DESC,id DESC",
-                    (chat_key, *sorted(ANALYSED_MEDIA)),
-                ).fetchall()
+            rows = db.execute(
+                "SELECT * FROM blocks b WHERE chat_key=? AND state='original' "
+                "AND EXISTS (SELECT 1 FROM messages m WHERE m.chat_key=b.chat_key "
+                "AND m.message_id IN (SELECT value FROM json_each(b.sources)) "
+                "AND m.deleted=0 AND json_extract(m.body,'$.media') IN "
+                f"({','.join('?' * len(ANALYSED_MEDIA))})) "
+                "ORDER BY date DESC,id DESC",
+                (chat_key, *sorted(ANALYSED_MEDIA)),
+            ).fetchall()
             rows = [dict(r) for r in rows]
         return [r for r in rows if self.eligible(r, explicit=True)]
 

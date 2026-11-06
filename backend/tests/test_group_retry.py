@@ -14,7 +14,7 @@ from enloq.inference.work import FLAT_UNKNOWN
 from enloq.storage.accounts import AccountRegistry
 from enloq.storage.store import RETENTION, WINDOW
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 KEY, IDENTITY = "1/user:42", "1/user:42/1"
 DAY = 86400
@@ -34,7 +34,7 @@ async def failed(tmp_path, *, age=0):
         return EngineResponse({"wrong": "shape"})
 
     app.engine.generate = invalid
-    app.sync.ingest(message(app, date=now[0] - age * DAY), target=not age)
+    app.sync.ingest(picture(app, date=now[0] - age * DAY), target=not age)
     if age:
         app.sync.ingest(message(app, 100, outgoing=True))
         assert app.rewriting.process_older(KEY) == 1
@@ -51,7 +51,7 @@ async def test_originals_cannot_retry_but_earlier_new_changed_and_unread_work_re
     tmp_path,
 ):
     app, now = rig(tmp_path)
-    app.sync.ingest(message(app), target=False)
+    app.sync.ingest(picture(app), target=False)
     original = app.rewriting.block(IDENTITY)
     with pytest.raises(Refused, match="failed or interrupted"):
         app.rewriting.retry(IDENTITY, revision=original["revision"])
@@ -60,7 +60,7 @@ async def test_originals_cannot_retry_but_earlier_new_changed_and_unread_work_re
     await app.process_due()
     await app.process_due()  # Emotion follows the completed rewrite.
 
-    app.sync.ingest(message(app, 2, text="A new authored point"))
+    app.sync.ingest(picture(app, 2, text="A new authored point"))
     queued = app.rewriting.block(IDENTITY)
     waiting = app.store.rows("SELECT * FROM jobs")
     with pytest.raises(Refused, match="failed or interrupted"):
@@ -70,12 +70,12 @@ async def test_originals_cannot_retry_but_earlier_new_changed_and_unread_work_re
     await app.process_due()
     await app.process_due()
 
-    app.sync.ingest(message(app, 2, revision=2, text="An edited authored point"))
+    app.sync.ingest(picture(app, 2, revision=2, text="An edited authored point"))
     now[0] += 31
     await app.process_due()
     await app.process_due()
     app.sync.ingest(message(app, 3, outgoing=True))
-    app.sync.ingest(message(app, 4, text="Cached unread point"), target=False)
+    app.sync.ingest(picture(app, 4, text="Cached unread point"), target=False)
     assert app.rewriting.block(f"{KEY}/4")["state"] == "original"
     reconcile_unread(app.store)
     now[0] += 31
@@ -143,11 +143,16 @@ async def test_interrupted_partial_is_retryable_with_a_new_attempt(tmp_path, res
             entered.set()
             await release.wait()
             return EngineResponse(
-                {"text": "Validated authored result", "image_context": []}
+                {
+                    "text": "Validated authored result",
+                    "image_context": [
+                        {"message_id": 1, "text": "An authored synthetic image."}
+                    ],
+                }
             )
 
     app.engine = Streaming()
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     now[0] += 31
     task = asyncio.create_task(app.process_due())
     await asyncio.wait_for(entered.wait(), 5)
@@ -180,7 +185,7 @@ async def test_failure_metadata_without_an_incoming_attempt_cannot_start_first_w
     tmp_path, state
 ):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app), target=False)
+    app.sync.ingest(picture(app), target=False)
     with app.store.transaction() as db:
         db.execute("UPDATE blocks SET state=?,error='Authored local status'", (state,))
     with pytest.raises(Refused, match="current failed or interrupted attempt"):
@@ -193,7 +198,7 @@ async def test_usable_completed_text_survives_failed_or_interrupted_metadata(
     tmp_path, state
 ):
     app, now = rig(tmp_path)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     now[0] += 31
     await app.process_due()
     complete = app.rewriting.block(IDENTITY)
@@ -217,7 +222,7 @@ async def test_stale_reviewed_revision_refuses_before_queueing(tmp_path):
 
 async def test_saved_source_edit_before_dependency_hook_refuses_retry(tmp_path):
     app, _, block = await failed(tmp_path)
-    app.store.apply_message(message(app, revision=2, text="Edited before hook"))
+    app.store.apply_message(picture(app, revision=2, text="Edited before hook"))
     assert app.rewriting.block(IDENTITY)["revision"] == block["revision"]
     jobs = app.store.rows("SELECT * FROM jobs")
     with pytest.raises(Refused, match="Source expired or changed"):
@@ -228,7 +233,7 @@ async def test_saved_source_edit_before_dependency_hook_refuses_retry(tmp_path):
 @pytest.mark.parametrize("flag", ["outgoing", "service"])
 async def test_changed_native_source_role_cannot_retry_as_incoming(tmp_path, flag):
     app, _, block = await failed(tmp_path)
-    app.store.apply_message(message(app, **{flag: True}))
+    app.store.apply_message(picture(app, **{flag: True}))
     jobs = app.store.rows("SELECT * FROM jobs")
     with pytest.raises(Refused, match="Source expired or changed"):
         app.rewriting.retry(IDENTITY, revision=block["revision"])
@@ -251,7 +256,7 @@ async def test_new_source_after_retry_acceptance_supersedes_it_before_dispatch(
     app, now, block = await failed(tmp_path)
     retry = app.rewriting.retry(IDENTITY, revision=block["revision"])
     queued = app.store.rows("SELECT * FROM jobs WHERE id=?", (retry,))[0]
-    app.sync.ingest(message(app, revision=2, text="Current changed wording"))
+    app.sync.ingest(picture(app, revision=2, text="Current changed wording"))
     await app.rewriting.run(queued)
     assert not app.store.rows("SELECT 1 FROM reservations WHERE id=?", (retry,))
     assert (
@@ -329,7 +334,7 @@ async def test_format_pause_allows_only_the_deliberate_failed_attempt(tmp_path):
     app, _, block = await failed(tmp_path)
     app.rewriting.paused_roles = lambda: {"incoming_rewrite"}
     app.sync.ingest(message(app, 2, outgoing=True))
-    app.sync.ingest(message(app, 3))
+    app.sync.ingest(picture(app, 3))
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET due=0 WHERE state='queued'")
     assert app.rewriting.next_job() is None

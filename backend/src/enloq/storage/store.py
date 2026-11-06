@@ -263,11 +263,6 @@ CHANGES = [
 
 
 class Store:
-    # ADR 54: None follows the registry's text_rewriting; a finite check's own
-    # store may set it, so its text cases are rewritten without changing the
-    # owner's setting.
-    rewrites_text = None
-
     def __init__(
         self,
         path: Path,

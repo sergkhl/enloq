@@ -26,6 +26,7 @@ from backend.tests.test_suggestion_generation import (
     drain,
     incoming_only,
     rig,
+    voice_note,
 )
 from backend.tests.test_suggestion_state import prepare, publish
 
@@ -274,7 +275,8 @@ async def test_incoming_generated_stored_displayed_and_inserted_text_is_identica
     raw = "I hear you — shall we call “later”? Let’s choose either/or."
     expected = 'I hear you - shall we call "later"? Let\'s choose either/or.'
     app.engine.options = body(raw)
-    app.sync.ingest(message(app, text="Today was tiring."))
+    # A voice note: its rewrite is followed by the decision and the set.
+    app.sync.ingest(voice_note(app))
     app.store.mutate_draft(KEY, 0, lambda draft: draft.update(text="Authored ‘draft’."))
     await drain(app)
     view = app.suggestions.view(KEY)
@@ -320,7 +322,7 @@ async def test_reaction_derived_generation_uses_the_same_normalization_boundary(
 async def test_collision_fails_once_without_filtering_retry_or_role_pause(tmp_path):
     app, registry = rig(tmp_path)
     app.engine.options = body("‘yes’", "'yes'")
-    app.sync.ingest(message(app, text="An authored difficult day."))
+    app.sync.ingest(voice_note(app))
     await drain(app)
     view = app.suggestions.view(KEY)
     assert (view.state, view.reason, view.options) == ("failed", "format", [])
@@ -337,7 +339,7 @@ async def test_collision_fails_once_without_filtering_retry_or_role_pause(tmp_pa
 async def test_normalized_late_output_cannot_revive_an_answered_source(tmp_path):
     app, _ = rig(tmp_path)
     app.engine.options = body("I hear you — ‘yes’?")
-    app.sync.ingest(message(app, text="An authored tiring day."))
+    app.sync.ingest(voice_note(app))
     await incoming_only(app)
     app.engine.gate = asyncio.Event()
     task = asyncio.create_task(drain(app))

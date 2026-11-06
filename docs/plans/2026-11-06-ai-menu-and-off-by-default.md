@@ -2,7 +2,7 @@
 
 Last meaningful update: 2026-11-06
 Status: active since the owner's go-ahead on 2026-11-06; Phase 1 is
-delivered, Phases 2 and 3 are being built.
+delivered, Phase 2 is being delivered and Phase 3 is being built.
 
 Deliver the adopted
 [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md), with
@@ -197,6 +197,19 @@ quality in [inference](../inference.md#retained-acceptance-limits).
   the AI Menu's own and the Maya chat's and test group's. The README's header
   screenshot needs no retake: its filled robot is what the header still
   shows.
+- 2026-11-06, Phase 2 built: `text_rewriting` is gone from the registry, the
+  store, admission and rewriting, with the unused original-character count.
+  The fixture server's streaming, menu, mixed-block and earlier-messages
+  chats now hold authored photos, and the calming fixture skips the held
+  quiet seconds. The backend cases that read rewritten text moved to photos or
+  voice notes, or decide held text; 16 that only covered the switch or the
+  threshold for private text were removed, and the finite checks' rewritten
+  cases each hold a voice note or an image (`check-threshold.py` keeps its
+  three media cases). Checks in the task checkout: `./scripts/check` passed
+  ruff, backend 4,029, the 66 web journeys, the app's typecheck and Prettier;
+  one app Jest case timed out under the parallel phone run and passed alone
+  and in a full rerun (361). The Android journeys passed on the S9+ in 38
+  minutes with Enloq Dev against the fixture.
 
 ## Open findings
 

@@ -8,7 +8,7 @@ from enloq.inference.fake import choice
 from enloq.inference.guidance import DEFAULTS_REVISION
 
 from backend.tests.test_reactions import snapshot
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 PEER = "user:42"
 KEY = "1/user:42"
@@ -35,8 +35,9 @@ async def settle(app, now, seconds=31):
 
 
 async def conversation(app, now):
-    """An incoming message, already rewritten, then the owner's reply."""
-    app.sync.ingest(message(app, 1, text="Can you send the plan?", date=now[0]))
+    """An incoming photo with its caption, already rewritten (text alone stays
+    combined, ADR 54), then the owner's reply."""
+    app.sync.ingest(picture(app, 1, text="Can you send the plan?", date=now[0]))
     await settle(app, now)
     app.sync.ingest(
         message(app, 2, text="Here is the plan.", outgoing=True, date=now[0]),
@@ -67,12 +68,18 @@ async def test_a_correspondent_trigger_is_assessed_after_quiet_and_becomes_curre
     assert not calls(app)
     await settle(app, now, 25)
     [packet] = calls(app)
-    # One decision state: the conversation as it stood and the reaction on
-    # the owner's exact message; no memory, images or other fields.
+    # One decision state: the conversation as it stood, the photo by its
+    # cached meaning, and the reaction on the owner's exact message; no
+    # memory, images or other fields.
     assert set(packet) == {"state", "guidance"}
     assert packet["state"] == {
         "conversation": [
-            {"id": 1, "from": "recipient", "text": "Can you send the plan?"},
+            {
+                "id": 1,
+                "from": "recipient",
+                "text": "Can you send the plan?",
+                "image_meaning": "An authored synthetic image.",
+            },
             {"id": 2, "from": "owner", "text": "Here is the plan."},
         ],
         "reaction": {"by": "recipient", "emoji": "👍", "on_message": 2},
@@ -91,7 +98,8 @@ async def test_a_correspondent_trigger_is_assessed_after_quiet_and_becomes_curre
     app.store.recover()
     await settle(app, now, 60)
     assert len(calls(app)) == 1
-    assert not app.transport.downloads
+    # Only the photo's rewrite fetched media; the assessment fetches none.
+    assert [d[1] for d in app.transport.downloads] == [1]
 
 
 async def test_own_other_baseline_and_undated_reactions_never_assess(tmp_path):
@@ -356,7 +364,7 @@ async def test_an_unrelated_change_reuses_the_unchanged_current_outcome(tmp_path
     assert app.emotion.view(KEY).code == "positive"
     # An edit of a supporting message is changed evidence for a new pass.
     app.sync.ingest(
-        message(app, 1, text="Can you send the final plan?", revision=2, date=START),
+        picture(app, 1, text="Can you send the final plan?", revision=2, date=START),
         target=False,
     )
     assert app.emotion.view(KEY).reason == "changed"

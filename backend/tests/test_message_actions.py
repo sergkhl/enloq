@@ -10,7 +10,7 @@ from enloq.domain.models import MediaInfo, Message, Refused
 from fastapi.testclient import TestClient
 
 from backend.tests.auth_helpers import trust_browser
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 KEY = "1/user:42"
 
@@ -29,7 +29,8 @@ class Speech:
 async def test_a_completed_rewrite_has_no_repeat_processing(tmp_path):
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
-    app.sync.ingest(message(app, 1, text="Authored request"))
+    # Photos with captions: text alone stays combined (ADR 54).
+    app.sync.ingest(picture(app, 1, text="Authored request"))
     now[0] += 31
     await app.process_due()
     await app.process_due()  # The Emotion Classification that follows it.
@@ -53,7 +54,7 @@ async def test_a_completed_rewrite_has_no_repeat_processing(tmp_path):
         return {"wrong": "shape"} if role == "incoming_rewrite" else response
 
     app.engine.generate = failed
-    app.sync.ingest(message(app, 1, revision=2, text="Changed authored request"))
+    app.sync.ingest(picture(app, 1, revision=2, text="Changed authored request"))
     now[0] += 31
     await app.process_due()
     assert app.store.rows("SELECT state FROM blocks")[0]["state"] == "failed"
@@ -64,7 +65,7 @@ async def test_a_completed_rewrite_has_no_repeat_processing(tmp_path):
     await app.process_due()  # The Emotion Classification that follows it.
     # First-time processing belongs to the separate chat-level action.
     app.sync.ingest(message(app, 2, outgoing=True))
-    app.sync.ingest(message(app, 3), target=False)
+    app.sync.ingest(picture(app, 3), target=False)
     with pytest.raises(Refused, match="failed or interrupted"):
         app.rewriting.retry(f"{KEY}/3")
     assert app.rewriting.process_older(KEY) == 1

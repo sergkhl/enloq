@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from telethon.tl import types
 
 from backend.tests.auth_helpers import trust_browser
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 from backend.tests.test_transport import entityless_transport, native_message
 
 
@@ -382,7 +382,7 @@ async def test_live_nameless_forward_gets_one_intake_read_without_delaying_work(
     async def exact(peer, identities):
         reads.append((peer, tuple(identities)))
         return [
-            message(
+            picture(
                 app,
                 identities[0],
                 forwarded=True,
@@ -393,7 +393,7 @@ async def test_live_nameless_forward_gets_one_intake_read_without_delaying_work(
         ]
 
     app.transport.exact_many = exact
-    app.sync.ingest(message(app, 1, forwarded=True), live=True)
+    app.sync.ingest(picture(app, 1, forwarded=True), live=True)
     job = app.store.rows("SELECT * FROM jobs WHERE role='incoming_rewrite'")
     await asyncio.gather(*app.tasks)
     assert reads == [("user:42", (1,))]
@@ -402,9 +402,9 @@ async def test_live_nameless_forward_gets_one_intake_read_without_delaying_work(
     # The fill-in leaves the quiet job and its due time untouched.
     assert app.store.rows("SELECT * FROM jobs WHERE role='incoming_rewrite'") == job
     # Named, outgoing, already-read and unadmitted forwards get no intake read.
-    app.sync.ingest(message(app, 2, forwarded=True, forwarded_from="Named"), live=True)
+    app.sync.ingest(picture(app, 2, forwarded=True, forwarded_from="Named"), live=True)
     app.sync.ingest(message(app, 3, forwarded=True, outgoing=True), live=True)
-    app.sync.ingest(message(app, 4, forwarded=True), target=False)
+    app.sync.ingest(picture(app, 4, forwarded=True), target=False)
     await asyncio.gather(*app.tasks)
     assert reads == [("user:42", (1,))]
 

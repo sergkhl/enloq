@@ -118,6 +118,17 @@ async def test_finite_pass_uses_shared_accounting_and_stops_at_bounds(tmp_path, 
     if mode in ("zero_budget", "switch_off"):
         assert report["stopped"]
     for result in report["results"][:expected]:
+        # The held block's real decision publication, with an authored answer:
+        # no decision request leaves the machine.
+        assert result["decision"] == {
+            "state": "ready",
+            "code": result["emotion"],
+            "useful": True,
+            "failure": None,
+        }
+        assert [r["model"] for r in result["decision_receipts"]] == [
+            "authored-decisions"
+        ]
         packet = result["packet"]
         assert set(packet) == {
             "messages",

@@ -5,9 +5,10 @@ Every request goes through the application's own stages and the ordinary
 shared accounting, on authored conversations only: none copies a real
 message, name, number or identifier. A fake transport means no Telegram read,
 send or reaction. Each case's decision request (emotion and usefulness) runs
-the real Emotion Classification: a block under the saved Processing Character
-Threshold through the held path (ADR 49 Q3), a longer one after an authored
-rewrite stand-in, so no incoming rewrite is requested. A block with a usable
+the real Emotion Classification through the held path, as the app decides
+text of any length: the block is held as it arrives and, once its quiet has
+passed (skipped for this authored pass), decided from its originals (ADR 54,
+ADR 49 Q3), so no incoming rewrite is requested. A block with a usable
 non-neutral emotion or, calm, usefulness at 0.7 or more (ADR 56's either
 signal and Q19 A) then runs the real Response Suggestions request. Memory is
 off.
@@ -28,7 +29,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from enloq.application.context import incoming
 from enloq.application.conversations import Conversations
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, Message, Refused
@@ -61,8 +61,7 @@ def said(outgoing, text, **fields):
 
 # (name, earlier messages, the latest block's incoming messages, expected
 # emotion, also acceptable, whether suggestions are useful, whether answer
-# stances should appear). Short blocks take the held path under the default
-# 200-character threshold; long ones get an authored rewrite stand-in.
+# stances should appear). Short and long blocks alike take the held path.
 CASES = [
     (
         "en_neutral_question",
@@ -350,7 +349,6 @@ async def observe(
             "telegram_calls": 0,
             "initial_budget": bounds.initial,
             "defaults_revision": DEFAULTS_REVISION,
-            "threshold": registry.processing_threshold(),
             "results": [],
             "blocking": [],
         }
@@ -394,8 +392,6 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, route, decider)
-                    # ADR 54: a long case keeps its authored rewrite stand-in here.
-                    store.rewrites_text = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     work = app.rewriting.work
@@ -516,29 +512,13 @@ async def run_case(app, store, decider, route, bounds, report, index, case):
         "SELECT * FROM blocks WHERE chat_key=? ORDER BY date DESC LIMIT 1", (key,)
     )[0]
     if store.rows("SELECT 1 FROM incoming_deferred WHERE scope=?", (block["id"],)):
-        # Held under the threshold: its quiet is skipped for this authored pass.
+        # Held, as every text block is: its quiet is skipped for this pass.
         value["path"] = "held"
         with store.transaction() as db:
             db.execute(
                 "UPDATE incoming_deferred SET due=0 WHERE scope=?", (block["id"],)
             )
         app.emotion.decide_held()
-    else:
-        value["path"] = "rewritten"
-        job = store.rows(
-            "SELECT * FROM jobs WHERE scope=? AND role='incoming_rewrite' AND state='queued'",
-            (block["id"],),
-        )[0]
-        packet = await incoming(app, block)
-        signal = app.emotion.capture(block, packet, job["id"])
-        # The authored stand-in for a validated rewrite's ready transaction.
-        with store.transaction() as db:
-            db.execute("UPDATE jobs SET state='done' WHERE id=?", (job["id"],))
-            db.execute(
-                "UPDATE blocks SET state='ready',rendered='Authored stand-in rewrite.',rendered_revision=revision WHERE id=?",
-                (block["id"],),
-            )
-            app.emotion.schedule(db, block, job, packet, [], signal)
     queued = store.rows(
         "SELECT * FROM jobs WHERE scope=? AND role='emotion_classification' AND state='queued'",
         (key,),

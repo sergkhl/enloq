@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 """Finite first-attempt ADR 35 incoming-format check (CT5).
 
-At most six requests, 600 seconds and $0.05 counted spending, inside the
+At most three requests, 600 seconds and $0.05 counted spending, inside the
 existing Daily Budget. The service must be stopped: its exclusive OwnerLock
 is held throughout. The exact MiMo/Xiaomi listing and rates are refreshed
 before any model call. Every dispatch needs room for the larger of its
 conservative prepared-request/output bound and the ordinary unknown estimate;
 an unknown outcome stops the pass. There is no automatic retry or resampling.
 
-The six cases are wholly authored, including a prepared transcript and a
-small generated image. A fake Telegram transport performs no native action;
-no audio exists or reaches the provider. Deliberate cache-only older processing
-exercises short inputs without changing the owner's saved character threshold.
-This checks provider format independently of automatic admission, which the
-offline/backend/browser cases verify. Emotion, suggestions and memory are off
-in the fixture; owner settings and the running route's format counts stay intact.
+The three cases are wholly authored blocks with media, the only blocks the
+incoming rewrite reads (ADR 54): a prepared transcript and text with an image,
+whose rewrite needs at least one visible part (Q8), and an image-only target,
+which may have none. The Processing Character Threshold governs group
+briefings only, so no private case counts characters. A fake Telegram
+transport performs no native action; no audio exists or reaches the provider.
+Deliberate cache-only older processing prepares each block, as Rewrite earlier
+messages does. This checks provider format independently of automatic
+admission, which the offline/backend/browser cases verify. Emotion,
+suggestions and memory are off in the fixture; owner settings and the running
+route's format counts stay intact.
 
 First outcomes, authored raw outputs and review expectations are retained only
 in a private .local report. Terminal output contains counts/outcomes and the
@@ -51,48 +55,14 @@ from enloq.storage.store import Store
 from enloq.transport.fake import FakeTransport
 from PIL import Image, ImageDraw
 
-BOUNDS = {"requests": 6, "seconds": 600, "counted_nanos": 50_000_000}
+BOUNDS = {"requests": 3, "seconds": 600, "counted_nanos": 50_000_000}
 # Every UTF-8 request byte is charged as a token. Add room for hidden framing
 # and image expansion on top of the complete encoded image URL. The only
 # check image is 320 x 192; 8,192 image tokens is deliberately conservative.
 FRAMING_TOKENS, IMAGE_TOKENS = 2048, 8192
 ROLE = "incoming_rewrite"
 
-TEXT_FIRST = (
-    "For the community workshop, please check whether the blue table can be "
-    "moved beside the window."
-)
-TEXT_SECOND = (
-    "If it fits, leave the drawing sheets there; otherwise, keep them on the "
-    "shelf and tell me before Friday."
-)
 CASES = [
-    {
-        "name": "combined_199",
-        "sources": [{"text": TEXT_FIRST}, {"text": TEXT_SECOND}],
-        "expectation": "Keep the table question, conditional location for the "
-        "drawing sheets and the Friday deadline. Two originals total 199 "
-        "trimmed code points; this deliberate check is threshold-exempt.",
-    },
-    {
-        "name": "combined_200",
-        "sources": [
-            {"text": TEXT_FIRST.replace("the blue table", "that blue table")},
-            {"text": TEXT_SECOND},
-        ],
-        "expectation": "Keep the same question, conditional locations and "
-        "Friday deadline. Two originals total 200 trimmed code points.",
-    },
-    {
-        "name": "trimmed_cyrillic_emoji",
-        "sources": [
-            {"text": " \nПривет! Проверь, пожалуйста, открыт ли зал в субботу.\t"},
-            {"text": "\u00a0Если открыт, возьми синий блокнот.\nСпасибо 👩🏽‍💻🙂  "},
-        ],
-        "expectation": "Keep Russian, the hall question and the conditional "
-        "blue-notebook request. Trimming excludes outer whitespace, keeps "
-        "internal newlines, and counts each emoji code point separately.",
-    },
     {
         "name": "prepared_authored_transcript",
         "sources": [
@@ -374,7 +344,6 @@ async def observe(
             "initial_budget": initial,
             "defaults_revision": DEFAULTS_REVISION,
             "processing_path": "deliberate cache-only older processing",
-            "saved_processing_threshold": registry.processing_threshold(),
             "results": [],
             "format": [],
         }
@@ -441,8 +410,6 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, engine)
-                    # ADR 54: this check rewrites its text cases; the owner's setting stays.
-                    store.rewrites_text = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()
@@ -511,9 +478,6 @@ async def observe(
                                     target=False,
                                 )
                             store.clock = time.time
-                            current["original_characters"] = sum(
-                                len(s.get("text", "").strip()) for s in case["sources"]
-                            )
                             assert app.rewriting.process_older(key) == 1, (
                                 "One cached block per case"
                             )

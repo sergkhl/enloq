@@ -13,12 +13,12 @@ from enloq.inference.openrouter import MODEL, OpenRouterEngine
 
 from backend.tests.proxy_helpers import ENDPOINT
 from backend.tests.test_memory import KEY, conversation
-from backend.tests.test_rebuild import message
+from backend.tests.test_rebuild import picture
 
 # The incoming route's refusals and receipts; calming (ADR 53), which
 # decides first, is covered by test_calming.
 # Memory roles learn without switching on, as before ADR 56.
-pytestmark = pytest.mark.usefixtures("calming_off", "text_rewriting", "remember_on")
+pytestmark = pytest.mark.usefixtures("calming_off", "remember_on")
 
 ROLES = ("incoming_rewrite", "chat_memory")
 # The same model through another provider: never a fallback for the exact route.
@@ -100,7 +100,13 @@ async def rig(tmp_path):
                 "account": {"add": [], "remove": [], "outdated": []},
             }
             if "person" in properties
-            else {"text": "Authored rewrite.", "image_context": []}
+            # The queued photo's meaning (`queue`): text alone isn't rewritten.
+            else {
+                "text": "Authored rewrite.",
+                "image_context": [
+                    {"message_id": 1, "text": "An authored synthetic image."}
+                ],
+            }
             if "image_context" in properties
             else {"text": "Authored outgoing rewrite."}
         )
@@ -141,7 +147,8 @@ async def rig(tmp_path):
 def queue(rig, role):
     app = rig.app
     if role == "incoming_rewrite":
-        app.sync.ingest(message(app))
+        # A photo with its caption: text alone stays combined (ADR 54).
+        app.sync.ingest(picture(app))
         rig.now[0] += 30
     else:
         conversation(app, rig.now)
@@ -384,7 +391,7 @@ async def test_late_route_refusal_never_requeues_a_stopped_or_superseded_attempt
             assert rig.app.rewriting.stop(KEY) == 1
         else:
             rig.app.sync.ingest(
-                message(rig.app, revision=2, text="Changed authored source.")
+                picture(rig.app, revision=2, text="Changed authored source.")
             )
     finally:
         release.set()

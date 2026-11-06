@@ -17,14 +17,23 @@ from backend.tests.test_suggestion_controls import BASE, draft, served  # noqa: 
 from backend.tests.test_suggestion_controls import ready as published
 from backend.tests.test_suggestion_generation import (
     Engine,
-    drain,
     incoming_only,
     jobs,
     rig,
+    voice_note,
 )
+from backend.tests.test_suggestion_generation import drain as run_due
 
 # Suggestions following ADR 30's decision; calming (ADR 53) is test_calming's.
-pytestmark = pytest.mark.usefixtures("calming_off", "text_rewriting")
+pytestmark = pytest.mark.usefixtures("calming_off")
+
+
+async def drain(app, limit=20):
+    """Every due job, with the held text blocks' quiet seconds skipped too:
+    text is decided from its originals, never rewritten (ADR 54)."""
+    with app.store.transaction() as db:
+        db.execute("UPDATE incoming_deferred SET due=0")
+    await run_due(app, limit)
 
 
 class Muse(Engine):
@@ -108,7 +117,8 @@ async def test_each_private_chat_chooses_off_or_on(tmp_path, monkeypatch):
 
 async def test_off_cancels_the_chats_queued_work(tmp_path):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app, text="I had an awful day."))
+    # A voice note, rewritten and then decided, leaves its set queued.
+    app.sync.ingest(voice_note(app))
     await incoming_only(app)
     [queued] = jobs(app, state="queued")
     app.suggestions.set_settings(KEY, False, "friendly")
@@ -163,7 +173,7 @@ async def test_a_choice_changed_while_a_set_waits_applies_to_the_next_block(
     tmp_path, monkeypatch
 ):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app, text="I had an awful day."))
+    app.sync.ingest(voice_note(app))
     await incoming_only(app)
     app.suggestions.set_settings(KEY, True, "idioms")
     await drain(app)

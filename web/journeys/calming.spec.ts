@@ -62,29 +62,19 @@ test("a hostile message shows Softened, and its AI Menu turns softening off", as
 test("text that isn't rewritten shows as its originals together", async ({
   page,
 }) => {
-  const post = async (path: string, data: object = {}) => {
-    const answer = await page.request.post(path, {
-      data,
-      headers: { Origin: ORIGIN },
-    });
-    expect(answer.status()).toBe(200);
-    return answer.json();
-  };
-  await post("/api/test/text-rewriting", { enabled: false });
-  try {
-    expect((await post("/api/test/combined")).state).toBe("original");
-    await page.reload();
-    await page.getByRole("button", { name: /^Combined fixture/ }).tap();
-    const bubble = page
-      .locator("article.app-bubble")
-      .filter({ hasText: "Combined fixture:" })
-      .last();
-    await expect(bubble.getByText("Or Friday.")).toBeVisible();
-    await expect(bubble.locator(".bubble-ai-head")).toHaveText(
-      /^2 messages · /,
-    );
-    await expect(bubble.getByText("Original text")).toHaveCount(0);
-  } finally {
-    await post("/api/test/text-rewriting", { enabled: true });
-  }
+  const combined = await page.request.post("/api/test/combined", {
+    data: {},
+    headers: { Origin: ORIGIN },
+  });
+  expect(combined.status()).toBe(200);
+  expect((await combined.json()).state).toBe("original");
+  await page.reload();
+  await page.getByRole("button", { name: /^Combined fixture/ }).tap();
+  const bubble = page
+    .locator("article.app-bubble")
+    .filter({ hasText: "Combined fixture:" })
+    .last();
+  await expect(bubble.getByText("Or Friday.")).toBeVisible();
+  await expect(bubble.locator(".bubble-ai-head")).toHaveText(/^2 messages · /);
+  await expect(bubble.getByText("Original text")).toHaveCount(0);
 });

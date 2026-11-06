@@ -16,10 +16,7 @@ from enloq.storage.store import WINDOW, Store
 from fastapi.testclient import TestClient
 
 from backend.tests.auth_helpers import trust_browser
-
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import image_bytes
 
 
 @pytest.fixture
@@ -38,6 +35,9 @@ def rig(tmp_path):
 
 
 def incoming(app, identity=1, **changes):
+    """A photo with its caption, which the rewrite reads: text alone stays
+    combined (ADR 54, ADR 62 Q21)."""
+    app.transport.media["user:42", identity] = image_bytes()
     values = dict(
         account_id=app.store.account_id,
         peer="user:42",
@@ -45,6 +45,7 @@ def incoming(app, identity=1, **changes):
         revision=1,
         date=app.store.clock(),
         text="Please confirm the authored time.",
+        media="image",
     )
     return Message(**(values | changes))
 

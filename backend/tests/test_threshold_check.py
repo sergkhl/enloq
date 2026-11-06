@@ -198,8 +198,10 @@ async def run(
     return report, calls, listings, before, owner_state(registry), registry
 
 
+# The saved threshold governs group briefings only (ADR 62 Q21): any value
+# leaves these media blocks' rewrites alone.
 @pytest.mark.parametrize("threshold", [None, 0, 10_000])
-async def test_six_first_streamed_attempts_preserve_owner_settings_and_format_counts(
+async def test_three_first_streamed_attempts_preserve_owner_settings_and_format_counts(
     tmp_path, threshold, capsys
 ):
     report, calls, listings, before, after, registry = await run(
@@ -207,30 +209,26 @@ async def test_six_first_streamed_attempts_preserve_owner_settings_and_format_co
     )
     assert report["format_verified"] and report["within_bounds"]
     assert "stopped" not in report and not report["unverified_cases"]
-    assert report["requests"] == len(calls) == 6
+    assert report["requests"] == len(calls) == len(runner.CASES) == 3
     assert len(listings) == 1
     assert report["bounds"] == runner.BOUNDS
-    assert report["counted_test_nanos"] == 60_000
+    assert report["counted_test_nanos"] == 30_000
     assert report["telegram_calls"] == 0
     assert report["defaults_revision"] == DEFAULTS_REVISION
     assert before == after
     assert registry.paused_roles() == {"incoming_rewrite", "chat_memory"}
-    assert report["saved_processing_threshold"] == (
-        200 if threshold is None else threshold
-    )
     assert [r["name"] for r in report["results"]] == [c["name"] for c in runner.CASES]
-    assert [r["original_characters"] for r in report["results"][:2]] == [199, 200]
     assert all(r["outcome"][0]["state"] == "done" for r in report["results"])
     assert all(len(r["calls"]) == 1 for r in report["results"])
-    assert report["format"] == [{"role": "incoming_rewrite", "ok": True}] * 6
+    assert report["format"] == [{"role": "incoming_rewrite", "ok": True}] * 3
     observed = [r["calls"][0] for r in report["results"]]
-    assert [c["parts_min_items"] for c in observed] == [1, 1, 1, 1, 1, 0]
-    assert [c["attached_images"] for c in observed] == [0, 0, 0, 0, 1, 1]
-    transcript = observed[3]["packet"]["messages"][0]
+    assert [c["parts_min_items"] for c in observed] == [1, 1, 0]
+    assert [c["attached_images"] for c in observed] == [0, 1, 1]
+    transcript = observed[0]["packet"]["messages"][0]
     assert not transcript["text"] and transcript["transcript"]["text"]
-    assert observed[5]["packet"]["context"][0]["text"]
-    assert report["results"][5]["rendered"] == [{"rendered": "", "state": "ready"}]
-    assert report["results"][5]["image_context"] == ["Authored sample bill."]
+    assert observed[2]["packet"]["context"][0]["text"]
+    assert report["results"][2]["rendered"] == [{"rendered": "", "state": "ready"}]
+    assert report["results"][2]["image_context"] == ["Authored sample bill."]
     for payload, observation in zip(calls, observed):
         assert payload["stream"] and payload["stream_options"]["include_usage"]
         assert payload["model"] == MODEL
@@ -249,11 +247,12 @@ async def test_six_first_streamed_attempts_preserve_owner_settings_and_format_co
             c["type"] in {"text", "image_url"}
             for c in payload["messages"][1]["content"]
         )
-    assert all(c["first_text_seconds"] >= 0 for c in observed[:5])
+    assert all(c["first_text_seconds"] >= 0 for c in observed[:2])
     terminal = capsys.readouterr().out
     for private_text in (
         "Authored incoming result.",
-        "Привет!",
+        "встречу давай",
+        "Are both delivery lines",
         "authored:",
         "sk-authored-placeholder",
         registry.provider_user(),
@@ -290,7 +289,7 @@ async def test_interrupted_stream_keeps_first_private_partial_and_unknown_accoun
     assert result["outcome"][0]["state"] == "failed"
     assert result["calls"][0]["raw"].startswith('{"parts":')
     assert result["rendered"] == [{"rendered": None, "state": "failed"}]
-    assert not report["format_verified"] and len(report["unverified_cases"]) == 6
+    assert not report["format_verified"] and len(report["unverified_cases"]) == 3
 
 
 async def test_deadline_cancellation_retains_partial_second_outcome_and_spending(
@@ -307,7 +306,7 @@ async def test_deadline_cancellation_retains_partial_second_outcome_and_spending
     assert partial["calls"][0]["raw"].startswith('{"parts":')
     assert partial["outcome"][0]["state"] == "failed"
     assert partial["rendered"] == [{"rendered": None, "state": "unknown"}]
-    assert len(report["unverified_cases"]) == 5
+    assert len(report["unverified_cases"]) == 2
     assert not report["format_verified"]
 
 
@@ -322,7 +321,7 @@ async def test_shared_day_allowance_must_cover_the_unknown_bound_before_dispatch
     assert report["stopped"].startswith("Remaining Daily Budget")
     assert report["counted_test_nanos"] == 0 and before == after
     assert not registry.rows("SELECT * FROM model_reservations")
-    assert len(report["unverified_cases"]) == 6
+    assert len(report["unverified_cases"]) == 3
 
 
 async def test_shared_day_remaining_stops_after_one_known_receipt(tmp_path):
@@ -331,7 +330,7 @@ async def test_shared_day_remaining_stops_after_one_known_receipt(tmp_path):
     assert report["stopped"].startswith("Remaining Daily Budget")
     assert report["final_budget"]["spent"] == 10_000
     assert registry.budget()["unknown"] == 0 and before == after
-    assert len(report["unverified_cases"]) == 5 and report["within_bounds"]
+    assert len(report["unverified_cases"]) == 2 and report["within_bounds"]
 
 
 async def test_finite_remaining_must_cover_the_next_unknown_bound(tmp_path):
@@ -339,7 +338,7 @@ async def test_finite_remaining_must_cover_the_next_unknown_bound(tmp_path):
     assert len(calls) == report["requests"] == 1
     assert report["stopped"].startswith("Remaining finite allowance")
     assert report["counted_test_nanos"] == 10_000
-    assert len(report["unverified_cases"]) == 5 and report["within_bounds"]
+    assert len(report["unverified_cases"]) == 2 and report["within_bounds"]
 
 
 async def test_normal_older_work_quarter_reserve_is_preserved(tmp_path):
@@ -377,14 +376,14 @@ async def test_bad_first_outcomes_are_retained_without_sampling_the_case_again(
     report, calls, _, before, after, _ = await run(
         tmp_path, **{"malformed_at" if kind == "malformed" else "refused_at": 1}
     )
-    assert len(calls) == report["requests"] == 6
+    assert len(calls) == report["requests"] == 3
     assert before == after and not report["format_verified"]
     first = report["results"][0]
     assert first["outcome"][0]["state"] == (
         "failed" if kind == "malformed" else "refused"
     )
     assert len(first["calls"]) == 1
-    assert report["counted_test_nanos"] == (60_000 if kind == "malformed" else 50_000)
+    assert report["counted_test_nanos"] == (30_000 if kind == "malformed" else 20_000)
     if kind == "malformed":
         assert first["calls"][0]["raw"] == '{"parts": [], "image_context": []}'
         assert "omitted_target_text" in first["receipts"][0]["usage"]
@@ -395,7 +394,7 @@ async def test_bad_first_outcomes_are_retained_without_sampling_the_case_again(
 
 async def test_upstream_inference_cost_counts_when_charged_cost_is_zero(tmp_path):
     report, calls, *_ = await run(tmp_path, cost=0, upstream=0.00002)
-    assert len(calls) == 6 and report["counted_test_nanos"] == 120_000
+    assert len(calls) == 3 and report["counted_test_nanos"] == 60_000
     assert report["format_verified"]
 
 
@@ -428,7 +427,7 @@ async def test_deadline_guard_stops_between_first_attempts(tmp_path):
 @pytest.mark.parametrize(
     "bounds",
     [
-        {"requests": 7},
+        {"requests": 4},
         {"seconds": 601},
         {"counted_nanos": 50_000_001},
         {"requests": 0},

@@ -8,7 +8,7 @@ from enloq.domain.models import MediaInfo
 from enloq.transport.telethon import classify
 from telethon.tl import types
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 
 def native(media, text=""):
@@ -164,6 +164,9 @@ async def test_link_preview_rewrites_as_text(tmp_path):
             media_info=MediaInfo(title="Example"),
         )
     )
+    # The photo after it is what admits the block for rewriting: text alone,
+    # a link preview included, stays combined (ADR 54).
+    a.sync.ingest(picture(a, 2, text=""))
     now[0] += 30
     await a.process_due()
     packet = a.engine.calls[0][1]
@@ -176,7 +179,8 @@ async def test_link_preview_rewrites_as_text(tmp_path):
 async def test_mixed_block_marks_what_was_not_analysed(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a, 1, text="Here is the contract draft."))
+    # A captioned photo admits the block: text alone stays combined (ADR 54).
+    a.sync.ingest(picture(a, 1, text="Here is the contract draft."))
     a.sync.ingest(
         message(
             a,
@@ -207,7 +211,8 @@ async def test_mixed_block_marks_what_was_not_analysed(tmp_path):
         "size": 2048,
     }
     assert placeholders[2]["kind"] == "sticker" and placeholders[2]["emoji"] == "🙂"
-    assert not a.transport.downloads  # File contents never become model input.
+    # Only the photo is fetched: file contents never become model input.
+    assert [d[1] for d in a.transport.downloads] == [1]
     block = a.conversation("1/user:42")["blocks"][0]
     assert block["state"] == "ready"
     assert [(i["id"], i["kind"]) for i in block["unanalysed"]] == [
@@ -239,8 +244,9 @@ async def test_sticker_only_block_makes_no_call_and_is_not_queued(tmp_path):
 
     with pytest.raises(Refused, match="Nothing"):
         a.rewriting.retry(block["id"])
-    # A source change re-evaluates the block.
-    a.sync.ingest(message(a, 2, text="Thanks, see you then."))
+    # A source change re-evaluates the block: a captioned photo, since text
+    # alone stays combined (ADR 54).
+    a.sync.ingest(picture(a, 2, text="Thanks, see you then."))
     block = a.conversation("1/user:42")["blocks"][0]
     assert block["sources"] == [1, 2] and block["state"] == "queued"
 
@@ -251,7 +257,8 @@ async def test_unsupported_and_unpreparable_context_never_fails_a_block(tmp_path
     a.sync.ingest(message(a, 1, text="", media="unsupported"), target=False)
     a.sync.ingest(message(a, 2, text="", media="image"), target=False)  # no bytes
     a.sync.ingest(message(a, 3, outgoing=True, text="Noted."), target=False)
-    a.sync.ingest(message(a, 4, text="Please confirm the time."))
+    # A captioned photo target: text alone stays combined (ADR 54).
+    a.sync.ingest(picture(a, 4, text="Please confirm the time."))
     now[0] += 30
     await a.process_due()
     assert len(a.engine.calls) == 1
@@ -285,6 +292,8 @@ async def test_metadata_refresh_keeps_block_revision_and_derivatives(tmp_path):
     a = fixture(tmp_path, clock=lambda: now[0])
     legacy = message(a, 1, text="See attached.", media="unsupported")
     a.sync.ingest(legacy)
+    # The photo after it is what admits the block for rewriting (ADR 54).
+    a.sync.ingest(picture(a, 2, text=""))
     block = a.conversation("1/user:42")["blocks"][0]
     with a.store.transaction() as db:
         db.execute(
@@ -307,9 +316,9 @@ async def test_metadata_refresh_keeps_block_revision_and_derivatives(tmp_path):
     assert a.store.message("1/user:42", 1).media_info.file_name == "plan.pdf"
     after = a.conversation("1/user:42")["blocks"][0]
     assert after["revision"] == block["revision"] and after["state"] == "ready"
-    assert a.store.rows("SELECT * FROM derivatives")
+    assert a.store.rows("SELECT * FROM derivatives WHERE source='1/user:42/1'")
     assert await a.refresh_legacy("1/user:42") == 0  # Nothing legacy remains.
-    a.sync.ingest(message(a, 2, text="And one more thing."))
+    a.sync.ingest(message(a, 3, text="And one more thing."))
     assert a.conversation("1/user:42")["blocks"][0]["revision"] != block["revision"]
 
 
@@ -333,9 +342,10 @@ async def test_refresh_reveals_nothing_to_rewrite_without_queueing(tmp_path):
 async def test_only_predispatch_unsupported_failures_requeue_once(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a, 1, text="Pre-dispatch failure"))
+    # Captioned photos: text alone stays combined (ADR 54).
+    a.sync.ingest(picture(a, 1, text="Pre-dispatch failure"))
     a.sync.ingest(message(a, 2, outgoing=True))
-    a.sync.ingest(message(a, 3, text="Dispatched failure"))
+    a.sync.ingest(picture(a, 3, text="Dispatched failure"))
     blocks = a.conversation("1/user:42")["blocks"]
     with a.store.transaction() as db:
         db.execute(

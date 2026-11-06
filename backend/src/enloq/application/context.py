@@ -120,8 +120,8 @@ async def incoming(app, block, *, retry=False, on_stage=None, explicit=False):
 
 
 def cached(store, db, block):
-    """ADR 49 Q3: the same bounded inputs for an automatic block held under the
-    Processing Character Threshold, from the local cache only, inside the
+    """ADR 49 Q3: the same bounded inputs for a held automatic block, text
+    that stays combined (ADR 54), from the local cache only, inside the
     caller's transaction: no Telegram read and no media preparation. Cached
     transcripts and image meanings stand in for prepared media; anything else
     stays an unanalysed attachment, and an uncached direct reply is left out.

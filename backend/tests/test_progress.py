@@ -13,7 +13,7 @@ from enloq.storage.accounts import AccountRegistry
 from fastapi.testclient import TestClient
 
 from backend.tests.auth_helpers import trust_browser
-from backend.tests.test_rebuild import fixture, image_bytes, message
+from backend.tests.test_rebuild import fixture, image_bytes, meanings, message, picture
 
 
 def stage(app, index=0):
@@ -78,7 +78,8 @@ async def test_every_processing_stage_appears_in_its_state(tmp_path):
 
     a.engine = Muse()
     a.sync.ingest(message(a, 7, outgoing=True))
-    a.sync.ingest(message(a, 8, text="Budget-limited request."))
+    # A photo with its caption: text alone stays combined (ADR 54).
+    a.sync.ingest(picture(a, 8, text="Budget-limited request."))
     now[0] += 30
     await a.process_due()
     assert stage(a, 3) == "budget"
@@ -87,9 +88,10 @@ async def test_every_processing_stage_appears_in_its_state(tmp_path):
 async def test_run_progress_and_stop_cancels_only_undispatched_work(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
+    # Photos with captions: text alone stays combined (ADR 54).
     for identity in (1, 2, 3):
         a.sync.ingest(
-            message(a, identity * 2 - 1, text=f"Separate request {identity}.")
+            picture(a, identity * 2 - 1, text=f"Separate request {identity}.")
         )
         a.sync.ingest(message(a, identity * 2, outgoing=True))
         now[0] += 200
@@ -271,11 +273,15 @@ async def test_running_calls_may_finish_but_overshoot_stays_bounded(tmp_path):
         async def generate(self, role, packet):
             calls.append(role)
             await release.wait()
-            return EngineResponse({"text": "Done."}, actual_nanos=12_000_000)
+            return EngineResponse(
+                {"text": "Done.", "image_context": meanings(packet)},
+                actual_nanos=12_000_000,
+            )
 
     a.engine = Muse()
+    # Photos with captions: text alone stays combined (ADR 54).
     for identity in (1, 3, 5):
-        a.sync.ingest(message(a, identity, text="Request."))
+        a.sync.ingest(picture(a, identity, text="Request."))
         a.sync.ingest(message(a, identity + 1, outgoing=True))
     jobs = a.store.rows("SELECT * FROM jobs WHERE state='queued' ORDER BY scope")
     assert len(jobs) == 3

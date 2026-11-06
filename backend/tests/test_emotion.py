@@ -8,7 +8,7 @@ from enloq.inference.base import EngineResponse
 from enloq.inference.openrouter import output_schema
 from enloq.inference.work import InvalidOutput, validate_output
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 # ADR 30's decision after the published rewrite; calming (ADR 53), which
 # decides first, is covered by test_calming.
@@ -232,7 +232,9 @@ def classification(app):
 
 
 async def rewritten(app, now, identity=1, **fields):
-    app.sync.ingest(message(app, identity, **fields))
+    """A photo with its caption, rewritten: text alone stays combined and is
+    decided first (ADR 54)."""
+    app.sync.ingest(picture(app, identity, **fields))
     now[0] += 30
     await app.process_due()
 
@@ -268,6 +270,7 @@ async def test_classification_follows_publication_and_readiness_never_waits(
                 "id": 2,
                 "from": "recipient",
                 "text": "I am worried about tomorrow.",
+                "image_meaning": "An authored synthetic image.",
                 "latest_block": True,
             },
         ]
@@ -407,7 +410,7 @@ async def test_newer_incoming_supersedes_and_late_output_never_publishes(tmp_pat
     app.decider.generate = held
     task = asyncio.create_task(app.process_due())
     await asyncio.wait_for(started.wait(), 5)
-    app.sync.ingest(message(app, 2, text="Never mind, all good."))
+    app.sync.ingest(picture(app, 2, text="Never mind, all good."))
     release.set()
     await task
     assert classification(app)["state"] == "superseded"
@@ -467,7 +470,7 @@ async def test_schedule_failure_never_undoes_the_incoming_result(tmp_path, caplo
 async def test_no_paid_call_for_a_block_past_the_twelve_hour_lifetime(tmp_path):
     app, now = rig(tmp_path)
     # Unread catch-up of a block already older than the display lifetime.
-    app.sync.ingest(message(app, 1, date=now[0] - LIFETIME - 60))
+    app.sync.ingest(picture(app, 1, date=now[0] - LIFETIME - 60))
     now[0] += 30
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET due=0")
@@ -511,7 +514,7 @@ async def test_changes_before_dispatch_supersede_without_a_failure(tmp_path):
 
     async def changed_while_waiting(engine, job, packet, valid, **kwargs):
         # The block stops being current while the job waits for a slot.
-        app.sync.ingest(message(app, 1, revision=2, text="Edited words"))
+        app.sync.ingest(picture(app, 1, revision=2, text="Edited words"))
         return await original(engine, job, packet, valid, **kwargs)
 
     work.run = changed_while_waiting
@@ -528,7 +531,7 @@ async def test_changes_before_dispatch_supersede_without_a_failure(tmp_path):
 
 async def test_ending_an_older_run_stops_its_queued_classification(tmp_path):
     app, now = rig(tmp_path)
-    app.sync.ingest(message(app, 1))
+    app.sync.ingest(picture(app, 1))
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET state='cancelled'")
         db.execute("UPDATE blocks SET state='original'")

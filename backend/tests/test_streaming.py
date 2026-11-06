@@ -7,7 +7,7 @@ from enloq.inference.base import EngineResponse
 from enloq.inference.openrouter import MODEL
 from enloq.inference.streaming import StreamFailure, TextPreview, read_stream
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, meanings, picture
 
 
 @pytest.mark.parametrize("escaped", [True, False])
@@ -110,7 +110,8 @@ async def test_incoming_snapshots_reconnect_recovery_and_stale_output(
     tmp_path, outcome
 ):
     app = fixture(tmp_path)
-    app.sync.ingest(message(app, date=app.store.clock() - 31))
+    # A photo with its caption: text alone stays combined (ADR 54).
+    app.sync.ingest(picture(app, date=app.store.clock() - 31))
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET due=0")
     started, finish = asyncio.Event(), asyncio.Event()
@@ -129,9 +130,9 @@ async def test_incoming_snapshots_reconnect_recovery_and_stale_output(
                 {"wrong": "shape"}
                 if outcome == "format"
                 else (
-                    {"parts": [], "image_context": []}
+                    {"parts": [], "image_context": meanings(packet)}
                     if outcome == "empty"
-                    else {"text": "Validated text", "image_context": []}
+                    else {"text": "Validated text", "image_context": meanings(packet)}
                 ),
                 actual_nanos=7,
             )
@@ -146,7 +147,7 @@ async def test_incoming_snapshots_reconnect_recovery_and_stale_output(
     await app.process_due()
     assert app.engine.calls == 1
     if outcome == "source_change":
-        app.sync.ingest(message(app, revision=2, text="New source"))
+        app.sync.ingest(picture(app, revision=2, text="New source"))
         assert app.conversation("1/user:42")["blocks"][0]["stream"] is None
     if outcome == "cancel":
         work.cancel()
@@ -180,7 +181,7 @@ async def test_fast_partial_updates_reach_event_subscribers_before_completion(tm
     from enloq.storage.accounts import AccountRegistry
 
     app = fixture(tmp_path)
-    app.sync.ingest(message(app, date=app.store.clock() - 31))
+    app.sync.ingest(picture(app, date=app.store.clock() - 31))
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET due=0")
 
@@ -192,7 +193,8 @@ async def test_fast_partial_updates_reach_event_subscribers_before_completion(tm
                 on_text(text)
                 await asyncio.sleep(0.04)
             return EngineResponse(
-                {"text": "Final validated words", "image_context": []}, actual_nanos=0
+                {"text": "Final validated words", "image_context": meanings(packet)},
+                actual_nanos=0,
             )
 
     app.engine = Engine()

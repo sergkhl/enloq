@@ -129,6 +129,17 @@ async def test_every_case_is_one_decision_request_through_the_real_stages(tmp_pa
     ads = report["results"][DECIDED:]
     assert all(r["role"] == "emotion_classification" for r in incoming)
     assert all(set(r["state"]) == {"conversation"} for r in incoming)
+    # A text block is held and decided from its originals (ADR 54); one with an
+    # image or a voice note is decided after its rewrite's stand-in.
+    media = {
+        name
+        for name, messages, *_ in runner.INCOMING
+        if any("image" in m or "voice" in m for m in messages)
+    }
+    assert media and len(media) < len(incoming)
+    assert [r["path"] for r in incoming] == [
+        "rewritten" if r["name"] in media else "held" for r in incoming
+    ]
     assert all(r["state"]["reaction"]["by"] == "recipient" for r in reactions)
     image = next(r for r in incoming if r["name"] == "image_meaning_loss")
     assert image["attached_images"] == 1

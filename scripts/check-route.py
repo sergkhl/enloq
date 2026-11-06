@@ -15,9 +15,14 @@ accounting are held throughout. Every case is wholly authored; none copies a
 real message, name, number, date, link or identifier. A fake transport means
 no Telegram read, send or reaction, and voice notes carry authored transcripts
 through a stand-in recognizer, so no audio exists or reaches the provider.
-One first attempt per case, without retry or resampling; owner settings are
-never changed. Format outcomes go to the report only: the registry's format
-counts measure the running route, which ADR 29 restarts at the switch.
+Since ADR 54 MiMo rewrites only incoming blocks with an image, a voice note
+or a Video Circle (softened text is Muse's), so every incoming case holds a
+voice note or an image, and typed messages in the same block are rewritten
+with it. The suggestion case's text block is held and decided as text is, an
+authored useful decision standing in for the decision route's. One first
+attempt per case, without retry or resampling; owner settings are never
+changed. Format outcomes go to the report only: the registry's format counts
+measure the running route, which ADR 29 restarts at the switch.
 """
 
 import argparse
@@ -29,7 +34,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from enloq.application.context import incoming
 from enloq.application.conversations import Conversations
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import (
@@ -69,37 +73,41 @@ def voice(transcript):
 
 # Incoming cases: (name, sources, what a reviewer checks). A source is authored
 # text, an authored transcript or an authored image, optionally forwarded.
+# Every case holds a voice note or an image: only such a block is rewritten
+# (ADR 54), its typed messages with it.
 CHECK_1_INCOMING = [
     (
         "english_fragments",
         [
             text("hey"),
             text("so about saturday"),
-            text("can you still bring the speaker? mine broke"),
+            voice("Can you still bring the speaker? Mine broke."),
             text("and pls tell me by thu if not, then i'll rent one"),
         ],
-        "One combined request: the speaker for Saturday, the Thursday deadline and "
-        "the rental fallback, in the sender's casual voice.",
+        "One combined request across the typed fragments and the voice note: the "
+        "speaker for Saturday, the Thursday deadline and the rental fallback, in "
+        "the sender's casual voice.",
     ),
     (
         "russian_block",
         [
             text("Привет! Посмотрела вчера квартиру на тихой улице у парка."),
-            text("Хозяйка хочет залог сразу за два месяца, по-моему, это много."),
+            voice("Хозяйка хочет залог сразу за два месяца, по-моему, это много."),
             text("Можешь спросить у знакомого юриста, это вообще нормально?"),
         ],
-        "Russian kept; the deposit concern stays the sender's opinion; the request "
-        "to ask a lawyer is preserved.",
+        "Russian kept; the spoken deposit concern stays the sender's opinion; the "
+        "request to ask a lawyer is preserved.",
     ),
     (
         "mixed_language_requests",
         [
             text("Привет, can you send me the invoice from last month?"),
-            text("И ещё напомни, пожалуйста, во сколько завтра встреча"),
+            voice("И ещё напомни, пожалуйста, во сколько завтра встреча."),
             text("also not sure the address in the invite is right, проверь плз"),
         ],
-        "Three distinct requests kept apart (invoice, meeting time, address "
-        "check), the same shape as the retained mixed-language Low quality case.",
+        "Three distinct requests kept apart (invoice, the spoken meeting time, "
+        "address check), the same shape as the retained mixed-language Low "
+        "quality case.",
     ),
     (
         "image_with_text",
@@ -132,25 +140,26 @@ CHECK_2_INCOMING = [
             text("ok so the landlord came by"),
             text("he says the heater will be fixed on monday"),
             text("btw did you get my package??"),
-            text("it says delivered but i'm not sure"),
+            voice("It says delivered, but I'm not sure."),
             text("also the heater guy needs someone home 9-12"),
         ],
         "Two short paragraphs in order of first mention: the heater (Monday, "
-        "someone home 9-12) then the package question; no summary line.",
+        "someone home 9-12) then the package question with the spoken doubt; no "
+        "summary line.",
     ),
     (
         "parallel_items",
         [
-            text(
-                "For the cabin trip can you check whether there are towels, if dogs "
+            voice(
+                "For the cabin trip, can you check whether there are towels, if dogs "
                 "are allowed, what time check-in is and whether there's parking?"
             )
         ],
-        "Four parallel questions as bullet lines; no Markdown.",
+        "Four parallel spoken questions as bullet lines; no Markdown.",
     ),
     (
         "single_point",
-        [text("Running 10 minutes late, sorry!")],
+        [voice("Running 10 minutes late, sorry!")],
         "Stays one natural sentence.",
     ),
     (
@@ -186,10 +195,10 @@ CHECK_2_INCOMING = [
                 "Water will be off on Monday from 10:00 to 14:00 for pipe repairs.",
                 forwarded_from="Authored building management",
             ),
-            text("fyi this is our building, fill some bottles"),
+            voice("FYI, this is our building. Fill some bottles."),
         ],
-        "The notice stays attributed to its author; the sender's own suggestion "
-        "stays the sender's.",
+        "The notice stays attributed to its author; the sender's own spoken "
+        "suggestion stays the sender's.",
     ),
     (
         "russian_speech",
@@ -207,11 +216,11 @@ CHECK_2_INCOMING = [
         "mixed_language_regression",
         [
             text("Привет! Can you check the contract before Friday?"),
-            text("особенно пункт про штрафы, I'm worried about it"),
+            voice("Особенно пункт про штрафы, I'm worried about it."),
             text("и скажи, если надо что-то поменять"),
         ],
         "Requests kept distinct (check before Friday, the penalty clause, say what "
-        "to change) with the worry kept.",
+        "to change) with the spoken worry kept.",
     ),
 ]
 MEMORY = {
@@ -405,8 +414,6 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, engine)
-                    # ADR 54: this check rewrites its text cases; the owner's setting stays.
-                    store.rewrites_text = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()
@@ -614,6 +621,8 @@ async def observe(
                         case = SUGGESTION
                         begin(**case)
                         peer, key = chat(case["name"])
+                        # A new text block is held and, after its quiet
+                        # (skipped here), decided from its originals (ADR 54).
                         app.sync.ingest(
                             Message(
                                 account_id=1,
@@ -622,63 +631,58 @@ async def observe(
                                 revision=1,
                                 date=time.time() - 60,
                                 text=case["text"],
-                            ),
-                            target=False,
+                            )
                         )
-                        app.rewriting.process_older(key)
-                        block = store.rows(
-                            "SELECT * FROM blocks WHERE chat_key=?", (key,)
-                        )[0]
-                        job = store.rows(
-                            "SELECT * FROM jobs WHERE scope=? AND role='incoming_rewrite' AND state='queued'",
-                            (block["id"],),
-                        )[0]
-                        # The authored emotion stands in for a validated incoming
-                        # result: only the suggestion request is made.
-                        packet = await incoming(app, block, explicit=True)
-                        signal = app.emotion.capture(block, packet, job["id"])
-                        version = registry.guidance()["version"]
                         with store.transaction() as db:
                             db.execute(
-                                "UPDATE jobs SET state='done' WHERE id=?", (job["id"],)
+                                "UPDATE incoming_deferred SET due=0 WHERE scope IN "
+                                "(SELECT id FROM blocks WHERE chat_key=?)",
+                                (key,),
                             )
-                            db.execute(
-                                "UPDATE blocks SET state='ready',rendered=?,rendered_revision=revision WHERE id=?",
-                                (case["text"], block["id"]),
-                            )
-                            # A useful decision (ADR 49 Q2) stands in too.
-                            app.emotion.publish(
-                                db, key, signal, case["emotion"], version, useful=True
-                            )
-                            app.suggestions.schedule(
-                                db,
-                                block,
-                                # Stand in for normal latest-block publication;
-                                # cached preparation keeps its deliberate class.
-                                job | {"payload": json.dumps({"class": "new"})},
-                                packet,
-                                [],
-                                enabled=True,
-                            )
-                        attempt = store.rows(
-                            "SELECT * FROM jobs WHERE scope=? AND role='response_suggestions' AND state='queued'",
+                        app.emotion.decide_held()
+                        decision = store.rows(
+                            "SELECT * FROM jobs WHERE scope=? AND role='emotion_classification' AND state='queued'",
                             (key,),
-                        )[0]
-                        assert app.rewriting.claim(attempt)
+                        )
+                        if not decision:
+                            raise Refused("The suggestion case cannot be decided")
+                        # The app's authored decider answers the authored emotion
+                        # and a useful decision (ADR 49 Q2), standing in for the
+                        # decision route (scripts/check-emotion.py checks it):
+                        # only the suggestion request is made.
+                        app.decider.emotion = case["emotion"]
+                        app.decider.useful = 0.9
                         # The owner's global switch still decides (ADR 25).
                         app.suggestions.enabled = registry.suggestions_enabled
                         try:
-                            await app.suggestions.run(attempt)
-                        except Refused:
-                            pass
+                            assert app.rewriting.claim(decision[0])
+                            await app.emotion.classify(decision[0])
+                            record = app.emotion.record(key) or {}
+                            engine.current["decision"] = {
+                                k: record.get(k)
+                                for k in ("state", "code", "useful", "failure")
+                            }
+                            attempt = store.rows(
+                                "SELECT * FROM jobs WHERE scope=? AND role='response_suggestions' AND state='queued'",
+                                (key,),
+                            )
+                            if not attempt:
+                                raise Refused("No suggestion request was scheduled")
+                            attempt = attempt[0]
+                            assert app.rewriting.claim(attempt)
+                            try:
+                                await app.suggestions.run(attempt)
+                            except Refused:
+                                pass
+                            finally:
+                                record = app.suggestions.record(key) or {}
+                                engine.current["record"] = {
+                                    k: record.get(k)
+                                    for k in ("state", "failure", "options")
+                                }
+                                finish(attempt["id"])
                         finally:
                             app.suggestions.enabled = lambda: False
-                            record = app.suggestions.record(key) or {}
-                            engine.current["record"] = {
-                                k: record.get(k)
-                                for k in ("state", "failure", "options")
-                            }
-                            finish(attempt["id"])
 
                     try:
                         if check == 1:

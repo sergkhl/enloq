@@ -16,7 +16,7 @@ from backend.tests.test_memory import conversation as memory_conversation
 from backend.tests.test_memory import fold
 from backend.tests.test_memory_takeaways import retained
 from backend.tests.test_reactions import snapshot
-from backend.tests.test_rebuild import edit, fixture, message
+from backend.tests.test_rebuild import edit, fixture, message, picture
 from backend.tests.test_suggestion_state import OPTIONS, prepare, ready
 
 KEY, PEER = "1/user:42", "user:42"
@@ -175,7 +175,7 @@ async def test_incoming_stream_late_completion_cannot_restore_deleted_source(tmp
             )
 
     app.engine = Engine()
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     now[0] += 31
     running = asyncio.create_task(app.process_due())
     await asyncio.wait_for(entered.wait(), 5)
@@ -198,9 +198,9 @@ async def test_deleting_outgoing_boundary_regroups_with_quiet_wait_and_no_stale_
     tmp_path,
 ):
     app, now = rig(tmp_path)
-    app.sync.ingest(message(app, 1, text="First incoming point"))
+    app.sync.ingest(picture(app, 1, text="First incoming point"))
     app.sync.ingest(message(app, 2, outgoing=True, text="Owner boundary"), target=False)
-    app.sync.ingest(message(app, 3, text="Second incoming point"))
+    app.sync.ingest(picture(app, 3, text="Second incoming point"))
     now[0] += 31
     await app.process_due()
     await app.process_due()
@@ -229,7 +229,7 @@ async def test_deleted_input_rejects_late_emotion_classification_and_suggestions
 ):
     app, now = rig(tmp_path)
     entered, release = asyncio.Event(), asyncio.Event()
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     now[0] += 31
     await app.process_due()
 

@@ -17,11 +17,10 @@ from enloq.storage.accounts import AccountRegistry
 from enloq.storage.store import WINDOW, Store
 from enloq.transport.fake import FakeTransport
 
-from backend.tests.test_rebuild import message
+from backend.tests.test_rebuild import meanings, message, picture
 
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+# A block whose admission or rewrite a case checks is made of photos with
+# captions: text alone stays combined and is never queued (ADR 54, ADR 62 Q21).
 
 KEY = "1/user:42"
 ZONE = "Asia/Ho_Chi_Minh"
@@ -95,8 +94,8 @@ def test_four_minute_gap_and_utc_day_change_do_not_split_the_app_day(tmp_path):
     now = [local_time()]
     app = application(tmp_path, now)
     # UTC midnight occurs within one local calendar day.
-    app.sync.ingest(message(app, 1, date=local_time(hour=6, minute=59)))
-    app.sync.ingest(message(app, 2, date=local_time(hour=7, minute=3)))
+    app.sync.ingest(picture(app, 1, date=local_time(hour=6, minute=59)))
+    app.sync.ingest(picture(app, 2, date=local_time(hour=7, minute=3)))
     assert [json.loads(b["sources"]) for b in blocks(app)] == [[1, 2]]
     assert len(pending(app)) == 1
 
@@ -126,10 +125,10 @@ def test_outgoing_and_service_messages_split_even_after_long_pauses(
 def test_deleted_first_source_keeps_identity_on_later_rebuilds(tmp_path):
     now = [local_time()]
     app = application(tmp_path, now)
-    app.sync.ingest(message(app, 1))
-    app.sync.ingest(message(app, 2))
+    app.sync.ingest(picture(app, 1))
+    app.sync.ingest(picture(app, 2))
     app.sync.deleted("user:42", [1])
-    app.sync.ingest(message(app, 3))
+    app.sync.ingest(picture(app, 3))
     assert blocks(app)[0]["id"] == KEY + "/1"
     assert json.loads(blocks(app)[0]["sources"]) == [2, 3]
     rebuild(app.store, KEY)
@@ -141,8 +140,8 @@ def test_cached_merge_inherits_later_ai_work_and_resumes_conversion_once(tmp_pat
     app = application(tmp_path, now)
     cached_sources(
         app,
-        message(app, 1, date=now[0] - 600),
-        message(app, 2, date=now[0] - 240),
+        picture(app, 1, date=now[0] - 600),
+        picture(app, 2, date=now[0] - 240),
     )
     legacy_group(app, [1], state="original")
     legacy_group(app, [2])
@@ -172,8 +171,8 @@ def test_cached_cross_midnight_group_splits_and_regenerates_both_subsets(tmp_pat
     app = application(tmp_path, now)
     cached_sources(
         app,
-        message(app, 1, date=local_time(hour=23, minute=59)),
-        message(app, 2, date=local_time(day=7, hour=0, minute=1)),
+        picture(app, 1, date=local_time(hour=23, minute=59)),
+        picture(app, 2, date=local_time(day=7, hour=0, minute=1)),
     )
     legacy_group(app, [1, 2])
     regroup_cached(app.store)
@@ -190,7 +189,7 @@ def test_cached_sources_without_prior_blocks_admit_only_unread(
 ):
     now = [local_time()]
     app = application(tmp_path, now)
-    cached_sources(app, message(app, 1), read_through=read_through)
+    cached_sources(app, picture(app, 1), read_through=read_through)
     regroup_cached(app.store)
     assert blocks(app)[0]["state"] == expected
     assert len(pending(app)) == (1 if expected == "queued" else 0)
@@ -229,8 +228,8 @@ def test_conversion_respects_unread_prior_work_target_and_seven_day_gate(
     app.store.put_chat(app.store.chat(KEY).model_copy(update={"ai_eligible": eligible}))
     cached_sources(
         app,
-        message(app, 1, date=now[0] - age - 600),
-        message(app, 2, date=now[0] - age - 240),
+        picture(app, 1, date=now[0] - age - 600),
+        picture(app, 2, date=now[0] - age - 240),
         read_through=read_through,
     )
     legacy_group(app, [1], state=old_state)
@@ -250,8 +249,8 @@ def test_one_expired_source_keeps_the_complete_changed_group_click_only(tmp_path
     app = application(tmp_path, now)
     cached_sources(
         app,
-        message(app, 1, date=now[0] - WINDOW - 60),
-        message(app, 2, date=now[0] - WINDOW + 60),
+        picture(app, 1, date=now[0] - WINDOW - 60),
+        picture(app, 2, date=now[0] - WINDOW + 60),
         read_through=0,
     )
     legacy_group(app, [1])
@@ -264,7 +263,7 @@ def test_one_expired_source_keeps_the_complete_changed_group_click_only(tmp_path
 def test_conversion_preserves_quiet_deadlines_of_all_merged_jobs(tmp_path):
     now = [local_time()]
     app = application(tmp_path, now)
-    cached_sources(app, message(app, 1, date=now[0] - 600), message(app, 2))
+    cached_sources(app, picture(app, 1, date=now[0] - 600), picture(app, 2))
     legacy_group(app, [1], state="queued", due=now[0] + 23)
     legacy_group(app, [2], state="queued", due=now[0] + 44)
     regroup_cached(app.store)
@@ -280,7 +279,7 @@ def test_split_preserves_prior_wait_even_when_first_subset_has_nothing_to_rewrit
     cached_sources(
         app,
         message(app, 1, date=local_time(hour=23, minute=59), text="", media="document"),
-        message(app, 2, date=local_time(day=7, hour=0, minute=1)),
+        picture(app, 2, date=local_time(day=7, hour=0, minute=1)),
     )
     legacy_group(app, [1, 2], state="queued", due=now[0] + 90)
     regroup_cached(app.store)
@@ -372,16 +371,17 @@ async def test_changed_membership_hides_partial_and_rejects_late_output_with_rec
                 await release.wait()
             on_text("Authored late rewrite")
             return EngineResponse(
-                {"text": "Complete authored group", "image_context": []}, actual_nanos=7
+                {"text": "Complete authored group", "image_context": meanings(packet)},
+                actual_nanos=7,
             )
 
     app.engine = Engine()
-    app.sync.ingest(message(app, 1))
+    app.sync.ingest(picture(app, 1))
     now[0] += 30
     running = asyncio.create_task(app.process_due())
     await asyncio.wait_for(entered.wait(), 2)
     assert app.conversation(KEY)["blocks"][0]["stream"]
-    app.sync.ingest(message(app, 2))
+    app.sync.ingest(picture(app, 2))
     assert app.conversation(KEY)["blocks"][0]["stream"] is None
     assert blocks(app)[0]["rendered"] is None
     release.set()
@@ -404,7 +404,7 @@ async def test_oversized_coherent_group_fails_without_splitting_or_calling(tmp_p
     now = [local_time()]
     app = application(tmp_path, now)
     for identity in range(1, 6):
-        app.sync.ingest(message(app, identity, text="x" * 5000))
+        app.sync.ingest(picture(app, identity, text="x" * 5000))
         now[0] += 240
     await app.process_due()
     assert len(blocks(app)) == 1
@@ -427,7 +427,7 @@ async def test_startup_conversion_stays_behind_account_role_and_budget_gates(tmp
         Chat(account_id=1, peer="user:42", title="Authored", kind="private")
     )
     cached_sources(
-        app, message(app, 1, date=now[0] - 600), message(app, 2, date=now[0] - 240)
+        app, picture(app, 1, date=now[0] - 600), picture(app, 2, date=now[0] - 240)
     )
     legacy_group(app, [1])
     legacy_group(app, [2])

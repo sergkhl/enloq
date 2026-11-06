@@ -12,11 +12,13 @@ from enloq.inference.work import FLAT_UNKNOWN
 from enloq.storage.store import WINDOW
 
 from backend.tests.test_parallel import settle
-from backend.tests.test_rebuild import fixture, image_bytes, message
-
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import (
+    fixture,
+    image_bytes,
+    meanings,
+    message,
+    picture,
+)
 
 DAY = 86400
 
@@ -35,10 +37,14 @@ def rig(tmp_path):
 
 
 def history(app, now, ages, *, start=1):
-    """Read, never-processed blocks at the given ages in days, oldest first."""
+    """Read, never-processed blocks at the given ages in days, oldest first:
+    photos with captions, since an older run offers only blocks with media
+    (ADR 54)."""
     identity = start
     for age in ages:
         for outgoing in (False, True):
+            if not outgoing:
+                app.transport.media["user:42", identity] = image_bytes()
             app.sync.ingest(
                 Message(
                     account_id=1,
@@ -48,6 +54,7 @@ def history(app, now, ages, *, start=1):
                     date=now[0] - age * DAY + (identity % 2),
                     text="Authored reply." if outgoing else f"Request from {age} days.",
                     outgoing=outgoing,
+                    media=None if outgoing else "image",
                 ),
                 target=False,
             )
@@ -118,7 +125,7 @@ async def test_new_incoming_work_preempts_the_older_run(rig):
 
     app.engine.generate = generate
     app.rewriting.process_older("1/user:42")
-    app.sync.ingest(message(app, 50, text="A brand new request."))
+    app.sync.ingest(picture(app, 50, text="A brand new request."))
     with app.store.transaction() as db:
         db.execute(
             "UPDATE jobs SET due=? WHERE json_extract(payload,'$.class')='new'",
@@ -140,7 +147,8 @@ async def test_budget_reserve_stops_the_run_with_its_count(rig):
 
         async def generate(self, role, packet):
             return EngineResponse(
-                {"text": "Rewritten.", "image_context": []}, actual_nanos=FLAT_UNKNOWN
+                {"text": "Rewritten.", "image_context": meanings(packet)},
+                actual_nanos=FLAT_UNKNOWN,
             )
 
     app.engine = Muse()
@@ -176,6 +184,9 @@ async def test_restart_keeps_the_run_and_off_ends_it(rig, tmp_path):
 
 async def test_older_targets_use_target_relative_local_context(rig):
     manager, app, now = rig
+    # The target is a photo with its caption: an older run offers only blocks
+    # with media (ADR 54).
+    app.transport.media["user:42", 4] = image_bytes()
     for identity, age in ((1, 29), (2, 22), (3, 21), (4, 20)):
         app.sync.ingest(
             Message(
@@ -186,6 +197,7 @@ async def test_older_targets_use_target_relative_local_context(rig):
                 date=now[0] - age * DAY,
                 text=f"Context {age} days ago.",
                 outgoing=identity != 4,
+                media="image" if identity == 4 else None,
             ),
             target=False,
         )
@@ -265,18 +277,33 @@ async def test_load_originals_does_not_restore_a_floor_cleared_during_its_read(
     assert coverage(a.store, "1/user:42") is None
 
 
+class Speech:
+    """An authored recognizer for a voice note's transcript."""
+
+    async def transcribe(self, path):
+        return {"text": "Is this the right one?", "language": "en"}
+
+
+def voice_note(app, identity):
+    """A voice note, which the rewrite reads (text alone stays combined, ADR
+    54); its request carries no image of its own."""
+    app.media.transcriber = Speech()
+    app.transport.media["user:42", identity] = b"authored fake audio input"
+    return message(app, identity, text="", media="audio")
+
+
 async def test_context_images_are_described_once_and_not_resent(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
     a.transport.media["user:42", 1] = image_bytes()
     a.sync.ingest(message(a, 1, outgoing=True, text="", media="image"))
-    a.sync.ingest(message(a, 2, text="Is this the right one?"))
+    a.sync.ingest(voice_note(a, 2))
     now[0] += 30
     await a.process_due()
     assert [i["message_id"] for i in a.engine.calls[0][1]["images"]] == [1]
     await a.process_due()  # The Emotion Classification that follows it.
     a.sync.ingest(message(a, 3, outgoing=True, text="Let me check."))
-    a.sync.ingest(message(a, 4, text="And the size?"))
+    a.sync.ingest(voice_note(a, 4))
     now[0] += 30
     await a.process_due()
     second = a.engine.calls[1][1]
@@ -287,7 +314,9 @@ async def test_context_images_are_described_once_and_not_resent(tmp_path):
 def test_explicit_range_is_thirty_days_and_background_stays_seven(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a, 1, date=now[0] - 12 * DAY), target=False)
+    # A photo with its caption: an older run offers only blocks with media
+    # (ADR 54).
+    a.sync.ingest(picture(a, 1, date=now[0] - 12 * DAY), target=False)
     a.sync.ingest(message(a, 2, outgoing=True))
     block = a.rewriting.block(a.conversation("1/user:42")["blocks"][0]["id"])
     assert not a.rewriting.eligible(block)

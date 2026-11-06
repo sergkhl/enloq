@@ -13,9 +13,7 @@ from enloq.domain.models import Chat, MediaInfo, Message, ProcessingPaused
 from enloq.inference.base import ProviderRefused
 from enloq.storage.store import Store
 
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import image_bytes, meanings
 
 
 @pytest.fixture
@@ -34,7 +32,8 @@ def rig(tmp_path):
 
 
 def blocks(app, count, *, klass=None, **changes):
-    """Separate incoming blocks, each due now."""
+    """Separate incoming blocks, each due now: photos with captions, which
+    the rewrite reads, since text alone stays combined (ADR 54)."""
     for index in range(count):
         values = dict(
             account_id=app.store.account_id,
@@ -44,7 +43,10 @@ def blocks(app, count, *, klass=None, **changes):
             date=app.store.clock(),
             text=f"Separate authored request {index}.",
         )
-        app.sync.ingest(Message(**(values | changes)))
+        photo = values | {"media": "image"} | changes
+        if photo.get("media") == "image":
+            app.transport.media["user:42", 2 * index + 1] = image_bytes()
+        app.sync.ingest(Message(**photo))
         app.sync.ingest(
             Message(**values | {"message_id": 2 * index + 2, "outgoing": True})
         )
@@ -74,7 +76,7 @@ class Gate:
             self.running -= 1
         if role == "outgoing_rewrite":
             return {"text": packet["draft"]["text"]}
-        return {"text": "Rewritten.", "image_context": []}
+        return {"text": "Rewritten.", "image_context": meanings(packet)}
 
 
 async def settle(manager, rounds=200):
@@ -270,7 +272,7 @@ async def test_accounts_share_capacity_fairly_across_restart(rig, tmp_path):
 
         async def generate(role, packet, account=account):
             served.append(account)
-            return {"text": "Rewritten.", "image_context": []}
+            return {"text": "Rewritten.", "image_context": meanings(packet)}
 
         runtime.assistant.engine.generate = generate
     for _ in range(2):  # Limit 1 claims two: one calling, one preparing.
@@ -283,10 +285,14 @@ async def test_accounts_share_capacity_fairly_across_restart(rig, tmp_path):
     for runtime in restarted.runtimes.values():
         account = runtime.assistant.store.account_id
         runtime.assistant.store.clock = lambda: now[0]
+        # A restarted transport serves the same authored photos.
+        runtime.assistant.transport.media.update(
+            {("user:42", 2 * index + 1): image_bytes() for index in range(4)}
+        )
 
         async def generate(role, packet, account=account):
             served.append(account)
-            return {"text": "Rewritten.", "image_context": []}
+            return {"text": "Rewritten.", "image_context": meanings(packet)}
 
         runtime.assistant.engine.generate = generate
     await settle(restarted)
@@ -373,7 +379,12 @@ async def test_one_transcription_serves_concurrent_jobs(rig):
         db.execute("UPDATE jobs SET due=?", (now[0] - 1,))
     await settle(manager)
     assert len(calls) == 1
-    assert {b["state"] for b in app.conversation("1/user:42")["blocks"]} == {"ready"}
+    # The voice note's block is rewritten; the text after it stays as sent
+    # (ADR 54), its decision reading the same transcript.
+    assert [b["state"] for b in app.conversation("1/user:42")["blocks"]] == [
+        "ready",
+        "original",
+    ]
 
 
 def test_enqueue_records_the_priority_class(rig):

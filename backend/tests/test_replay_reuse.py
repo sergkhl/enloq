@@ -14,10 +14,12 @@ from enloq.application.runtime import sync_cycle
 from enloq.domain.models import GapTooLong, MediaInfo, Refused
 from enloq.inference.base import EngineResponse, ProviderRefused
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, meanings, message, picture
 
 KEY = "1/user:42"
 DAY = 86400
+# Incoming targets are photos with captions, which the rewrite reads: text
+# alone stays combined (ADR 54, ADR 62 Q21).
 
 
 def jobs(app):
@@ -106,9 +108,9 @@ async def test_completed_sources_replayed_unchanged_create_no_job_call_or_alert(
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
     sources = [
-        message(app, 1, text="Authored first request."),
+        picture(app, 1, text="Authored first request."),
         message(app, 2, outgoing=True, text="Authored owner reply."),
-        message(app, 3, text="Authored second request."),
+        picture(app, 3, text="Authored second request."),
     ]
     for source in sources:
         app.sync.ingest(source, live=True)
@@ -154,7 +156,7 @@ async def test_unchanged_transient_reply_later_cached_does_not_regenerate_depend
     )
     app.transport.messages = [parent]
     for identity in (20, 22):
-        app.sync.ingest(message(app, identity, reply_to=1))
+        app.sync.ingest(picture(app, identity, reply_to=1))
         app.sync.ingest(message(app, identity + 1, outgoing=True))
     await complete(app, now)
     before = jobs(app)
@@ -193,7 +195,7 @@ async def test_transient_cache_admission_requires_proven_unchanged_content(
         text="Authored original exact reference.",
     )
     app.transport.messages = [parent]
-    target = message(app, 20, reply_to=1)
+    target = picture(app, 20, reply_to=1)
     app.sync.ingest(target)
     await complete(app, now)
     original_job = jobs(app)[0]
@@ -248,7 +250,7 @@ async def test_cache_arrival_before_publication_checks_the_transient_content(
         text="Authored exact reference before generation.",
     )
     app.transport.messages = [parent]
-    target = message(app, 20, reply_to=1)
+    target = picture(app, 20, reply_to=1)
     started, finish = asyncio.Event(), asyncio.Event()
 
     class Engine:
@@ -259,7 +261,10 @@ async def test_cache_arrival_before_publication_checks_the_transient_content(
             started.set()
             await finish.wait()
             return EngineResponse(
-                {"text": "Authored validated result", "image_context": []},
+                {
+                    "text": "Authored validated result",
+                    "image_context": meanings(packet),
+                },
                 actual_nanos=0,
             )
 
@@ -315,7 +320,7 @@ async def test_transient_attachment_metadata_change_invalidates_its_dependents(
         media_info=MediaInfo(file_name="proposal-draft.txt"),
     )
     app.transport.messages = [parent]
-    target = message(app, 20, reply_to=1)
+    target = picture(app, 20, reply_to=1)
     app.sync.ingest(target)
     await complete(app, now)
     previous = jobs(app)[0]
@@ -356,7 +361,7 @@ async def test_unprovable_attachment_cache_arrival_rejects_late_publication(tmp_
         media_info=MediaInfo(file_name="authored-legacy.txt"),
     )
     app.transport.messages = [parent]
-    target = message(app, 20, reply_to=1)
+    target = picture(app, 20, reply_to=1)
     started, finish = asyncio.Event(), asyncio.Event()
 
     class Engine:
@@ -367,7 +372,10 @@ async def test_unprovable_attachment_cache_arrival_rejects_late_publication(tmp_
             started.set()
             await finish.wait()
             return EngineResponse(
-                {"text": "Authored late attachment result", "image_context": []},
+                {
+                    "text": "Authored late attachment result",
+                    "image_context": meanings(packet),
+                },
                 actual_nanos=0,
             )
 
@@ -403,11 +411,11 @@ async def test_changed_supporting_source_requeues_all_dependent_unchanged_target
 ):
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
-    context = message(app, 1, text="Authored supporting context.")
+    context = picture(app, 1, text="Authored supporting context.")
     app.sync.ingest(context)
     app.sync.ingest(message(app, 2, outgoing=True))
     for identity in (3, 5, 7, 9, 11):
-        app.sync.ingest(message(app, identity, text=f"Authored target {identity}."))
+        app.sync.ingest(picture(app, identity, text=f"Authored target {identity}."))
         app.sync.ingest(message(app, identity + 1, outgoing=True))
     await complete(app, now)
     dependent = {f"{KEY}/{identity}" for identity in (3, 5, 7, 9, 11)}
@@ -447,7 +455,7 @@ async def test_same_revision_redundant_failure_keeps_current_valid_rendering(
 ):
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await complete(app, now)
     identity = f"{KEY}/1"
     previous = block(app, identity)
@@ -501,10 +509,10 @@ async def test_failed_changed_dependency_attempt_never_restores_the_old_result(
 ):
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
-    context = message(app, 1, text="Authored supporting context.")
+    context = picture(app, 1, text="Authored supporting context.")
     app.sync.ingest(context)
     app.sync.ingest(message(app, 2, outgoing=True))
-    app.sync.ingest(message(app, 3, text="Authored dependent target."))
+    app.sync.ingest(picture(app, 3, text="Authored dependent target."))
     await complete(app, now)
     identity = f"{KEY}/3"
     revision = block(app, identity)["revision"]

@@ -11,9 +11,7 @@ from enloq.config import Settings
 from enloq.domain.briefing_contract import GROUP_ROLES
 from enloq.domain.models import Chat, Message
 
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import image_bytes
 
 NOW = datetime(2026, 10, 11, 12, tzinfo=UTC).timestamp()
 
@@ -65,6 +63,8 @@ def group(app, peer="channel:42", *, count=1, text="Authored group update."):
 
 
 def private(app, *, identity=1):
+    """A private photo with its caption, which the rewrite reads: text alone
+    stays combined (ADR 54, ADR 62 Q21)."""
     peer = "user:42"
     key = f"{app.store.account_id}/{peer}"
     app.store.put_chat(
@@ -75,6 +75,7 @@ def private(app, *, identity=1):
             kind="private",
         )
     )
+    app.transport.media[peer, identity] = image_bytes()
     app.sync.ingest(
         Message(
             account_id=app.store.account_id,
@@ -83,6 +84,7 @@ def private(app, *, identity=1):
             revision=1,
             date=app.store.clock(),
             text="A private request needs a reply.",
+            media="image",
         )
     )
     return key

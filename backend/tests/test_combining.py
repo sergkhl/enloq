@@ -79,23 +79,8 @@ async def test_images_are_still_rewritten(rig):
     assert len(rewrites(app)) == 1 and block(app)["state"] == "ready"
 
 
-async def test_text_rewriting_on_rewrites_text_from_the_threshold(rig):
-    app, now, registry = rig
-    registry.set_text_rewriting(True)
-    app.sync.ingest(message(app, 1, text=LONG), live=True)
-    app.sync.ingest(
-        message(app, 2, text="Thanks!", outgoing=True, date=now[0] + 1), live=True
-    )
-    app.sync.ingest(message(app, 3, text="Short.", date=now[0] + 2), live=True)
-    now[0] += 32
-    await settle(app)
-    # The long block is rewritten; the short one waits for the threshold.
-    assert [p["messages"][0]["id"] for p in rewrites(app)] == [1]
-    assert block(app, 3)["state"] == "original"
-
-
 async def test_rewrite_earlier_messages_offers_only_media(rig):
-    app, now, registry = rig
+    app, now, _ = rig
     old = now[0] - 3600
     app.sync.ingest(message(app, 1, text=LONG, date=old), target=False)
     app.sync.ingest(
@@ -106,8 +91,6 @@ async def test_rewrite_earlier_messages_offers_only_media(rig):
         message(app, 3, text="And this?", media="image", date=old + 2), target=False
     )
     assert [b["sources"] for b in map(dict, app.rewriting.older(KEY))] == ["[3]"]
-    registry.set_text_rewriting(True)
-    assert len(app.rewriting.older(KEY)) == 2
 
 
 async def test_a_retried_text_block_that_is_not_hostile_ends_combined(rig):

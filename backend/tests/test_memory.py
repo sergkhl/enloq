@@ -9,7 +9,7 @@ from enloq.inference.base import EngineResponse
 from enloq.storage.accounts import AccountRegistry
 from enloq.storage.store import RETENTION, WINDOW
 
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 # Memory as before ADR 56's Off default: these chats learn without switching
 # on; test_memory_default covers the default as shipped.
@@ -35,19 +35,22 @@ def no_start(a):
         db.execute("UPDATE metadata SET value='0' WHERE key='memory_start'")
 
 
-def conversation(a, now, count=4, age=10, start=False):
+def conversation(a, now, count=4, age=10, start=False, photos=False):
     """Alternating incoming/outgoing messages ``age`` days old, then a recent
-    own message so the chat stays recent."""
+    own message so the chat stays recent. With ``photos`` the incoming ones
+    are photos with captions, which a rewrite reads: text alone stays
+    combined (ADR 54)."""
     if not start:
         no_start(a)
     for identity in range(1, count + 1):
+        outgoing = identity % 2 == 0
         a.sync.ingest(
-            message(
+            (picture if photos and not outgoing else message)(
                 a,
                 identity,
                 date=now[0] - age * DAY + identity,
                 text=f"Fact number {identity}.",
-                outgoing=identity % 2 == 0,
+                outgoing=outgoing,
             ),
             target=False,
         )
@@ -216,11 +219,11 @@ async def test_deleting_a_cited_message_removes_its_entries_without_a_call(tmp_p
 async def test_memory_reaches_only_newer_incoming_targets_never_cut_for_it(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    conversation(a, now)
+    conversation(a, now, photos=True)
     a.memory.record(KEY, [f"{KEY}/1"])
     a.memory.schedule(KEY)
     await fold(a)
-    a.sync.ingest(message(a, 200, text="A new question."))
+    a.sync.ingest(picture(a, 200, text="A new question."))
     now[0] += 30
     await a.process_due()
     packet = a.engine.calls[-1][1]
@@ -238,7 +241,7 @@ async def test_memory_reaches_only_newer_incoming_targets_never_cut_for_it(tmp_p
         a.memory.add(KEY, revision, f"Owner reference fact {index:02d} " + "r" * 50)
     for identity in range(300, 320):
         a.sync.ingest(message(a, identity, outgoing=True, text="c" * 250))
-    a.sync.ingest(message(a, 320, text="x" * 23900))
+    a.sync.ingest(picture(a, 320, text="x" * 23900))
     now[0] += 30
     await a.process_due()
     packet = a.engine.calls[-1][1]

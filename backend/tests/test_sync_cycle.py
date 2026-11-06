@@ -23,7 +23,7 @@ from enloq.storage.store import WINDOW
 from enloq.transport.mtproto import MTProtoRecoveryPaused
 from telethon import errors
 
-from backend.tests.test_rebuild import fixture
+from backend.tests.test_rebuild import fixture, image_bytes
 
 
 def rig(tmp_path, failing=None):
@@ -295,6 +295,7 @@ async def test_gap_rescan_stays_in_window_and_targets_only_unread(tmp_path):
     )
 
     def authored(identity, date):
+        # The unread photo admits its group: text alone stays combined.
         return Message(
             account_id=1,
             peer="user:42",
@@ -302,7 +303,10 @@ async def test_gap_rescan_stays_in_window_and_targets_only_unread(tmp_path):
             revision=1,
             date=date,
             text=f"Authored message {identity}.",
+            media="image" if identity == 5 else None,
         )
+
+    app.transport.media["user:42", 5] = image_bytes()
 
     stored = [authored(i, now - 3000 + i) for i in (2, 3, 4)]
     for message in stored:

@@ -177,36 +177,6 @@ async def test_a_growing_held_block_is_decided_once_for_its_latest_revision(rig)
     assert latest == [1, 2, 3]
 
 
-@pytest.mark.usefixtures("text_rewriting")  # Released by the threshold
-async def test_a_released_block_is_classified_after_its_rewrite_without_duplicates(
-    rig,
-):
-    app, now, registry = rig
-    app.notifications.unavailable = lambda: True
-    app.sync.ingest(message(app, 1, text="Are you coming tomorrow?"), live=True)
-    now[0] += 31
-    # The held decision is queued, then the threshold admits the block first.
-    queued = app.rewriting.next_job()
-    assert queued["role"] == "emotion_classification"
-    assert json.loads(queued["payload"])["held"] is True
-    registry.set_processing_threshold(0)
-    job = app.rewriting.next_job()
-    assert job["role"] == "incoming_rewrite"
-    assert (
-        app.store.rows("SELECT state FROM jobs WHERE id=?", (queued["id"],))[0]["state"]
-        == "superseded"
-    )
-    assert "decided" not in json.loads(job["payload"])
-    await settle(app)
-    # One rewrite, then one classification after it: no held duplicate.
-    assert [c[0] for c in app.engine.calls][:1] == ["incoming_rewrite"]
-    assert len(decisions(app)) == 1
-    assert not json.loads(jobs(app, "emotion_classification")[-1]["payload"]).get(
-        "held"
-    )
-    assert app.emotion.view(KEY).code == "worried"
-
-
 @pytest.mark.usefixtures("calming_off")  # ADR 30's order, calming off
 async def test_a_held_block_past_its_lifetime_is_never_classified(rig):
     app, now, _ = rig

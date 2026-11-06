@@ -5,11 +5,14 @@ Every request goes through the real Decider engine, the application's own
 classification, assessment and group ad-filter stages and the ordinary shared
 accounting, on authored conversations only: none copies a real message, name,
 number or identifier. A fake transport means no Telegram read, send or
-reaction, and no MiMo request is made: each incoming case stands in an
-authored rewrite and image meaning where the rewrite would publish them, then
-runs the real classification job. Each ad case is one authored group chat
-whose posts form one real classifier request; bots are never judged.
-Suggestions and memory are off.
+reaction, and no MiMo request is made. A text block is held as it arrives and,
+once its quiet has passed, decided from its originals by the app's own held
+decision path, as the app decides text (ADR 54, ADR 49 Q3); the authored pass
+skips the quiet. A block with an image or a voice note is decided after its
+rewrite (ADR 30): an authored rewrite and image meaning stand in where the
+rewrite would publish them, then the real classification job runs. Each ad
+case is one authored group chat whose posts form one real classifier request;
+bots are never judged. Suggestions and memory are off.
 
 The service must be stopped; its exclusive owner lock is held throughout.
 At most 40 requests, 1,200 seconds and $0.01 counted test spending across the
@@ -75,6 +78,8 @@ def said(outgoing, text="", **fields):
 
 # Incoming cases: (name, messages, expected, also acceptable). The latest
 # incoming block is classified; earlier messages are its Supporting Context.
+# Text blocks take the held path; those with an image or a voice note are
+# decided after an authored rewrite stand-in.
 INCOMING = [
     (
         "ru_neutral_logistics",
@@ -543,9 +548,6 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                             raise Refused("No rewrite requests in this check")
 
                     app = Conversations(store, transport, NoRewrites(), engine)
-                    # ADR 54: Rewrite earlier messages takes text here too, as
-                    # the authored stand-in's setup; the owner's setting stays.
-                    store.rewrites_text = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()
@@ -571,8 +573,15 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                         )
                         return peer, f"1/{peer}"
 
-                    def ingest(peer, messages, *, target=True):
+                    def ingest(peer, messages, *, arriving=False):
+                        """Cached read history; with ``arriving``, the latest
+                        block's messages, after the last outgoing one, arrive
+                        new, as the app receives them."""
                         start = time.time() - 60 - len(messages)
+                        last = max(
+                            (n for n, s in enumerate(messages, 1) if s["outgoing"]),
+                            default=0,
+                        )
                         meanings = {}
                         for number, source in enumerate(messages, 1):
                             fields = {}
@@ -603,7 +612,7 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                                     outgoing=source["outgoing"],
                                     **fields,
                                 ),
-                                target=target,
+                                target=arriving and number > last,
                             )
                         return meanings
 
@@ -770,20 +779,34 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                             flush=True,
                         )
 
-                    async def classify(name, messages, expected, acceptable):
-                        engine.admit()
-                        engine.current = {
-                            "name": name,
-                            "role": "emotion_classification",
-                            "messages": messages,
-                            "expected": expected,
-                            "acceptable": acceptable,
-                        }
-                        report["results"].append(engine.current)
-                        peer, key = chat()
-                        # This authored stand-in is deliberate cached setup,
-                        # independent of the owner's automatic character gate.
-                        meanings = ingest(peer, messages, target=False)
+                    def held(name, peer, key, messages):
+                        """ADR 54: a text block is held as it arrives and, after
+                        its quiet, decided from its originals (ADR 49 Q3)."""
+                        engine.current["path"] = "held"
+                        ingest(peer, messages, arriving=True)
+                        with store.transaction() as db:
+                            # The authored pass skips the 30-second quiet.
+                            db.execute(
+                                "UPDATE incoming_deferred SET due=0 WHERE scope IN "
+                                "(SELECT id FROM blocks WHERE chat_key=?)",
+                                (key,),
+                            )
+                        app.emotion.decide_held()
+                        queued = store.rows(
+                            "SELECT id FROM jobs WHERE scope=? AND role='emotion_classification' AND state='queued'",
+                            (key,),
+                        )
+                        if not queued:
+                            raise Refused(f"{name}: the block cannot be decided")
+                        return queued[0]["id"]
+
+                    async def rewritten(name, peer, key, messages):
+                        """ADR 30: a block with an image or a voice note is
+                        decided after its rewrite publishes. Deliberate cached
+                        processing prepares it; an authored rewrite stands in
+                        for MiMo's."""
+                        engine.current["path"] = "rewritten"
+                        meanings = ingest(peer, messages)
                         app.rewriting.process_older(key)
                         block = store.rows(
                             "SELECT * FROM blocks WHERE chat_key=? ORDER BY date DESC LIMIT 1",
@@ -828,6 +851,23 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                         engine.current["attached_images"] = len(
                             packet.get("images", [])
                         )
+                        return attempt
+
+                    async def classify(name, messages, expected, acceptable):
+                        engine.admit()
+                        engine.current = {
+                            "name": name,
+                            "role": "emotion_classification",
+                            "messages": messages,
+                            "expected": expected,
+                            "acceptable": acceptable,
+                        }
+                        report["results"].append(engine.current)
+                        peer, key = chat()
+                        if any("image" in s or "voice" in s for s in messages):
+                            attempt = await rewritten(name, peer, key, messages)
+                        else:
+                            attempt = held(name, peer, key, messages)
                         job = store.rows("SELECT * FROM jobs WHERE id=?", (attempt,))[0]
                         assert app.rewriting.claim(job)
                         try:
@@ -850,7 +890,7 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                         }
                         report["results"].append(engine.current)
                         peer, key = chat()
-                        ingest(peer, messages, target=False)
+                        ingest(peer, messages)
                         app.sync.reactions(peer, target, reaction(emoji, time.time()))
                         with store.transaction() as db:
                             db.execute(

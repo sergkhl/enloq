@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 from enloq.config import Settings, private_write
+from enloq.domain.models import ANALYSED_MEDIA
 from enloq.inference.guidance import DEFAULTS_REVISION
 from enloq.inference.openrouter import MODEL
 from enloq.storage.accounts import AccountRegistry
@@ -184,9 +185,20 @@ async def test_each_check_makes_one_first_attempt_per_case_within_bounds(
         if m.get("transcript")
     ]
     assert voiced and all(voiced)
+    # Only a block with an image or a voice note is rewritten (ADR 54), so
+    # every incoming case holds one.
+    for call in timed:
+        assert any(m["media"] in ANALYSED_MEDIA for m in call["packet"]["messages"])
     if check == 1:
         image = report["results"][3]["calls"][0]
         assert image["attached_images"] == 1
+        # The suggestion follows a held text block's authored useful decision.
+        assert report["results"][-1]["decision"] == {
+            "state": "ready",
+            "code": runner.SUGGESTION["emotion"],
+            "useful": True,
+            "failure": None,
+        }
 
 
 async def test_unknown_outcomes_stop_at_the_counted_spending_bound(tmp_path):

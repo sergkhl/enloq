@@ -25,37 +25,13 @@ def processing_threshold(store, db):
     return int(row[0]) if row else DEFAULT_PROCESSING_THRESHOLD
 
 
-def original_characters(messages):
-    """Whole-target Unicode code points; added/context/derived text never counts."""
-    return sum(len(message.text.strip()) for message in messages if not message.deleted)
-
-
-def text_rewriting(store, db):
-    """ADR 54: whether incoming text is rewritten automatically (the
-    registry's text_rewriting, off unless set)."""
-    if store.rewrites_text is not None:
-        return store.rewrites_text
-    metadata = "shared.metadata" if store.shared_path else "metadata"
-    row = db.execute(
-        f"SELECT value FROM {metadata} WHERE key='text_rewriting'"
-    ).fetchone()
-    return bool(row and row[0] == "1")
-
-
 def analysed(messages):
     """Whether a target has media the rewrite reads: an image, a voice note
-    or a video circle."""
+    or a video circle. Only such a block is admitted for rewriting; text stays
+    combined, and only softening rewrites it (ADR 54, ADR 62 Q21)."""
     return any(
         not message.deleted and message.media in ANALYSED_MEDIA for message in messages
     )
-
-
-def character_admitted(messages, minimum, text=True):
-    """Analysed media is always admitted. Text is admitted from the threshold
-    on, and with text rewriting off (ADR 54) never: it stays combined, and
-    only calming rewrites it."""
-    messages = tuple(messages)
-    return analysed(messages) or (text and original_characters(messages) >= minimum)
 
 
 def cached_sources(db, block):
@@ -81,8 +57,8 @@ def cached_sources(db, block):
 
 
 def automatic(job):
-    """Work the threshold may hold: not an explicit retry, an older run or a
-    held block released for calming at any length (ADR 53 Q6)."""
+    """Work admission may hold: not an explicit retry, an older run or a held
+    block released for calming (ADR 53 Q6)."""
     payload = json.loads(job["payload"] or "{}")
     return not (
         payload.get("explicit_retry")
@@ -131,8 +107,6 @@ def reconcile_admission(store):
     Held eligibility has no runnable job, worker claim or memory-idle footprint.
     """
     with store.transaction() as db:
-        minimum = processing_threshold(store, db)
-        text = text_rewriting(store, db)
         for job in db.execute(
             "SELECT * FROM jobs WHERE role='incoming_rewrite' "
             "AND state IN ('queued','claimed') ORDER BY rowid"
@@ -145,7 +119,7 @@ def reconcile_admission(store):
             if not block or block["revision"] != job["input_revision"]:
                 continue
             sources = cached_sources(db, block)
-            if sources and not character_admitted(sources, minimum, text):
+            if sources and not analysed(sources):
                 defer(
                     db, job["scope"], job["input_revision"], job["due"], job["payload"]
                 )
@@ -179,7 +153,7 @@ def reconcile_admission(store):
                     "DELETE FROM incoming_deferred WHERE scope=?", (waiting["scope"],)
                 )
                 continue
-            if character_admitted(sources, minimum, text):
+            if analysed(sources):
                 payload = json.loads(waiting["payload"])
                 # A held decision is not this rewrite's (ADR 49 Q3); once
                 # released, the block is classified after its rewrite instead.
@@ -270,8 +244,6 @@ def rebuild(store, chat_key, changed=None, *, target=True, klass=None):
             )
         }
         previous_waits.update({scope: row["due"] for scope, row in deferred.items()})
-        minimum = processing_threshold(store, db)
-        text = text_rewriting(store, db)
         for group in groups:
             sources = [m.message_id for m in group]
             related = [
@@ -358,7 +330,7 @@ def rebuild(store, chat_key, changed=None, *, target=True, klass=None):
                     )
                 )
             )
-            should_queue = automatic_work and character_admitted(group, minimum, text)
+            should_queue = automatic_work and analysed(group)
             # A changed block that is not re-queued (e.g. an explicitly processed
             # block older than seven days) withdraws its stale rendering.
             keep = (

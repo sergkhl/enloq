@@ -20,7 +20,7 @@ from backend.tests.auth_helpers import trust_browser
 from backend.tests.test_group_sources import unchanged_state
 from backend.tests.test_local_viewing import ack, rows, see
 from backend.tests.test_notifications import complete
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, message, picture
 
 KEY = "1/user:42"
 BASE = "/api/accounts/1/chats/user:42"
@@ -244,8 +244,8 @@ def test_original_fallback_and_pre_readiness_view_survive_focus_projection(
     rig, fallback
 ):
     app, now = rig
-    app.sync.ingest(message(app, 1))
-    app.sync.ingest(message(app, 2))
+    app.sync.ingest(picture(app, 1))
+    app.sync.ingest(picture(app, 2))
     assert captured(app)["content"] == []
     ack(app, see(app, 1))  # Existing deliberate original viewing before readiness.
     if fallback == "off":

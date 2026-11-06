@@ -147,11 +147,10 @@ cover behavior and contracts, never prompt wording.
 ## Incoming admission
 
 Private incoming text is combined, not rewritten
-([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)).
-`character_admitted` admits a block with an analysable image, voice note or
-Video Circle and, while the registry's `text_rewriting` switch is off, no text
-at any length. The switch is off by default and not in Settings;
-`text_rewriting(store, db)` reads it. Every text block is held, decided and
+([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md),
+[ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q21).
+`blocks.analysed` admits a block with an analysable image, voice note or
+Video Circle, and no text at any length. Every text block is held, decided and
 shown as its originals together, and [Soften hostile messages](#soften-hostile-messages) is its one rewrite.
 
 - **A text block in the rewrite path.** If a text block without analysed media
@@ -162,10 +161,9 @@ shown as its originals together, and [Soften hostile messages](#soften-hostile-m
   with analysed media.
 - **Memory.** Memory records what a held or calm-only decision read, since text
   no longer reaches the rewrite that used to record it.
-- **The switch on.** Text rewriting returns under the Processing Character
-  Threshold. Tests and finite checks that exercise the rewrite path with text
-  set `Store.rewrites_text = True` (the `text_rewriting` fixture), which
-  overrides the switch without saving it.
+- **Tests and fixtures.** Cases that exercise the rewrite path use authored
+  media blocks, or hostile text that softens; nothing turns text rewriting
+  back on.
 
 The **Processing Character Threshold**
 ([ADR 35](adr/0035-processing-character-threshold-and-empty-rewrites.md)) is a
@@ -173,8 +171,8 @@ global owner setting, default 200, saved as an integer from 0 to 10,000. It
 sums Unicode code points in each current original's trimmed text or caption
 across the complete block; context, metadata, transcripts and generated wording
 do not count. An analysable image, voice note or Video Circle exempts the
-block, and zero removes only this gate. It governs group briefings, and private
-text only while `text_rewriting` is on. Quiet, target, account, budget and
+block, and zero removes only this gate. It governs automatic Daily Briefings
+only. Quiet, target, account, budget and
 concurrency gates remain; manual suggestions, failure Retry, older runs,
 independent reactions and memory keep their own admission.
 

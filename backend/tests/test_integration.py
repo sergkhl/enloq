@@ -15,11 +15,7 @@ from enloq.storage.lock import OwnerLock
 from enloq.transport.telethon import PersonalTransport
 from telethon import types
 
-from backend.tests.test_rebuild import fixture, message
-
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import fixture, meanings, message, picture
 
 
 def job(app, identity):
@@ -125,7 +121,7 @@ async def test_accounts_rotate_while_another_worker_waits_and_cancel_on_logout(
 
     async def fast(role, packet):
         other.set()
-        return {"text": "Rewritten.", "image_context": []}
+        return {"text": "Rewritten.", "image_context": meanings(packet)}
 
     for account, generate in ((1, slow), (2, fast)):
         app = manager.get(account)
@@ -133,7 +129,8 @@ async def test_accounts_rotate_while_another_worker_waits_and_cancel_on_logout(
         app.store.put_chat(
             Chat(account_id=account, peer="user:42", title="Authored", kind="private")
         )
-        app.sync.ingest(message(app))
+        # A photo with its caption: text alone stays combined (ADR 54).
+        app.sync.ingest(picture(app))
         with app.store.transaction() as db:
             db.execute("UPDATE jobs SET due=?", (app.store.clock() - 1,))
     await manager.start()

@@ -2,9 +2,13 @@
 """Finite first-attempt ADR 25 acceptance; authored sources, no Telegram client.
 
 The service must be stopped. Its exclusive owner lock and ordinary shared
-accounting are held throughout. Emotions are authored, so only suggestion
-requests are made: at most 8 requests, 900 seconds and $0.05 counted test
-spending. Owner settings are never changed and no outcome is retried.
+accounting are held throughout. Each latest block arrives as text does: it is
+held and, once its quiet has passed (skipped for this authored pass), decided
+by the app's own held decision path (ADR 54, ADR 49 Q3), which then schedules
+its suggestions. The case's authored emotion and a useful answer stand in for
+the decision route's, so only suggestion requests are made: at most 8
+requests, 900 seconds and $0.05 counted test spending. Owner settings are
+never changed and no outcome is retried.
 """
 
 import asyncio
@@ -14,12 +18,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from enloq.application.context import incoming
 from enloq.application.conversations import Conversations
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, Message, Refused
 from enloq.inference.base import EngineResponse
-from enloq.inference.fake import label_choice
+from enloq.inference.fake import choice, label_choice
 from enloq.inference.openrouter import (
     OpenRouterEngine,
     within_adopted_rates,
@@ -137,10 +140,11 @@ class ObservedRoute(OpenRouterEngine):
             observation["completion_seconds"] = time.monotonic() - started
 
 
-class KeptLabels:
-    """Since ADR 49 Q19 the decision model labels suggestions. This closed
-    ADR 25 pass makes no decision request: it keeps the writer's own labels,
-    in order."""
+class AuthoredDecisions:
+    """This closed ADR 25 pass makes no decision request. The held block's
+    decision answers the case's authored emotion, a yes on usefulness (ADR
+    49 Q2) and no hostility or sarcasm; since ADR 49 Q19 the decision model
+    labels suggestions, and the writer's own labels are kept, in order."""
 
     name, model, provider = "offline", "authored-decisions", "local"
 
@@ -148,6 +152,16 @@ class KeptLabels:
         self.route = route
 
     async def generate(self, role, packet):
+        if role == "emotion_classification":
+            return EngineResponse(
+                {
+                    "emotion": choice(self.route.current["emotion"], 0.9),
+                    "suggestions_useful": {"type": "noul", "noul": 0.9},
+                    "hostility": {"type": "noul", "noul": 0.0},
+                    "sarcasm": {"type": "noul", "noul": 0.0},
+                },
+                actual_nanos=0,
+            )
         if role != "suggestion_labels":
             raise Refused("This finite pass makes no decision requests")
         written = self.route.current.get("written") or {}
@@ -217,9 +231,9 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedRoute):
                         shared_path=registry.path,
                     )
                     transport = FakeTransport()
-                    app = Conversations(store, transport, engine, KeptLabels(engine))
-                    # ADR 54: this check rewrites its text cases; the owner's setting stays.
-                    store.rewrites_text = True
+                    app = Conversations(
+                        store, transport, engine, AuthoredDecisions(engine)
+                    )
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.rewriting.work.guidance = registry.guidance
@@ -267,49 +281,43 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedRoute):
                                         text=body,
                                         outgoing=outgoing,
                                     ),
-                                    target=False,
+                                    # Earlier messages are read history; the
+                                    # latest arrives new and is held (ADR 54).
+                                    target=offset == len(sources),
                                 )
-                            assert app.rewriting.process_older(key) == 1
-                            block = store.rows(
-                                "SELECT * FROM blocks WHERE chat_key=? ORDER BY date DESC LIMIT 1",
-                                (key,),
-                            )[0]
-                            job = store.rows(
-                                "SELECT * FROM jobs WHERE scope=? AND role='incoming_rewrite' AND state='queued'",
-                                (block["id"],),
-                            )[0]
-                            # The authored emotion stands in for a validated
-                            # incoming result: no rewrite request is made.
-                            packet = await incoming(app, block, explicit=True)
-                            signal = app.emotion.capture(block, packet, job["id"])
-                            guidance = registry.guidance()["version"]
                             with store.transaction() as db:
+                                # The authored pass skips the 30-second quiet.
                                 db.execute(
-                                    "UPDATE jobs SET state='done' WHERE id=?",
-                                    (job["id"],),
+                                    "UPDATE incoming_deferred SET due=0 WHERE scope IN "
+                                    "(SELECT id FROM blocks WHERE chat_key=?)",
+                                    (key,),
                                 )
-                                db.execute(
-                                    "UPDATE blocks SET state='ready',rendered=?,rendered_revision=revision WHERE id=?",
-                                    (text, block["id"]),
-                                )
-                                # A useful decision (ADR 49 Q2) stands in too.
-                                app.emotion.publish(
-                                    db, key, signal, code, guidance, useful=True
-                                )
-                                # Only this authored publication stand-in represents
-                                # new work; real older processing cannot suggest.
-                                app.suggestions.schedule(
-                                    db,
-                                    block,
-                                    {**job, "payload": json.dumps({"class": "new"})},
-                                    packet,
-                                    [],
-                                    enabled=True,
-                                )
+                            app.emotion.decide_held()
+                            decision = store.rows(
+                                "SELECT * FROM jobs WHERE scope=? AND role='emotion_classification' AND state='queued'",
+                                (key,),
+                            )
+                            if not decision:
+                                raise Refused(f"{name}: the block cannot be decided")
+                            # The real held decision, answered by the authored
+                            # stand-in, publishes and schedules the suggestions.
+                            assert app.rewriting.claim(decision[0])
+                            await app.emotion.classify(decision[0])
+                            engine.current["decision"] = {
+                                k: (app.emotion.record(key) or {}).get(k)
+                                for k in ("state", "code", "useful", "failure")
+                            }
+                            engine.current["decision_receipts"] = store.rows(
+                                "SELECT model,provider,usage,error FROM receipts WHERE id=?",
+                                (decision[0]["id"],),
+                            )
                             attempt = store.rows(
                                 "SELECT * FROM jobs WHERE scope=? AND role='response_suggestions' AND state='queued'",
                                 (key,),
-                            )[0]
+                            )
+                            if not attempt:
+                                raise Refused(f"{name}: no suggestion was scheduled")
+                            attempt = attempt[0]
                             assert app.rewriting.claim(attempt)
                             try:
                                 await app.suggestions.run(attempt)

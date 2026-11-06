@@ -9,7 +9,6 @@ import time
 
 from enloq.domain.models import Chat, Message
 from enloq.inference.fake import choice
-from fastapi import Request
 
 PEER = "user:128"
 MARK = "Calming fixture:"
@@ -59,25 +58,27 @@ def register(app):
             )
         )
         key = f"1/{PEER}"
+        # Text is held and decided after its quiet seconds (ADR 54), which
+        # the fixture skips; a hostile decision releases its softened rewrite.
         with conversation.store.transaction() as db:
             db.execute(
-                "UPDATE jobs SET due=0 WHERE state='queued' AND scope IN "
+                "UPDATE incoming_deferred SET due=0 WHERE scope IN "
                 "(SELECT id FROM blocks WHERE chat_key=?)",
                 (key,),
             )
         for _ in range(100):
+            with conversation.store.transaction() as db:
+                db.execute(
+                    "UPDATE jobs SET due=0 WHERE state='queued' AND scope IN "
+                    "(SELECT id FROM blocks WHERE chat_key=?)",
+                    (key,),
+                )
             blocks = conversation.stages(key)
             if blocks and blocks[-1]["state"] == "ready":
                 break
             await conversation.process_due()
             await asyncio.sleep(0.05)
         return {"ok": True, "calmed": bool(blocks and blocks[-1]["calmed"])}
-
-    @app.post("/api/test/text-rewriting")
-    async def text_rewriting(request: Request):
-        body = await request.json()
-        app.state.accounts.registry.set_text_rewriting(body["enabled"] is True)
-        return {"ok": True}
 
     @app.post("/api/test/combined")
     async def combined():

@@ -20,11 +20,11 @@ from enloq.inference.work import FLAT_UNKNOWN
 from enloq.storage.accounts import AccountRegistry
 
 from backend.tests.test_emotion import KEY
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, meanings, message, picture
 
 # Suggestions following ADR 30's decision; calming (ADR 53), which decides
 # first, is covered by test_calming.
-pytestmark = pytest.mark.usefixtures("calming_off", "text_rewriting")
+pytestmark = pytest.mark.usefixtures("calming_off")
 
 OPTIONS = {
     "options": [
@@ -62,7 +62,10 @@ class Engine:
         self.calls.append((role, json.loads(json.dumps(packet, default=str))))
         if role == "incoming_rewrite":
             return EngineResponse(
-                {"text": "Authored combined rewrite.", "image_context": []},
+                {
+                    "text": "Authored combined rewrite.",
+                    "image_context": meanings(packet),
+                },
                 actual_nanos=1000,
             )
         assert role == "response_suggestions"
@@ -176,9 +179,23 @@ async def incoming_only(app):
     await app.rewriting.run(job)
 
 
+class Speech:
+    """An authored recognizer for a voice note's transcript."""
+
+    async def transcribe(self, path):
+        return {"text": "I had an awful day.", "language": "en"}
+
+
+def voice_note(app, identity=1):
+    """A voice note, which the rewrite reads, its transcript cached once made."""
+    app.media.transcriber = Speech()
+    app.transport.media["user:42", identity] = b"authored fake audio input"
+    return message(app, identity, text="", media="audio")
+
+
 async def test_one_processed_request_per_admitted_source_revision(tmp_path):
     app, registry = rig(tmp_path)
-    app.sync.ingest(message(app, 1, text="I had an awful day."))
+    app.sync.ingest(voice_note(app))
     await incoming_only(app)
     block = app.conversation(KEY)["blocks"][0]
     # Readiness, unseen state and notifications never wait for suggestions.
@@ -203,6 +220,7 @@ async def test_one_processed_request_per_admitted_source_revision(tmp_path):
     registry.set_tone("friendly")
     registry.set_guidance({"suggestions": "Owner-edited suggestion guidance."})
     restarted, _ = rig(tmp_path)
+    voice_note(restarted)
     restarted.store.recover()
     await drain(restarted)
     with restarted.store.transaction() as db:
@@ -221,7 +239,7 @@ async def test_one_processed_request_per_admitted_source_revision(tmp_path):
     assert restarted.suggestions.view(KEY).attempt == view.attempt
 
     # A genuinely changed source (a new message in the block) is admitted once.
-    restarted.sync.ingest(message(restarted, 2, text="It keeps getting worse."))
+    restarted.sync.ingest(picture(restarted, 2, text="It keeps getting worse."))
     await drain(restarted)
     assert restarted.engine.count() == 1 and len(jobs(restarted)) == 2
     changed = restarted.suggestions.view(KEY)
@@ -237,7 +255,7 @@ async def test_one_processed_request_per_admitted_source_revision(tmp_path):
 async def test_without_a_yes_only_usable_non_neutral_emotion_schedules(tmp_path, code):
     app, _ = rig(tmp_path)
     app.engine.emotion, app.engine.useful = code, 0.1
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await drain(app)
     assert bool(jobs(app)) == (code in QUALIFYING)
     assert app.engine.count() == (code in QUALIFYING)
@@ -248,7 +266,7 @@ async def test_a_qualifying_emotion_suggests_whatever_the_usefulness(tmp_path, u
     # ADR 56: either signal, where ADR 49 Q2 needed both.
     app, _ = rig(tmp_path)
     app.engine.useful = useful
-    app.sync.ingest(message(app, text="I had an awful day."))
+    app.sync.ingest(picture(app, text="I had an awful day."))
     await drain(app)
     record = app.emotion.record(KEY)
     assert record["code"] == "sad" and record["usefulness"] == useful
@@ -262,7 +280,7 @@ async def test_explicit_processing_never_starts_suggestions(tmp_path, explicit):
     now = [2_000_000_000.0]
     app, _ = rig(tmp_path, clock=lambda: now[0])
     app.engine.emotion, app.engine.useful = "neutral", 0.1
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await drain(app)
     app.engine.emotion = "angry"
     if explicit == "retry":
@@ -277,13 +295,13 @@ async def test_explicit_processing_never_starts_suggestions(tmp_path, explicit):
             )
 
         app.engine.generate = failed
-        app.sync.ingest(message(app, revision=2, text="Changed authored wording"))
+        app.sync.ingest(picture(app, revision=2, text="Changed authored wording"))
         await drain(app)
         app.engine.generate = generate
         app.rewriting.retry(f"{KEY}/1")
     else:
         app.sync.ingest(message(app, 2, outgoing=True))
-        app.sync.ingest(message(app, 3), target=False)
+        app.sync.ingest(picture(app, 3), target=False)
         assert app.rewriting.process_older(KEY) == 1
     await drain(app)
     assert app.engine.count("incoming_rewrite") == (3 if explicit == "retry" else 2)
@@ -320,7 +338,10 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
         content = (
             OPTIONS
             if "options" in properties
-            else {"text": "Authored.", "image_context": []}
+            else {
+                "text": "Authored.",
+                "image_context": [{"message_id": 2, "text": "An authored photo."}],
+            }
         )
         body = {
             "id": "authored-receipt",
@@ -355,7 +376,7 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
     app.sync.ingest(message(app, 1, outgoing=True, text="Owner earlier words"))
     app.memory.add(KEY, 0, "Protected memory fact")
     app.memory.add("account", 0, "An owner priority")
-    app.sync.ingest(message(app, 2, text="I am worried about tomorrow."))
+    app.sync.ingest(picture(app, 2, text="I am worried about tomorrow."))
     await drain(app)
     incoming, suggestion = requests
     assert "Protected memory fact" in json.dumps(incoming, ensure_ascii=False)
@@ -414,9 +435,9 @@ async def test_shared_budget_across_accounts_waits_without_dispatch(tmp_path):
     one, registry = rig(tmp_path)
     two, _ = rig(tmp_path, account=2)
     registry.set_budget(1500)
-    two.sync.ingest(message(two))
+    two.sync.ingest(picture(two))
     await incoming_only(two)
-    one.sync.ingest(message(one))
+    one.sync.ingest(picture(one))
     await incoming_only(one)
     # Both suggestion jobs exist; shared counted spending is now 2,000.
     for app in (one, two):
@@ -442,7 +463,7 @@ async def test_shared_budget_across_accounts_waits_without_dispatch(tmp_path):
 
 async def test_zero_budget_refuses_new_suggestion_calls(tmp_path):
     app, registry = rig(tmp_path)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     registry.set_budget(0)
     await drain(app)
@@ -455,7 +476,7 @@ async def test_zero_budget_refuses_new_suggestion_calls(tmp_path):
 async def test_unknown_cost_counts_and_fails_without_retry(tmp_path):
     app, registry = rig(tmp_path)
     app.engine.failure = "unknown"
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await drain(app)
     view = app.suggestions.view(KEY)
     assert (view.state, view.reason) == ("failed", "provider")
@@ -475,7 +496,7 @@ async def test_format_failures_never_pause_or_poison_other_roles(tmp_path, failu
     app, registry = rig(tmp_path)
     app.engine.failure = failure
     for identity in range(1, 5):
-        app.sync.ingest(message(app, identity, text=f"Message {identity}"))
+        app.sync.ingest(picture(app, identity, text=f"Message {identity}"))
         await drain(app)
         view = app.suggestions.view(KEY)
         assert (view.state, view.reason) == ("failed", "format")
@@ -508,7 +529,7 @@ async def test_the_decision_model_labels_every_option(tmp_path):
     app, _ = rig(tmp_path)
     app.engine.options = LABELLED
     app.decider.labels = ["accept", "decline"]
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await drain(app)
     view = app.suggestions.view(KEY)
     assert view.state == "ready"
@@ -557,7 +578,9 @@ async def test_decision_labels_publish_any_stance_mix_without_resampling(
         ]
     }
     app.decider.labels = labels
-    app.sync.ingest(message(app))
+    # A manual set's block is text, which stays combined: no automatic set
+    # follows within the drain (ADR 54).
+    app.sync.ingest((picture if kind == "automatic" else message)(app))
     if kind == "manual":
         app.suggestions.generate(KEY, 0)  # Blank draft: no supplied intent.
     before = app.store.draft(KEY)
@@ -583,7 +606,7 @@ async def test_a_refused_label_request_fails_the_set_without_resampling(tmp_path
     app, _ = rig(tmp_path)
     app.engine.options = LABELLED
     app.decider.refuse_labels = True
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await drain(app)
     view = app.suggestions.view(KEY)
     assert (view.state, view.reason) == ("failed", "refused")
@@ -603,7 +626,7 @@ async def test_a_set_being_labelled_shows_as_preparing(tmp_path):
     app.engine.options = LABELLED
     app.decider.labels = ["accept", "decline"]
     app.decider.gate = asyncio.Event()
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     running = asyncio.create_task(drain(app))
     for _ in range(200):
         if any(role == "suggestion_labels" for role, _ in app.decider.calls):
@@ -619,7 +642,7 @@ async def test_a_set_being_labelled_shows_as_preparing(tmp_path):
 async def test_no_work_refusals_retry_three_times_then_fail_visibly(tmp_path):
     now = [2_000_000_000.0]
     app, registry = rig(tmp_path, clock=lambda: now[0])
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     app.engine.refusals = 4
     attempts = []
@@ -643,7 +666,7 @@ async def test_no_work_refusals_retry_three_times_then_fail_visibly(tmp_path):
 async def test_refusal_then_recovery_and_http_refusal_backoff(tmp_path):
     now = [2_000_000_000.0]
     app, _ = rig(tmp_path, clock=lambda: now[0])
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     app.engine.refusals = 1
     await drain(app)
@@ -666,7 +689,7 @@ async def test_refusal_then_recovery_and_http_refusal_backoff(tmp_path):
 
 async def test_route_contract_failure_is_visible_without_dispatch(tmp_path):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     app.engine.contract = True
     await drain(app)
@@ -714,7 +737,7 @@ def test_rewriting_precedes_suggestions_which_precede_idle_memory(tmp_path):
 
 async def test_account_ai_off_holds_and_suggestions_off_cancels(tmp_path):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     job = jobs(app, state="queued")[0]
 
@@ -739,14 +762,14 @@ async def test_account_ai_off_holds_and_suggestions_off_cancels(tmp_path):
     assert app.suggestions.view(KEY).reason == "cancelled"
     await drain(app)
     assert app.engine.count() == 0 and len(jobs(app)) == 1
-    app.sync.ingest(message(app, 2, text="A changed block"))
+    app.sync.ingest(picture(app, 2, text="A changed block"))
     await drain(app)
     assert app.engine.count() == 1 and app.suggestions.view(KEY).state == "ready"
 
 
 async def test_switching_off_cancels_queued_work_but_started_work_finishes(tmp_path):
     app, _ = rig(tmp_path)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     await incoming_only(app)
     app.engine.gate = asyncio.Event()
     task = asyncio.create_task(drain(app))
@@ -761,7 +784,7 @@ async def test_switching_off_cancels_queued_work_but_started_work_finishes(tmp_p
     assert app.suggestions.view(KEY).state == "ready"
     # Queued, undispatched work is cancelled by Off.
     app.engine.gate = None
-    app.sync.ingest(message(app, 2, text="Another message"))
+    app.sync.ingest(picture(app, 2, text="Another message"))
     await incoming_only(app)
     assert jobs(app, state="queued")
     app.suggestions.cancel_queued()
@@ -788,7 +811,7 @@ async def test_late_output_after_invalidation_keeps_cost_and_never_publishes(
     now = [2_000_000_000.0]
     app, registry = rig(tmp_path, clock=lambda: now[0])
     app.sync.ingest(message(app, 1, outgoing=True, text="Owner context"))
-    app.sync.ingest(message(app, 2, text="Please listen."))
+    app.sync.ingest(picture(app, 2, text="Please listen."))
     await incoming_only(app)
     app.engine.gate = asyncio.Event()
     job = jobs(app, state="queued")[0]
@@ -796,7 +819,7 @@ async def test_late_output_after_invalidation_keeps_cost_and_never_publishes(
     task = asyncio.create_task(app.rewriting.run(job))
     await asyncio.wait_for(app.engine.started.wait(), 5)
     if change == "new_incoming":
-        app.sync.ingest(message(app, 3, text="One more thing"))
+        app.sync.ingest(picture(app, 3, text="One more thing"))
     elif change == "external_outgoing":
         app.sync.ingest(message(app, 3, outgoing=True, text="Answered elsewhere"))
     elif change == "app_outgoing":
@@ -804,7 +827,7 @@ async def test_late_output_after_invalidation_keeps_cost_and_never_publishes(
     elif change == "context_edit":
         app.sync.ingest(message(app, 1, outgoing=True, revision=2, text="Edited"))
     elif change == "target_delete":
-        app.sync.ingest(message(app, 2, revision=2, deleted=True))
+        app.sync.ingest(picture(app, 2, revision=2, deleted=True))
     elif change == "transcript":
         with app.store.transaction() as db:
             db.execute(
@@ -854,7 +877,7 @@ async def test_schedule_failure_never_undoes_the_incoming_result(tmp_path, caplo
         raise KeyError("authored capture failure")
 
     app.suggestions.capture = broken
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     with caplog.at_level("WARNING", logger="enloq.suggestions"):
         await drain(app)
     block = app.conversation(KEY)["blocks"][0]
@@ -882,7 +905,7 @@ async def test_registry_backed_switches_never_wait_on_the_store_lock(tmp_path, c
     )
     app.engine = Engine()
     app.decider = Decider(app.engine)
-    app.sync.ingest(message(app))
+    app.sync.ingest(picture(app))
     started = time.monotonic()
     with caplog.at_level("WARNING", logger="enloq"):
         await drain(app, limit=200)

@@ -17,10 +17,6 @@ from telethon import functions, types
 from backend.tests.auth_helpers import trust_browser
 from backend.tests.login_fixture import SyntheticLoginClient
 
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
-
 
 def user(identity):
     return SimpleNamespace(

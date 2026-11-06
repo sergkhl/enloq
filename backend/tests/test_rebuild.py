@@ -17,9 +17,8 @@ from backend.tests.auth_helpers import trust_browser
 def fixture(tmp_path, *, account=1, clock=None):
     registry = AccountRegistry(tmp_path)
     # These baseline scenarios exercise rewriting independently of ADR 35
-    # admission, with text rewritten as before ADR 54's combining.
+    # admission.
     registry.set_processing_threshold(0)
-    registry.set_text_rewriting(True)
     store = Store(
         tmp_path / f"{account}/rewriting.sqlite3",
         account_id=account,
@@ -50,6 +49,22 @@ def message(app, identity=1, **kwargs):
         text=kwargs.pop("text", "Authored request, not a promise."),
         **kwargs,
     )
+
+
+def picture(app, identity=1, **kwargs):
+    """An incoming photo with its caption: a block the rewrite reads, since
+    text alone stays combined (ADR 54, ADR 62 Q21)."""
+    app.transport.media["user:42", identity] = image_bytes()
+    return message(app, identity, media="image", **kwargs)
+
+
+def meanings(packet):
+    """An authored meaning for each image a rewrite request carries, as a
+    stand-in engine's answer needs."""
+    return [
+        {"message_id": identity, "text": "An authored synthetic image."}
+        for identity in dict.fromkeys(i["message_id"] for i in packet.get("images", []))
+    ]
 
 
 def test_fresh_schema_and_account_isolation(tmp_path):
@@ -125,11 +140,11 @@ def test_session_lock_and_authenticated_minimal_api(tmp_path):
 async def test_blocks_quiet_pause_boundaries_and_no_repeated_work(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a, 1, text="Do not confirm yet."))
+    a.sync.ingest(picture(a, 1, text="Do not confirm yet."))
     now[0] += 29
     await a.process_due()
     assert not a.engine.calls
-    a.sync.ingest(message(a, 2, text="Only if the price is under 20."))
+    a.sync.ingest(picture(a, 2, text="Only if the price is under 20."))
     now[0] += 29
     await a.process_due()
     assert not a.engine.calls
@@ -140,7 +155,7 @@ async def test_blocks_quiet_pause_boundaries_and_no_repeated_work(tmp_path):
     assert data["blocks"][0]["sources"] == [1, 2]
     assert "Do not confirm" in data["blocks"][0]["rendered"]
     a.sync.ingest(
-        message(a, 2, text="Only if the price is under 20.", date=now[0] - 30)
+        picture(a, 2, text="Only if the price is under 20.", date=now[0] - 30)
     )
     for _ in range(3):
         a.conversation("1/user:42")
@@ -174,7 +189,7 @@ async def test_direct_context_bound_and_no_reply_chain(tmp_path):
     ]
     for i in range(2, 28):
         a.sync.ingest(message(a, i, text=f"Context {i}", outgoing=True), target=False)
-    a.sync.ingest(message(a, 28, text="Please use that option.", reply_to=1))
+    a.sync.ingest(picture(a, 28, text="Please use that option.", reply_to=1))
     packet = await incoming(a, a.store.rows("SELECT * FROM blocks")[0])
     assert len(packet["context"]) == 21
     assert packet["context"][0]["id"] == 1
@@ -187,7 +202,7 @@ async def test_stale_publication_deletion_and_expired_retry(tmp_path):
 
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a))
+    a.sync.ingest(picture(a))
     now[0] += 30
     await a.process_due()
     assert a.conversation("1/user:42")["blocks"][0]["rendered"]
@@ -233,7 +248,7 @@ async def test_failed_output_explicit_retry_and_shared_unknown_budget(tmp_path):
 
     for app in (a, b):
         app.engine = Engine()
-        app.sync.ingest(message(app, date=app.store.clock() - 31))
+        app.sync.ingest(picture(app, date=app.store.clock() - 31))
         with app.store.transaction() as db:
             db.execute("UPDATE jobs SET due=0")
     await a.process_due()
@@ -253,11 +268,11 @@ async def test_failed_output_explicit_retry_and_shared_unknown_budget(tmp_path):
 async def test_already_read_initial_history_and_expired_dispatch(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a), target=False)
+    a.sync.ingest(picture(a), target=False)
     assert not a.store.rows("SELECT * FROM jobs")
-    a.sync.ingest(message(a))
+    a.sync.ingest(picture(a))
     assert not a.store.rows("SELECT * FROM jobs")
-    a.sync.ingest(message(a, revision=2, text="Edited source"))
+    a.sync.ingest(picture(a, revision=2, text="Edited source"))
     assert len(a.store.rows("SELECT * FROM jobs")) == 1
     now[0] += WINDOW + 1
     await a.process_due()
@@ -268,8 +283,8 @@ async def test_already_read_initial_history_and_expired_dispatch(tmp_path):
 async def test_deleted_first_fragment_keeps_block_identity_and_clears_text(tmp_path):
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
-    a.sync.ingest(message(a, 1, text="First fragment"))
-    a.sync.ingest(message(a, 2, text="Second fragment"))
+    a.sync.ingest(picture(a, 1, text="First fragment"))
+    a.sync.ingest(picture(a, 2, text="Second fragment"))
     now[0] += 30
     await a.process_due()
     a.sync.deleted("user:42", [1])

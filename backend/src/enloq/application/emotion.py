@@ -342,11 +342,11 @@ class Emotion:
     # ---- Decisions for held blocks (ADR 49 Q3) ------------------------------
 
     def decide_held(self):
-        """Queue the decision request for automatic blocks held under the
-        Processing Character Threshold once their quiet period has passed,
-        from the cache only, while their rewrite keeps waiting. Each held
-        revision is decided once: a changed block is held anew, and a block
-        released for rewriting is classified after its rewrite instead."""
+        """Queue the decision request for held automatic blocks, text that
+        stays combined (ADR 54), once their quiet period has passed, from the
+        cache only. Each held revision is decided once: a changed block is
+        held anew, and a block released for rewriting is classified after its
+        rewrite instead."""
         rows = self.store.rows(
             "SELECT d.scope,d.input_revision,b.chat_key FROM incoming_deferred d "
             "JOIN blocks b ON b.id=d.scope WHERE d.due<=? "

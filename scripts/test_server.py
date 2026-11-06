@@ -61,6 +61,19 @@ LOCATION = ROOT / (
 WEB = ROOT / os.environ.get("FIXTURE_WEB", ".local/web-test-dist")
 
 
+def authored_photo(colour=(90, 120, 200)):
+    """An authored PNG for a fixture photo: a block with one is what the
+    incoming rewrite reads, since text alone stays combined (ADR 54, ADR 62
+    Q21)."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    picture = BytesIO()
+    Image.new("RGB", (240, 180), colour).save(picture, format="PNG")
+    return picture.getvalue()
+
+
 def remove_abandoned_fixture():
     """A server killed outright skips cleanup. Remove only its recorded
     directory, and only once no fixture server still listens."""
@@ -99,14 +112,11 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
         login_factory=SyntheticLoginClient,
         web=WEB,
     )
-    # Existing authored browser journeys exercise rewriting on short sources.
-    # Threshold journeys explicitly adopt 200 and restore this fixture baseline.
-    # The production/offline application default remains 200.
+    # The authored groups are short: below the threshold no automatic Daily
+    # Briefing would run, which is all it governs (ADR 35, ADR 62 Q21).
+    # Threshold journeys explicitly adopt 200 and restore this fixture
+    # baseline. The production/offline application default remains 200.
     app.state.accounts.registry.set_processing_threshold(0)
-    # The journeys exercise the rewrite path with text, which the shipped app
-    # keeps for voice notes, images and calming (ADR 54); the combined-text
-    # journey turns it off for itself.
-    app.state.accounts.registry.set_text_rewriting(True)
     # Fixture messages keep one native date across repeated setup calls.
     STARTED = time.time()
     stream_fixture = {}
@@ -265,13 +275,20 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                 ):
                     return await previous.generate(role, packet)
                 stream_fixture["calls"] += 1
+                # The fixture's photo, which a validated rewrite must answer.
+                meanings = [
+                    {"message_id": identity, "text": "An authored synthetic image."}
+                    for identity in dict.fromkeys(
+                        i["message_id"] for i in packet.get("images", [])
+                    )
+                ]
                 if body.get("fast"):
                     for index in range(1, 9):
                         on_text("Fast rewrite " + "word " * index)
                         await asyncio.sleep(0.04)
                     content = {"text": "Fast rewrite completed"}
                     if role == "incoming_rewrite":
-                        content["image_context"] = []
+                        content["image_context"] = meanings
                     return EngineResponse(content, actual_nanos=0)
                 if not body.get("empty"):
                     on_text("Partial rewrite 😀")
@@ -285,9 +302,9 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                 on_text("Late completed rewrite")
                 content = {"text": "Complete validated rewrite"}
                 if role == "incoming_rewrite":
-                    content["image_context"] = []
+                    content["image_context"] = meanings
                     if body.get("omit"):
-                        content = {"parts": [], "image_context": []}
+                        content = {"parts": [], "image_context": meanings}
                 return EngineResponse(
                     {"wrong": "format"} if body.get("fail") else content, actual_nanos=0
                 )
@@ -297,6 +314,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
             conversation.store.put_chat(
                 Chat(account_id=1, peer="user:121", title="Streaming", kind="private")
             )
+            conversation.transport.media["user:121", 1] = authored_photo()
             conversation.sync.ingest(
                 Message(
                     account_id=1,
@@ -309,6 +327,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                     else "Streaming fixture empty-final original source"
                     if body.get("omit")
                     else "Streaming fixture original source",
+                    media="image",
                 )
             )
             if body.get("fast"):
@@ -555,8 +574,9 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                 ),
                 target=False,
             )
+        conversation.transport.media["user:105", 5] = authored_photo()
         for identity, kind, info, text in (
-            (5, None, None, "Here is the signed contract."),
+            (5, "image", None, "Here is the signed contract."),
             (6, "document", MediaInfo(file_name="contract.pdf", size=2048), ""),
         ):
             conversation.sync.ingest(
@@ -861,6 +881,9 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
             (4, 9, "Noted.", True),
             (5, 0, "Here is my latest message.", True),
         ):
+            # Only a block with media is left for Rewrite earlier messages.
+            if not outgoing:
+                conversation.transport.media["user:109", identity] = authored_photo()
             conversation.sync.ingest(
                 Message(
                     account_id=1,
@@ -870,6 +893,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                     date=STARTED - age * 86400 + identity,
                     text=text,
                     outgoing=outgoing,
+                    media=None if outgoing else "image",
                 ),
                 target=False,
             )
@@ -917,6 +941,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                 ai_eligible=True,
             )
         )
+        conversation.transport.media["user:150", 1] = authored_photo()
         for identity, text, outgoing in [
             (1, "Please send the revised layout by Friday.", False),
             (2, "Please also confirm the illustration price.", False),
@@ -931,6 +956,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
                     date=conversation.store.clock() - 60 + identity,
                     text=text,
                     outgoing=outgoing,
+                    media="image" if identity == 1 else None,
                 )
             )
         with conversation.store.transaction() as db:

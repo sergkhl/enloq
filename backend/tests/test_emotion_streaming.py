@@ -13,7 +13,7 @@ from enloq.storage.accounts import AccountRegistry
 
 from backend.tests.proxy_helpers import ENDPOINT
 from backend.tests.test_emotion import KEY
-from backend.tests.test_rebuild import fixture, message
+from backend.tests.test_rebuild import fixture, picture
 
 # ADR 30's decision after the streamed rewrite; calming (ADR 53), which decides
 # first, is covered by test_calming.
@@ -58,7 +58,7 @@ async def test_real_adapter_streams_then_emotion_is_classified_after_publication
     tmp_path, outcome
 ):
     app = fixture(tmp_path)
-    app.sync.ingest(message(app, date=app.store.clock() - 31))
+    app.sync.ingest(picture(app, date=app.store.clock() - 31))
     with app.store.transaction() as db:
         db.execute("UPDATE jobs SET due=0")
     held, release = asyncio.Event(), asyncio.Event()
@@ -73,7 +73,7 @@ async def test_real_adapter_streams_then_emotion_is_classified_after_publication
             held.set()
             await release.wait()
             # ADR 30: emotion is no longer part of the rewrite's output.
-            tail = ',"image_context":[]' + (
+            tail = ',"image_context":[{"message_id":1,"text":"An authored photo."}]' + (
                 ',"emotion":"worried"' if outcome == "emotion" else ""
             )
             yield frame(
@@ -117,7 +117,7 @@ async def test_real_adapter_streams_then_emotion_is_classified_after_publication
     assert app.emotion.view(KEY).code is None
     assert not app.store.rows("SELECT * FROM emotion_state")
     if outcome == "edit":
-        app.sync.ingest(message(app, revision=2, text="Changed source"))
+        app.sync.ingest(picture(app, revision=2, text="Changed source"))
     if outcome == "interrupt":
         task.cancel()
         with pytest.raises(asyncio.CancelledError):

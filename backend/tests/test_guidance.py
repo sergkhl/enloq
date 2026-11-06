@@ -25,11 +25,7 @@ from fastapi.testclient import TestClient
 from backend.tests.auth_helpers import trust_browser
 from backend.tests.proxy_helpers import ENDPOINT
 from backend.tests.test_parallel import blocks
-from backend.tests.test_rebuild import message
-
-# These cases exercise the rewrite path with text (ADR 54 keeps it for
-# voice notes, images and calming).
-pytestmark = pytest.mark.usefixtures("text_rewriting")
+from backend.tests.test_rebuild import meanings, picture
 
 
 @pytest.fixture
@@ -134,7 +130,7 @@ async def test_saved_guidance_reaches_the_next_call_while_started_calls_keep_the
         if len(seen) == 1:
             started.set()
             await release.wait()
-        return {"text": "Rewritten.", "image_context": []}
+        return {"text": "Rewritten.", "image_context": meanings(packet)}
 
     app.engine.generate = generate
     manager.registry.set_concurrency(1)
@@ -337,7 +333,7 @@ async def test_emotion_and_suggestion_records_keep_the_defaults_revision(tmp_pat
     from backend.tests.test_suggestion_generation import rig as suggestion_rig
 
     app, _ = suggestion_rig(tmp_path)
-    app.sync.ingest(message(app, 1, text="I am worried about tomorrow."))
+    app.sync.ingest(picture(app, 1, text="I am worried about tomorrow."))
     await drain(app)
     emotion = json.loads(
         app.store.rows("SELECT body FROM emotion_state WHERE chat_key=?", (KEY,))[0][

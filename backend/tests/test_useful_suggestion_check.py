@@ -194,11 +194,9 @@ async def test_each_case_decides_once_and_emotional_or_useful_blocks_get_one_set
         == len(decisions) * 18_000 + len(suggestions) * 200_000
     )
     assert after == before and report["telegram_calls"] == 0 and report["within_bounds"]
-    paths = {r["name"]: r["path"] for r in report["results"]}
-    # The default threshold holds short blocks; long ones are rewritten.
-    assert paths["en_neutral_question"] == "held"
-    assert paths["en_long_worried_request"] == "rewritten"
-    assert paths["mixed_long_invitation"] == "rewritten"
+    # Every text block is held and decided from its originals, long ones too
+    # (ADR 54).
+    assert [r["path"] for r in report["results"]] == ["held"] * CASES
     for payload in incoming:
         assert set(payload["questions"]) == {
             "emotion",
@@ -226,9 +224,14 @@ async def test_each_case_decides_once_and_emotional_or_useful_blocks_get_one_set
             assert not result["answers_missing"]
 
 
-async def test_a_low_threshold_rewrites_every_case_with_a_stand_in(tmp_path):
-    report, decisions, *_ = await run(tmp_path, threshold=0)
-    assert {r["path"] for r in report["results"]} == {"rewritten"}
+@pytest.mark.parametrize("threshold", [0, 10_000])
+async def test_the_threshold_never_changes_how_a_private_block_is_decided(
+    tmp_path, threshold
+):
+    # It governs group briefings only (ADR 35, ADR 62 Q21).
+    report, decisions, *_ = await run(tmp_path, threshold=threshold)
+    assert "stopped" not in report and not report["blocking"]
+    assert [r["path"] for r in report["results"]] == ["held"] * CASES
     assert len([d for d in decisions if "emotion" in d["questions"]]) == CASES
 
 
