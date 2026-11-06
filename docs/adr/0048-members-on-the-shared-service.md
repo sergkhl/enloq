@@ -108,9 +108,11 @@ AI setting stays server-wide and only the owner changes it: Guidance, the
 Processing Character Threshold, the Memory and Automatic suggestions switches
 and the Concurrency Limit. Hide Bots and the reading view are each member's,
 since a shared switch would flip the owner's too. Per-chat controls in a
-Correspondent Profile (Soften hostile messages, Remember this chat,
-Automatic suggestions and Style)
-belong to that chat's member. A member's Settings shows Notifications, Budget
+chat's AI Menu (Automatic suggestions, Style, Emotion, Soften hostile
+messages, Voice and images and Remember this chat,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2)
+belong to that chat's member, and the AI Menu shows Guidance's fields to the
+owner only (ADR 62 Q11). A member's Settings shows Notifications, Budget
 (read-only) and Privacy, with Leave; the owner's adds AI and People.
 
 **Fair turns (Q14).** Members take turns within each class of model work,

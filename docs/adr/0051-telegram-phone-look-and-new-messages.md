@@ -78,8 +78,10 @@ writing; Q15-Q18 shape it.
 **The owner's own voice is transcribed (Q8).** Each outgoing voice note and
 Video Circle in a private chat is transcribed once Telegram confirms it, sent
 from Enloq or another Telegram app, under the incoming notes' rules: the
-account's AI on, VPS speech for notes up to two minutes, the hosted fallback
-for longer ones against the Daily Budget. It is the raw transcript, never
+account's AI on and the chat's Voice and images switch On
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q20), VPS
+speech for notes up to two minutes, the hosted fallback for longer ones
+against the Daily Budget. It is the raw transcript, never
 rewritten, behind the same Show transcript button. In groups the day's
 briefing preparation already transcribes the owner's notes. Saved stays
 without AI ([ADR 50](0050-icon-tabs-saved-messages-and-one-saved-build.md)

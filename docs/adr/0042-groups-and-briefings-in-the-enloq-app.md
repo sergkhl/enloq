@@ -37,9 +37,11 @@ Briefing Budget exactly as on the web. `Budget` opens that budget in Settings
 ([ADR 45](0045-settings-in-the-enloq-app.md) Q8). `Waiting`, `Syncing` and the
 check only report.
 
-**The group sheet (Q3).** A group's header gets a ⋮ actions sheet holding
-Group AI processing, with its notes for an unsupported group, lost or
-unverified access and account AI Off, and Hide Bots. Stop ignoring this bot is
+**The group sheet (Q3).** A group's AI Menu, opened by the robot in its
+header ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q13), holds
+AI view, Group AI processing, with its notes for an unsupported group, lost
+or unverified access and account AI Off, Ask this group while it is On, and
+Hide Bots; the group has no ⋮. Stop ignoring this bot is
 in the long-press menu of a bot's original that is not exempt yet; such posts
 show once Hide Bots is Off or when a citation or quote brings one into view. A
 new group starts with AI processing Off, so this switch starts its briefings

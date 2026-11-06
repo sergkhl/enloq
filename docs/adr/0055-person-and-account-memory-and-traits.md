@@ -59,10 +59,10 @@ neither memory.
 
 **Switches (Q7).** One **Memory** switch in Settings covers both memories; it
 is the owner's and server-wide
-([ADR 48](0048-members-on-the-shared-service.md)). Each Correspondent Profile
+([ADR 48](0048-members-on-the-shared-service.md)). Each private chat's AI Menu
 has **Remember this chat**, Off by default
 ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)
-Q9).
+Q9, [ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2).
 
 **A quality gate (Q8).** See Q26.
 
@@ -110,9 +110,11 @@ none.
 teaches neither memory, nothing in it reads either, and it collects no
 traits.
 
-**Sooner (Q19).** Memories learn from every message already sent to a model,
-the latest 20 included, after 30 quiet minutes in the chat. This reverses
-ADR 21's wait for messages to leave Supporting Context.
+**Sooner (Q19).** While Remember this chat is On, memories learn from the
+chat's new messages, which memory reads itself whatever the chat's other
+switches say (ADR 62 Q6), the latest 20 included, after 30 quiet minutes in
+the chat. This reverses ADR 21's wait for messages to leave Supporting
+Context.
 
 **A start from the cache (Q20).** Chat Memory's takeaways were cleared at
 launch, and each memory starts once from the local 30-day cache, without a
@@ -122,9 +124,10 @@ caching a message doesn't make it eligible for a model. Messages that arrive
 while Memory, or a chat's holder-chosen Remember this chat, is Off are never
 learned.
 
-**Where the owner sees them (Q21).** The Correspondent Profile shows the
-person's Cares about and Traits; Manage accounts gives each account an About
-you page with You care about and Your traits, in both clients.
+**Where the owner sees them (Q21).** The chat's AI Menu shows the person's
+Cares about and Traits on Remember this chat's page (ADR 62 Q12); Manage
+accounts gives each account an About you page with You care about and Your
+traits, in both clients.
 
 **Three kinds of traits (Q22, Q23).**
 
@@ -159,7 +162,7 @@ confidence missed.
 memory. Traits have no switch or field yet: their questions are fixed, and
 Memory and Remember this chat cover them.
 
-**Names (Q25).** Chat Memory is renamed Person Memory; the profile shows Cares
+**Names (Q25).** Chat Memory is renamed Person Memory; the AI Menu shows Cares
 about and Traits, and Manage accounts About you. Stores and receipts keep
 `chat_memory`, `memory_entries` and `memory_state`.
 

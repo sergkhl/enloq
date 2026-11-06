@@ -47,27 +47,27 @@ rule, and each open view keeps its own.
 
 **One-row header (Q6, Q8, Q9, Q11).** The conversation header is one row:
 Back, the avatar, the name (in a private chat with the emotion emoji right
-after it, [ADR 47](0047-pairing-settings-menus-and-profiles.md) Q7), a
-passive "AI off" tag while processing is Off, the Reading View's robot toggle
-([ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13), and
-in groups only a ⋮ that opens the group's sheet (Group AI processing and Hide
-bots, [ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3). Saved
-Messages has no robot toggle. The photo and name open the Correspondent
-Profile or Group Profile; the Correspondent Profile holds the emotion details
-and Person Memory, and both hold Copy chat link
-([ADR 46](0046-the-apps-catch-up-units.md), ADR 47). Settings opens from the
+after it, [ADR 47](0047-pairing-settings-menus-and-profiles.md) Q7) and the
+robot that opens the chat's AI Menu, filled while AI work runs there
+([ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q1, Q14). The AI Menu holds the
+Reading View, the chat's AI controls and, in a group, Group AI processing and
+Hide bots ([ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3,
+ADR 62 Q13). Saved Messages has no robot. The photo and name open the
+Correspondent Profile or Group Profile, and both hold Copy chat link
+([ADR 46](0046-the-apps-catch-up-units.md), ADR 47); the emotion details and
+Person Memory are in the AI Menu (ADR 62 Q12). Settings opens from the
 account sheet's last row
-([ADR 51](0051-telegram-phone-look-and-new-messages.md) Q19). Private chats
-have no conversation menu, and there is no Refresh item; the app refreshes by
-pulling down.
+([ADR 51](0051-telegram-phone-look-and-new-messages.md) Q19). No chat has
+another conversation menu, and there is no Refresh item; the app refreshes
+by pulling down.
 
 **AI processing per account (Q10, Q13, Q14).** Each signed-in account's AI
 processing switch is in Manage accounts (ADR 46), with
 [ADR 14](0014-account-ai-processing-and-reading-view.md)'s per-account
 meaning, shared by every trusted client. While it is Off, the account sheet
-shows "AI off" under the account's name and the private header shows the "AI
-off" tag, which has no action; in a group the tag also shows while that
-group's AI processing is Off.
+shows "AI off" under the account's name, and each chat's robot is outlined
+with its AI Menu saying why; no header tag shows (ADR 62 Q14).
 
 **Earlier messages in the stream (Q7).** The chat-level Rewrite earlier
 messages sits at the top of the loaded history, where those messages are: "N
@@ -75,8 +75,9 @@ earlier blocks are not rewritten" with Rewrite. During a run it reads
 "Analyzing earlier messages · n of m" with a bar and Stop; afterwards a notice
 such as "12 remaining — keeping budget for new messages". Since
 [ADR 54](0054-incoming-text-combined-not-rewritten.md) it offers only blocks
-with media. The action stays off, with its reason, while processing is Off,
-and [ADR 15](0015-owner-controlled-processing-memory-and-prompts.md)'s
+with media. The action stays off, with its reason, while account AI
+processing is Off, whatever the chat's own switches say (ADR 62 Q3), and
+[ADR 15](0015-owner-controlled-processing-memory-and-prompts.md)'s
 click-only, newest-first, budget-reserve and eligibility rules are unchanged.
 
 ### Questions
@@ -89,15 +90,15 @@ click-only, newest-first, budget-reserve and eligibility rules are unchanged.
   Originals.
 - **Q5:** messages only; reactions place none.
 - **Q6:** a one-row header. The ⋮ that held everything else, the Show AI text
-  switch among it, was replaced by the robot toggle (ADR 52 Q13), the profiles
-  and the account sheet; only groups keep a ⋮.
+  switch among it, was replaced by the robot and its AI Menu (ADR 52 Q13,
+  ADR 62), the profiles and the account sheet; no chat keeps a ⋮.
 - **Q7:** earlier-message processing at the top of the loaded history.
 - **Q8:** the account switch is labelled "AI processing". The "Show AI text"
-  switch was replaced by the robot toggle.
+  switch was replaced by AI view in the AI Menu (ADR 62 Q1).
 - **Q9:** replaced: Stop lives in the stream, Chat memory (now Person Memory)
-  in the Correspondent Profile and Settings in the account sheet.
+  in the chat's AI Menu (ADR 62 Q12) and Settings in the account sheet.
 - **Q10:** replaced: the AI processing switch moved from the account picker to
-  Manage accounts (ADR 46); the header tag stays passive.
+  Manage accounts (ADR 46); there is no header tag (ADR 62 Q14).
 - **Q11:** replaced: Settings opens from the account sheet (ADR 51 Q19).
 - **Q12:** a thin accent line with centred text.
 - **Q13:** replaced: Manage accounts shows every signed-in account's switch.

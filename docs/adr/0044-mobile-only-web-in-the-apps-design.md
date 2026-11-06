@@ -20,8 +20,9 @@ The web was rebuilt to the app's screens and limited to what the app does.
 **The app's screens (Q1).** The web is built to the Enloq app's design, on its
 React and Vite code. It starts on the conversation list, whose header is the
 account switcher with an account sheet. A conversation has the app's header
-(Back, avatar, name and emotion, with the robot toggle for the Reading View,
-[ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13). Menus
+(Back, avatar, name and emotion, with the robot that opens the AI Menu,
+[ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q1). Menus
 are bottom sheets. Not adopted: making the web's phone layout the only one
 and aligning it area by area later, a rewrite from scratch, and serving the
 Expo app in browsers through its web target, which would have required every

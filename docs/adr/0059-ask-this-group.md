@@ -15,8 +15,10 @@ Telegram history, no other chat and no web.
 
 ## Decision
 
-**Entry and screen (Q1).** While a group's AI processing is On, its ⋮ sheet
-offers Ask this group. It opens an Ask screen: the question field at the
+**Entry and screen (Q1).** While a group's AI processing is On, its AI Menu
+offers Ask this group
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q13). It opens an Ask
+screen: the question field at the
 bottom, the answer above it as statements with `#ID` source links. A link
 opens the group at that original, highlighted, and Back returns to the answer.
 The web shows the same screen ([ADR 44](0044-mobile-only-web-in-the-apps-design.md)).

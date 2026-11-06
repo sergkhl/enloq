@@ -32,9 +32,11 @@ analysis, and memory, traits and earlier versions are never evidence.
 
 **How it is decided.** Emotion Classification on the decision model
 ([ADR 30](0030-decider-emotion-classification.md),
-[ADR 49](0049-useful-response-suggestions.md)), never in a rewrite. With
-softening On, the default, every block is decided from its originals before any
-rewrite (ADR 53). With softening Off, a text block is decided from its
+[ADR 49](0049-useful-response-suggestions.md)), never in a rewrite, and only
+while the chat's Emotion switch is On
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5). With
+softening On, every block is decided from its originals before any rewrite
+(ADR 53). With softening Off, a text block is decided from its
 originals after its quiet period
 ([ADR 54](0054-incoming-text-combined-not-rewritten.md)), and a block with
 media after its rewrite validates, using its image meanings. A failure leaves
@@ -76,12 +78,13 @@ Processing is Off. The stored record follows the source's retention; the
 12-hour lifetime neither extends it nor turns emotion into memory. Account
 removal clears it.
 
-**Header and profile.** While an estimate is current, its emoji sits right
+**Header and AI Menu.** While an estimate is current, its emoji sits right
 after the name in the conversation header, with an accessible name
-([ADR 47](0047-pairing-settings-menus-and-profiles.md)). Tapping the name or
-emoji opens the Correspondent Profile, which shows the estimate with its
-reason, source and time, or why there is none: pending, expired, changed or
-unavailable ([ADR 46](0046-the-apps-catch-up-units.md)). There is no
+([ADR 47](0047-pairing-settings-menus-and-profiles.md)). The Emotion page of
+the chat's AI Menu shows the estimate with its reason, source and time, or
+why there is none: pending, expired, changed or unavailable
+([ADR 46](0046-the-apps-catch-up-units.md), ADR 62 Q12). While the chat's
+Emotion switch is Off there is none to show (ADR 62 Q5). There is no
 generated explanation, manual override or emotion Retry.
 
 **Guidance.** One owner-editable Emotion extraction field, shared by incoming

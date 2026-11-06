@@ -38,14 +38,16 @@ separators, metadata, Supporting Context, generated wording and memory do not
 count. It is not a per-message minimum and does not reset after a success: a
 short addition to an already long unit qualifies after quiet.
 
-**What it governs (Q2).** Automatic group briefing updates (ADR 34). In
-private chats, text blocks are not rewritten automatically (ADR 54); the
-threshold gates their rewriting only while the registry's `text_rewriting`
-switch, off by default and not in Settings, is on. Softening a hostile block
-ignores it ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)
-Q6). Every new or changed private block gets its decision request (emotion,
-suggestion usefulness and sarcasm) from its originals after its quiet period,
-whatever its length ([ADR 49](0049-useful-response-suggestions.md) Q3).
+**What it governs (Q2).** Automatic group briefing updates (ADR 34) only. In
+private chats, text blocks are not rewritten automatically (ADR 54), and no
+switch restores their rewriting
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q21). Softening a
+hostile block ignores the threshold
+([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md) Q6).
+Every new or changed private block in a chat whose switches call for a
+decision gets its decision request from its originals after its quiet
+period, whatever its length ([ADR 49](0049-useful-response-suggestions.md)
+Q3, ADR 62 Q5).
 Manual suggestions, failure Retry and Rewrite earlier messages keep their
 explicit behavior; Reaction Assessment and memory keep their own gates.
 
@@ -103,9 +105,9 @@ cached results and the budget, target and privacy boundaries are unchanged.
 
 - Q1: count the whole block (or briefing day), not each message; no reset
   after a success.
-- Q2: governs automatic group briefings, and private text rewriting only
-  while `text_rewriting` is on; softening ignores it; decisions run for every
-  block (ADR 49 Q3, ADR 53 Q6, ADR 54).
+- Q2: governs automatic group briefings only; softening ignores it;
+  decisions run for every block whose chat's switches call for one (ADR 49
+  Q3, ADR 53 Q6, ADR 54, ADR 62 Q5, Q21).
 - Q3: Unicode code points of trimmed originals and captions; nothing added or
   generated counts.
 - Q4: analysable images, voice notes and Video Circles exempt a unit.

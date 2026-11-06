@@ -67,16 +67,22 @@ are the standing principles:
   request, deadline and threat
   ([ADR 53](docs/adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md),
   [ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). Voice
-  notes, video circles and images are rewritten into clear text.
+  notes, video circles and images are rewritten into clear text in chats
+  whose Voice and images switch is On.
 - Outgoing Rewrite and its tones are removed. Private chats have separate,
   always-visible Send and Suggestions buttons. Generation leaves the draft
   intact. Manual options are complete messages that develop a nonempty
   draft's idea and follow its [bracketed] instructions; choosing one
   replaces the draft with Undo and never sends.
-- Each private chat separates **Automatic suggestions** On/Off from **Style**
-  Friendly, Professional or Idioms, Friendly by default, for both generation
-  paths. Automation Off leaves manual generation available. The owner's
-  server-wide switch controls automation only.
+- Each chat's **AI Menu**, opened by the robot in its header, starts with AI
+  view, the Reading View ([ADR 62](docs/adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)).
+  A private chat's holds five switches, all Off by default: Automatic
+  suggestions, Emotion, Soften hostile messages, Voice and images and
+  Remember this chat, with **Style** Friendly, Professional or Idioms,
+  Friendly by default, for both generation paths. Off stops only automatic
+  work; Suggestions, Show transcript, Retry and Rewrite earlier messages still
+  work on a tap. The owner's server-wide switches control automation only,
+  and Processing Guidance's fields sit in the AI Menus, for all chats.
 - Incoming notifications follow [ADR 20](docs/adr/0020-minimal-reading-and-ready-notifications.md):
   one alert per burst, later updates silent. With softening On, text gets an
   immediate hostile-wording screen with a five-second arrival deadline;
@@ -91,8 +97,8 @@ are the standing principles:
   [ADR 55](docs/adr/0055-person-and-account-memory-and-traits.md),
   [ADR 34](docs/adr/0034-group-chats-and-daily-briefings.md) and
   [ADR 48](docs/adr/0048-members-on-the-shared-service.md).
-- Combined-block background work covers chats active in the last seven days,
-  waits for 30 quiet seconds and uses at most the 20 preceding same-chat
+- Combined-block background work covers chats active in the last seven days
+  whose switches call for it, waits for 30 quiet seconds and uses at most the 20 preceding same-chat
   messages plus the one directly replied-to message. It never scans older history or follows
   reply chains. Content is cached for 30 days; unchanged results are reused.
 - Do not add attention or task tracking, topic classification, a sparkles
@@ -194,11 +200,13 @@ login is a MacHelm setting, and install does not change it.
   Maya's side, never send anything there, keep what its messages and answers say
   out of tests' output, and leave her Group AI Off between runs, so her copy
   spends nothing on briefings. `openRealGroup` and its guard hold these.
-- Both accounts are signed in on the VPS service with AI processing On, and
-  Remember this chat is On for the Maya chat in the Owner Account (ADR 55
-  Q29), so live sends there are processed on both sides and teach Maya's
-  Person Memory and the Owner Account's About you. A check that needs either
-  Off switches it Off for its run and back On afterwards, even when it fails.
+- Both accounts are signed in on the VPS service with AI processing On. The
+  Maya chat's own AI switches stand On on both sides, except Remember this
+  chat, which is On in the Owner Account (ADR 55 Q29) and Off in Maya's
+  (ADR 62 Q10), so live sends there are processed on both sides and teach
+  Maya's Person Memory and the Owner Account's About you. A check that needs
+  any of these Off switches it Off for its run and back On afterwards, even
+  when it fails.
 - **Browser first.** Run live checks in a browser on the VPS: `npm --prefix web
   run live -- live/<check>.spec.ts`, one file at a time; `./scripts/check`
   never runs them. Write new ones in `web/live/` with `openMayaChat` from

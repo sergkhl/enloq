@@ -21,10 +21,12 @@ blocks in the local 30-day cache of an eligible recent chat:
   progress and Stop ([ADR 28](0028-unread-separator-and-compact-conversation-header.md)).
   It offers only blocks with an image, a voice note or a Video Circle, since
   text stays combined ([ADR 54](0054-incoming-text-combined-not-rewritten.md)).
-  It runs newest first and never resumes on its own. Stop, AI Off and lost
-  eligibility end it, and so does the budget reserve (Q25): it starts no call
-  once less than a quarter of the day's budget remains, showing how many
-  blocks remain, "keeping budget for new messages".
+  It runs newest first and never resumes on its own. Stop, account AI Off
+  and lost eligibility end it, and so does the budget reserve (Q25): it
+  starts no call once less than a quarter of the day's budget remains,
+  showing how many blocks remain, "keeping budget for new messages". A
+  chat's own switches neither block nor end it
+  ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q3).
 - **Retry** of a failed block, from its long-press sheet
   ([ADR 46](0046-the-apps-catch-up-units.md)). Retry of a text block that
   isn't softened decides it again and ends combined (ADR 54).
@@ -57,13 +59,15 @@ chat starts Off ([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-def
 of AI admission and make no model calls. A pending occurrence's manual
 suggestions are prepared two minutes before its alert and refreshed after new
 messages, under the existing Account AI switch, Daily Budget and capacity,
-with its Message Idea or a check-in intent (ADR 58). Global and per-chat
-Automatic suggestions Off pause reminders; Account AI Off does not pause
-their timing or alerts.
+with its Message Idea or a check-in intent (ADR 58), only while both
+Automatic suggestions switches are On. Reminders alert whatever those
+switches say (ADR 62 Q7), and Account AI Off does not pause their timing
+or alerts either.
 
-**Processing Guidance.** The owner edits global guidance in Settings → AI →
-Guidance ([ADR 47](0047-pairing-settings-menus-and-profiles.md)), each field up
-to 4,000 characters with Save, Reset and a version:
+**Processing Guidance.** The owner edits global guidance from the chats' AI
+Menus, where each field sits on the page of the control it shapes, marked for
+all chats (ADR 62 Q11, Q17). Each field takes up to 4,000 characters, with
+Save, Reset and a version:
 
 - **Rewriting:** Faithfulness rules, Incoming rewriting and Soften hostile
   messages;
@@ -82,7 +86,8 @@ changes them ([ADR 48](0048-members-on-the-shared-service.md)).
 
 **Format-failure pause.** After three consecutive format failures, automatic
 incoming rewriting or memory updates pause until the owner
-keeps or resets that role's guidance from the paused-role notice; saving
+keeps or resets that role's guidance from the paused-role notice in
+Settings → AI (ADR 62 Q18); saving
 guidance restarts the counts, and so does a change of the role's Model Route
 ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)). Suggestions
 never pause.

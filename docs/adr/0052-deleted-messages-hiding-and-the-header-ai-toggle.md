@@ -63,12 +63,13 @@ both clients agree; a row expires with its message.
 
 **Hiding is final (Q12).** There is no unhide.
 
-**The Reading View as one robot (Q13).** The AI | Originals bar leaves both clients for
-one icon-only toggle at the header's right end: after the AI off tag in
-private chats, before ⋮ in groups. A robot, pressed for AI and unpressed for
-Originals, named "AI view" with its pressed state for screen readers. The
-choice stays global, remembered and independent of processing. Saved Messages
-has no toggle. The "Copied" note sits under the header.
+**The Reading View in the robot's menu (Q13).** The AI | Originals bar leaves
+both clients. An icon-only robot at the header's right end opens the chat's
+AI Menu, whose first row, **AI view**, is the Reading View; the robot's look
+shows whether AI runs in the chat
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q1, Q14). The
+choice stays global, remembered and independent of processing. Saved
+Messages has no robot. The "Copied" note sits under the header.
 
 **Q14:** superseded by Q13 (which view the icon shows fell away).
 

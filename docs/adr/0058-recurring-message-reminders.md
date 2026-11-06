@@ -43,10 +43,11 @@ reactions, opening and generation complete nothing, and a pending occurrence
 never lapses. Completion does not move future calendar dates. A Once schedule
 ends, with its Message Idea and Kept Messages, when its occurrence completes.
 
-**Controls (Q4).** Either global or per-chat Automatic suggestions Off pauses
-reminders while preserving schedules. On resumes at the next future delivery
-without backfill. Account AI Off allows timing, listing and notifications but
-blocks generation. Logout hides chat data and stops alerts; local account
+**Controls (Q4).** Reminders alert whatever the global and per-chat Automatic
+suggestions switches say; a reminder's set is prepared only while both are
+On ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q7). Account AI
+Off allows timing, listing and notifications but blocks generation. Logout
+hides chat data and stops alerts; local account
 removal deletes schedules and their Kept Messages. Member isolation applies
 to every list and action. Remove reminder asks for confirmation.
 

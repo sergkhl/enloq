@@ -27,8 +27,9 @@ centered column about 480 px wide and does only what the app does
 ([ADR 44](docs/adr/0044-mobile-only-web-in-the-apps-design.md)). Its scope:
 private chats, Group Chats with Daily Briefings and each account's Saved
 Messages; switching between several Telegram accounts; Incoming Blocks
-processed in the background, with media rewrites, hostile-message softening,
-transcripts, Image Understanding, Recipient Emotion and Response Suggestions;
+processed in the background as each chat's AI Menu allows, with media
+rewrites, hostile-message softening, transcripts, Image Understanding,
+Recipient Emotion and Response Suggestions;
 and outgoing text and media, with manual suggestion generation in private
 chats.
 
@@ -225,8 +226,9 @@ with icons:
 - **Budget**: the member's Daily and Group Briefing Budgets with today's
   spending, read-only to a friend.
 - **AI** (the owner only): the Processing Character Threshold, the Concurrency
-  Limit, the Memory and Automatic suggestions switches and Guidance, under a
-  Decision-Model Outage notice while one lasts.
+  Limit, the Memory and Automatic suggestions switches and the paused-role
+  notice, under a Decision-Model Outage notice while one lasts. Processing
+  Guidance's fields are in the AI Menus ([ADR 62](docs/adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)).
 - **Privacy**: Pair a phone and the member's trusted browsers and devices with
   Forget.
 - **Logs**: this client's log with Send to server, and for the owner the
@@ -242,7 +244,8 @@ there is no Help. Budget and pause messages open their section.
 **Recent Chat**:
 A one-to-one conversation with a human user whose latest sent or received
 Telegram message is within the rolling seven-day window; only Recent Chats are
-listed in the Private tab and processed in the background. Bots, Saved
+listed in the Private tab and processed in the background, as far as their
+AI Menu switches allow. Bots, Saved
 Messages, service notifications, groups, channels and Secret Chats are never
 listed there. Drafts, reads and opening a chat do not refresh activity; a new
 message restores it, and saved drafts survive leaving the list. Group Chats
@@ -255,7 +258,7 @@ An account's own Telegram chat with itself, shown in the list's third tab,
 Saved, for every account, members' included (ADR 50). It is one timeline as in
 Telegram, newest at the bottom, with Load earlier and no tags. Nothing there
 goes to a model: it has no rewrites, transcripts, emotion, suggestions, memory,
-softening or Reading View toggle. Its messages are the account's own, so they
+softening or AI Menu. Its messages are the account's own, so they
 bring no push or Unseen Message, and its content follows the chats' 30-day
 rule. The tab has the chat composer without AI actions and no reactions. Deleted
 notes leave it at once. The Owner Account's holds its pairing codes, "was
@@ -329,7 +332,8 @@ only message text that outlives the thirty-day cache.
 A schedule's due invitation to write, pending until a qualifying send or
 Dismiss and never lapsing (ADR 58). Only the latest pending occurrence per
 schedule remains. One manual set covers all of a chat's pending occurrences
-and owns its suggestion area: prepared two minutes before the alert,
+and owns its suggestion area: while both Automatic suggestions switches are
+On, prepared two minutes before the alert,
 refreshed 30 quiet seconds after new messages, and replaced on opening only
 when it no longer fits. Its options keep each reminder's purpose, answer
 messages that arrived after it fell due and treat earlier ones as reference.
@@ -352,9 +356,9 @@ becomes eligible for the first digest on or after it begins. Exact-time
 occurrences use the schedule's local time and are excluded; their alerts show
 the person's name and the Message Idea's first line, or "Check in". Latest
 missed digest occurrences wait for the next digest after downtime; old
-pending occurrences never alert repeatedly. Both Automatic suggestions
-switches pause reminders; On resumes at the next future delivery without
-backfill. Account AI Off allows reminders but blocks new generation.
+pending occurrences never alert repeatedly. Reminders alert whatever the
+Automatic suggestions switches say; a set is prepared only while both are
+On (ADR 62). Account AI Off allows reminders but blocks new generation.
 
 **Conversation Preview**:
 A chat row's one-line excerpt of its latest sent or received native message,
@@ -367,20 +371,17 @@ until it is hidden. It is not a generated summary, a draft or evidence that
 the content was viewed.
 
 **Correspondent Profile**:
-The screen a private chat's header photo and name open
+The screen a private chat's header photo, name and emoji open
 ([ADR 46](docs/adr/0046-the-apps-catch-up-units.md), ADR 47). It shows:
 - the person's photo, name, @username, phone number when Telegram shares it
   and bio, read from Telegram on each opening and never stored;
-- the Recipient Emotion with its label, reason, source and time;
-- the chat's switches: Soften hostile messages, Automatic suggestions and
-  Remember This Chat, plus its Suggestion Style;
 - its Reminder Schedules, each opening the reminder editor, and Add reminder;
-- what the person cares about (Person Memory) and their Traits;
 - Copy chat link.
 
-A group member's avatar or name opens the same profile without emotion,
-memory or switches, with a Message button to the private chat (ADR 51).
-Offline, the app shows the cached photo, name and emotion.
+The chat's AI controls, the Recipient Emotion's details, Person Memory and
+Traits are in its AI Menu (ADR 62). A group member's avatar or name opens
+the same profile without reminders, with a Message button to the private
+chat (ADR 51). Offline, the app shows the cached photo and name.
 
 **Group Profile**:
 The screen a group's header photo and name open (ADR 47): the group's photo
@@ -388,26 +389,43 @@ and title, its @username when public, its member count and description, read
 from Telegram on each opening and never stored, with no member list, then Copy
 chat link. Offline it shows the cached photo and title.
 
+**AI Menu**:
+The bottom sheet the robot at a conversation header's right end opens, in
+private chats and groups (ADR 62). Its first row is AI view, the Reading
+View; the chat's controls follow, each with one line and a page holding its
+explanation, its panels and, for the owner, its Processing Guidance fields:
+- **Private chat:** Automatic Suggestions, Suggestion Style, Emotion (the
+  Recipient Emotion's details on its page), Soften Hostile Messages, Voice
+  and Images, and Remember This Chat (Cares about and Traits on its page).
+  Each switch is Off by default and belongs to the chat's member; Off stops
+  only automatic work, so a deliberate tap (Suggestions, Show transcript,
+  Retry, Rewrite earlier messages) still works.
+- **Group:** Group AI Processing, with a note when the group is unsupported,
+  its access is lost or unverified or the account's AI is Off; Ask This
+  Group while Group AI Processing is On; and Hide Bots. A retained group's
+  holds AI view and Hide Bots.
+
+It says why nothing runs: the account's AI is Off, or a server-wide switch
+overrides the chat's. The robot is filled while AI work can run in the chat
+and an outline otherwise; there is no AI off tag. Saved Messages has neither
+robot nor menu.
+
 **Conversation Menu**:
-A group's ⋮ Conversation actions sheet, at the header's right end after the
-Reading View toggle (ADR 42). It holds Group AI Processing, with a note when
-the group is unsupported, its access is lost or unverified or the account's AI
-is Off, and Hide Bots. Private chats have none; their per-chat switches live in
-the Correspondent Profile.
+The earlier name of a group's AI Menu, when it was a ⋮ sheet (ADR 42).
 
 ### Reading
 
 **Reading View**:
-AI or Originals, chosen with one icon-only robot toggle at the conversation
-header's right end, pressed for AI
+AI or Originals, chosen as AI view, the first row of the AI Menu
 ([ADR 14](docs/adr/0014-account-ai-processing-and-reading-view.md),
-[ADR 52](docs/adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md)).
+[ADR 52](docs/adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md),
+ADR 62).
 AI shows Incoming Rewrites and Streaming Rewrites where they exist, text
 blocks as their combined originals and groups' Daily Briefings; Originals
 shows each native message in order, with its versions. The choice is each
 Member's, remembered across chats, accounts and restarts, initially AI. It is
-independent of processing and starts no generation. Saved Messages has no
-toggle. Sparkles are never used for AI.
+independent of processing and starts no generation. Saved Messages has
+none. Sparkles are never used for AI.
 
 **Message Reading Choice**:
 One AI block's own view, chosen in its sheet with the robot icon: Show
@@ -446,7 +464,8 @@ or its originals as the fallback) and has not been viewed in Enloq (ADR 23,
 ADR 24). It puts one dot on the conversation row, with no counts or badges,
 independently of Telegram's read state and of notification delivery, and its
 viewing state is shared across the member's trusted clients. Groups have dots
-too, whether their AI is on or off.
+too, whether their AI is on or off; in a private chat whose switches are Off,
+originals become ready after 30 quiet seconds.
 
 **Unseen Reaction**:
 A correspondent's actionable 👍, 🤝, 👌 or 👎, newly confirmed on a cached
@@ -624,19 +643,21 @@ including for a Member's account once approved (ADR 14). Off stops new
 incoming, suggestion, memory, transcription and group work for that account while
 sync, media prefetch, sending, drafts and cached results continue; started
 work may finish, and its next stage waits for On. It is the master over Group
-AI Processing. The switch is in Manage accounts; the account sheet marks such
-an account AI off, and its conversations show a passive AI off tag in the
-header, as they do while a group's own switch is Off.
+AI Processing and over each private chat's AI Menu switches. The switch is in
+Manage accounts; the account sheet marks such an account AI off, and its
+chats' AI Menus say so, with the header's robot outlined.
 
 **Incoming Block**:
 Consecutive incoming messages of a private chat, also called a message group
 (ADR 24). A block ends at the owner's next outgoing message, an intervening
 service message or a calendar-day boundary in the server's timezone. Its
-processing begins after 30 quiet seconds. A text-only block shows in AI reading
+processing, where its chat's AI Menu switches call for any, begins after 30
+quiet seconds. A text-only block shows in AI reading
 as its originals together in one bubble, headed with its message count and
 time, and is decided rather than rewritten unless it is softened
-([ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). A block with
-an image, a voice note or a Video Circle gets an Incoming Rewrite of the whole
+([ADR 54](docs/adr/0054-incoming-text-combined-not-rewritten.md)). While Voice
+and images is On, a block with an image, a voice note or a Video Circle gets
+an Incoming Rewrite of the whole
 group into one coherent text, keeping its attachments; an oversized block keeps
 its originals with a truthful status. Its originals stay accessible. It is
 distinct from a Group Chat.
@@ -655,8 +676,8 @@ lines, numbered when order matters, for three or more parallel items, grouped
 by topic in the order the sender raised them, with no summary line, ranking or
 Markdown. It reads Person Memory as reference context and streams in as a
 Streaming Rewrite. Text-only blocks are rewritten only by hostile-message
-softening; a hidden `text_rewriting` registry switch, off and not in Settings, restores
-text rewriting under the Processing Character Threshold.
+softening, and media blocks only while the chat's Voice and images switch is
+On.
 
 **Streaming Rewrite**:
 An incomplete incoming rewrite shown in its message as text arrives (ADR 19).
@@ -673,7 +694,7 @@ someone else's insult do not qualify by themselves.
 
 **Soften Hostile Messages**:
 The private chat's rewrite of hostile Incoming Blocks, governed by its
-**Soften hostile messages** switch in the Correspondent Profile, On by default
+**Soften hostile messages** switch in its AI Menu, Off by default
 ([ADR 53](docs/adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)).
 It keeps every fact, request, condition, amount, deadline and threat stated
 plainly, removes hostile presentation and renders hostile sarcasm by meaning.
@@ -683,8 +704,11 @@ also governs the immediate notification screen; full blocks and rewrites
 retain 30 quiet seconds, and notifications have their own five-second screen
 and original fallback. Mood stays independent. The label is **Softened**, the
 guidance is **Soften hostile messages**, and the original remains one tap away.
-Switching On redoes no earlier result; switching Off leaves softened results
-intact. Muse Spark 1.3 writes them. Groups and Saved Messages have no softening.
+Switching On softens the latest incoming block if it is hostile and under
+seven days old, and redoes nothing else; switching Off leaves softened results
+intact. While Voice and images is Off, voice notes go unheard and images
+unread. Muse Spark 1.3 writes them. Groups and Saved Messages have no
+softening.
 
 **Recipient Emotion**:
 The estimated emotion expressed in a private chat's latest incoming block, or
@@ -696,8 +720,9 @@ and unknown. It reads original wording, transcripts, image meanings and bounded
 recent context, never memory, history, faces or profiles, and never treats
 quoted or forwarded feelings as the sender's. It is communication context, not
 a durable trait. The header shows its emoji right after the name, 😐 for
-unknown or unavailable, and the Correspondent Profile shows its label, reason,
-source and time. It expires 12 hours after the latest source message, or after
+unknown or unavailable, and the Emotion page of the chat's AI Menu shows its
+label, reason, source and time. It is estimated only while the chat's Emotion
+switch is On. It expires 12 hours after the latest source message, or after
 a reaction's addition, and earlier on new incoming content or a change to a
 used source; a send alone does not clear it. The newest eligible communication
 becomes current: late older work never replaces it, and removing a reaction
@@ -708,11 +733,15 @@ The decision-model request assigning Recipient Emotion (ADR 30, ADR 49,
 ADR 53). It returns probabilities for nine codes, with a selected probability
 below 0.35 becoming unknown; it writes no text. Block work also asks whether
 automatic suggestions are useful and whether the block is sarcastic. An
-explicit hostile-wording answer, independent of mood, governs softening.
+explicit hostile-wording answer, independent of mood, governs softening. Each
+question is asked only while the chat's switch that uses it is On (Emotion,
+Automatic suggestions, Soften hostile messages); with all three Off no
+request runs.
 Every eligible block retains its 30 quiet seconds; text is decided from
 originals, and media in a softening chat is decided before rewriting from
 originals, transcripts and cached image meanings. With softening Off, media
-emotion follows the rewrite and may use fresh image meanings. A failed
+emotion follows the rewrite and may use fresh image meanings; with Voice and
+images Off, media is decided from its text and captions alone. A failed
 decision authorizes no softening and leaves mood unavailable. Immediate
 notification screening is separate from this block timing. Decisions read
 bounded Supporting Context, never raw images, memory, traits or earlier
@@ -723,7 +752,8 @@ versions, under fixed criteria and applicable owner guidance. Mood keeps its
 The reassessment of Recipient Emotion and useful Response Suggestions from a
 correspondent's confirmed 👍, 🤝, 👌 or 👎 on a cached message no older than
 seven days in an eligible recent chat, the owner's outgoing messages included
-(ADR 26). It runs through Emotion Classification after 30 quiet seconds, with
+(ADR 26), while the chat's Emotion switch is On. It runs through Emotion
+Classification after 30 quiet seconds, with
 its exact target and bounded recent conversation, and keeps earlier rewritten
 wording. A burst returning to the last processed state starts no call, an
 incomplete snapshot does not prove removal, and reactions present when first
@@ -733,7 +763,9 @@ assessment. Its Unseen Reaction has its own readiness and viewing.
 **Voice Transcript**:
 Machine-generated text of a voice note or a Video Circle's audio, in private
 chats and groups, the owner's own included
-([ADR 39](docs/adr/0039-litellm-proxy-and-vps-speech.md), ADR 51). Whisper
+([ADR 39](docs/adr/0039-litellm-proxy-and-vps-speech.md), ADR 51). In a private
+chat it is made automatically only while Voice and images is On; Show
+transcript makes one on a tap in any chat. Whisper
 large-v3-turbo on the VPS's CPU transcribes notes up to two minutes, with
 automatic language detection and denoising off, and that audio reaches no
 provider; longer notes, and notes the VPS cannot answer, go to the hosted
@@ -750,6 +782,16 @@ Saved Messages has none.
 A generated meaning of an image, used mainly as hidden context for the model:
 in rewrites, mood decisions (from cached meanings) and Daily Briefings. It is
 hidden by default, cached and reused, and the original image stays available.
+In a private chat it is made only inside a media rewrite, while Voice and
+images is On.
+
+**Voice and Images**:
+A private chat's AI Menu switch, Off by default, for the automatic
+transcription of its voice notes and Video Circles, the owner's own included,
+and the Incoming Rewrite of its media blocks with their image meanings
+(ADR 62). While it is Off, nothing in the chat is transcribed or read
+automatically: the other switches see text, captions and any transcript a
+Show transcript tap made, and a softened rewrite leaves images unread.
 
 **Supporting Context**:
 Up to 20 preceding native messages of the same chat within seven days,
@@ -773,11 +815,11 @@ The owner's server-wide minimum of original text and caption characters
 (trimmed Unicode code points) before automatic text work starts, 200 by default
 and settable from 0 to 10,000
 ([ADR 35](docs/adr/0035-processing-character-threshold-and-empty-rewrites.md)).
-It governs automatic Daily Briefings, counted over the whole day, and private
-text rewriting only while the hidden `text_rewriting` switch is on. Blocks with
-new or changed analysable media are exempt, the mood decision judges short
-blocks from their originals, and a hostile block in a softening chat is
-softened at any length. Short originals stay as they are, with no waiting
+It governs automatic Daily Briefings only, counted over the whole day, with
+new or changed analysable media exempt. Private chats have none: the mood
+decision judges short blocks from their originals, and a hostile block in a
+softening chat is softened at any length. Short originals stay as they are,
+with no waiting
 status or counter. The latest value is rechecked before automatic preparation
 and each dispatch; already-dispatched work may finish.
 
@@ -787,8 +829,9 @@ of an eligible chat ([ADR 15](docs/adr/0015-owner-controlled-processing-memory-a
 ADR 31, ADR 54). Rewrite earlier messages, at the top of the loaded history,
 offers never-processed blocks with media; its run goes newest first behind new
 work, shows Analyzing earlier messages · N of M with Stop, and ends with a
-count when a quarter of the Daily Budget remains, processing is turned Off or
-the chat stops being eligible. Retry, in a failed or interrupted block's
+count when a quarter of the Daily Budget remains, account AI processing is
+turned Off or the chat stops being eligible; the chat's own switches neither
+block nor end it. Retry, in a failed or interrupted block's
 sheet, starts one guarded attempt and never a first-time or completed-result
 regeneration; a Retry of a text block that isn't softened decides it again and
 ends combined. Neither fetches nor scans Telegram history.
@@ -799,7 +842,8 @@ Preparing, Transcribing, Reading images, Analyzing, Waiting for budget, Provider
 busy, Paused (Account AI Off, or after repeated format failures), done, Nothing
 to rewrite or failed. Stages report progress, with no percentage within one
 model call. Suggestion work shows its actual preparation, wait or failure
-status without changing the draft.
+status without changing the draft. A block in a chat whose switches are Off
+shows no stage.
 
 ### Response suggestions
 
@@ -811,7 +855,8 @@ Automatic sets answer the latest qualifying unanswered block or reaction;
 manual sets can continue the conversation after the user's own last message,
 a neutral exchange or an ending. Groups and Saved Messages have none.
 - **Automatic trigger.** A usable non-neutral emotion or usefulness of at
-  least 0.7 without one; reactions need both emotion and usefulness.
+  least 0.7 without one; reactions need both emotion and usefulness, so with
+  the chat's Emotion Off only usefulness triggers and reactions trigger none.
   Both Automatic suggestions switches must be On. Reads and restarts reuse
   unchanged results and never generate.
 - **Manual trigger.** A deliberate press requests fresh alternatives;
@@ -855,15 +900,17 @@ choose it.
 
 **Automatic Suggestions**:
 The On/Off control for automatic preparation and display, separate from
-manual generation and style. Each private chat's Correspondent Profile
-offers it, On by default, belonging to that chat's member. The owner's
+manual generation and style. Each private chat's AI Menu offers it, Off by
+default, belonging to that chat's member. The owner's
 server-wide switch in Settings → AI has the same name; automatic work needs
 both On. Off hides automatic sets and cancels queued automatic work, while
 started work may finish into cache, and never blocks or hides manual sets.
-Turning On reuses valid automatic sets without backfill (ADR 25, ADR 56).
+Turning On reuses valid automatic sets and prepares one for the latest
+qualifying unanswered block under seven days old, with no other backfill
+(ADR 25, ADR 56, ADR 62).
 
 **Suggestion Style**:
-A private chat's **Style** choice in its Correspondent Profile: **Friendly**,
+A private chat's **Style** choice in its AI Menu: **Friendly**,
 **Professional** or **Idioms**, Friendly by default, for manual and automatic
 sets alike (ADR 56). Friendly is warm and natural without forced slang or
 emojis; Professional is clear and businesslike without needless formality.
@@ -904,12 +951,14 @@ entries and about 3,000 bytes, each generated entry at most 150 characters
 (an owner entry 300 UTF-8 bytes), in the language it was said in, kept until
 cleared or the account's local data is removed. MiMo updates it after 30 quiet
 minutes in the chat, while no rewrite or transcription waits, one memory call
-at a time across the server, from every message already sent to a model; text
-that isn't softened reaches it through the mood decision. A failed update keeps
+at a time across the server, from the chat's new messages, which it reads
+itself whatever the chat's other switches say: text, captions and the
+transcripts and image meanings that exist. A failed update keeps
 the previous memory, with Retry. It learns only while Remember This Chat is on.
 Response Suggestions and media and softened rewrites read it; briefings,
-notifications and the mood decision do not. The Correspondent
-Profile shows it as Cares about. Groups and Saved Messages have none.
+notifications and the mood decision do not. The chat's AI Menu shows it as
+Cares about, on Remember This Chat's page. Groups and Saved Messages have
+none.
 
 **Chat Memory**:
 The earlier name of Person Memory, used by ADR 15 and ADR 21, when it held
@@ -928,7 +977,8 @@ beside the holder's Traits.
 
 **Traits**:
 Lasting tendencies of a chat's person and of an account's holder, collected
-for the owner's eyes only and shown in the Correspondent Profile and About you;
+for the owner's eyes only and shown on Remember This Chat's page in the chat's
+AI Menu and in About you;
 no model reads them (ADR 55). They come in three kinds:
 - **Scales** the decision model scores from a fixed starter list: how they
   write, how they are toward the other, the Big Five and how they handle
@@ -945,9 +995,10 @@ owner can set, clear or edit them, and the model never changes the owner's
 own.
 
 **Remember This Chat**:
-A private chat's switch in the Correspondent Profile, beside Soften hostile messages,
-Off by default for every chat without its own choice, members' included
-(ADR 55, ADR 56). Off, the chat is out of memory both ways: it teaches neither
+A private chat's switch in its AI Menu, Off by default for every chat without
+its own choice, members' included (ADR 55, ADR 56, ADR 62). On, memory reads
+the chat's new messages itself, whatever the chat's other switches say. Off,
+the chat is out of memory both ways: it teaches neither
 Person nor Account Memory, nothing in it reads either, and it collects no
 traits; what memory already holds stays, visible and editable. A chat Off only
 by default learns once from its 30-day cache when switched on; in a chat its
@@ -1122,7 +1173,7 @@ messages in a private chat.
 
 **Group AI Processing**:
 The durable opt-in for one account's group, initially Off and subordinate to
-Account AI Processing (ADR 34). It is in the group's Conversation Menu. Off
+Account AI Processing (ADR 34). It is in the group's AI Menu. Off
 holds new briefing and media stages, including Retry, while started stages may
 finish. Choosing AI reading enables nothing. The group's send composer has
 neither outgoing Rewrite nor suggestion generation.
@@ -1218,7 +1269,7 @@ change, including one the read passes without finding.
 Each Member's preference, on by default, that leaves every native-verified bot
 out of their Group Chats: its originals, old and new, disappear from both
 reading views and are neither read nor summarized by Daily Briefings, with no
-model judgment (ADR 34). Its switch is in a group's Conversation Menu. Stop
+model judgment (ADR 34). Its switch is in a group's AI Menu. Stop
 ignoring this bot, in a bot original's sheet, exempts one bot in one group.
 Unknown authors stay visible, since a name is no proof, and human ads stay
 labelled in Originals. Off shows the cached originals again and lets bots be
@@ -1267,8 +1318,8 @@ way. It is distinct from Group Ad Classification, which filters inputs.
 **Ask This Group**:
 A Member's question about one Group Chat, answered from that group's cached
 originals since its first opt-in day, within the 30-day cache, as up to four
-statements with checked source links (ADR 59). It opens from the group's
-Conversation Menu while Group AI Processing is On, searches by embeddings and
+statements with checked source links (ADR 59). It opens from the group's AI
+Menu while Group AI Processing is On, searches by embeddings and
 a reranker, writes with gpt-6.1-sol, which searches the same messages further
 with its own tools when the best 25 do not settle the question (ADR 60), and
 runs the Citation Check on every statement, dropping one left with no
@@ -1359,20 +1410,24 @@ answered request ends it. A 401 or 403 does no work and counts nothing.
 
 **Processing Guidance**:
 The owner's server-wide, editable instructions for model work, applied from
-the next call (ADR 15). Settings → AI → Guidance groups its fields, each with
-Save, Reset and versions:
-- **Rewriting:** Faithfulness rules, Incoming rewriting and Soften hostile
-  messages.
-- **Suggestion styles:** Friendly, Professional and Idioms.
-- **Other work:** Emotion extraction, Person memory, Account memory, Response
-  suggestions, When to suggest and Group briefings.
+the next call (ADR 15). For now its fields sit in the AI Menus, each on the
+page of the control it shapes, marked for all chats and shown to the owner
+only, each with Save, Reset and versions (ADR 62):
+- **Automatic suggestions:** When to suggest.
+- **Style:** Response suggestions, Friendly, Professional and Idioms.
+- **Emotion:** Emotion extraction.
+- **Soften hostile messages:** Soften hostile messages and Faithfulness
+  rules.
+- **Voice and images:** Incoming rewriting and Faithfulness rules.
+- **Remember This Chat:** Person memory and Account memory.
+- **A group's Group AI Processing:** Group briefings.
 
 A fixed core the owner cannot edit frames content as untrusted data and
 enforces each output contract; softening and Idioms guidance apply only to
 hostile blocks and idiom sets, after a fixed frame. Each result records its guidance version
 and shipped-defaults revision, and a new revision makes group briefings
 updateable once. After repeated format failures a role pauses until the owner
-resumes it from Guidance's paused-role notice.
+resumes it from the paused-role notice in Settings → AI.
 
 **Faithfulness Rules**:
 The editable Processing Guidance that preserves substance: facts, requests,

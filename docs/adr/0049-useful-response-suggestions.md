@@ -43,8 +43,10 @@ either signal (a block without a usable non-neutral emotion needs usefulness
 of 0.7 or more, ADR 56 Q19). Reactions still need both.
 
 **Held blocks are decided from their originals (Q3).** Every new or changed
-eligible private block gets the decision request, emotion and usefulness,
-after its 30 quiet seconds, whether or not it is rewritten.
+eligible private block in a chat whose switches call for a decision gets the
+decision request after its 30 quiet seconds, whether or not it is rewritten,
+asking emotion while Emotion is On and usefulness while Automatic suggestions
+is On ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5).
 
 - A held block is decided once its quiet has passed, by the scheduler's
   admission pass, from the cache only: originals, bounded Supporting Context,

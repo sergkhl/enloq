@@ -53,7 +53,9 @@ quiet seconds, independently of notification screening and delivery:
 - when its validated result publishes: a rewrite of a block with media, or a
   softened rewrite ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md));
 - when the original fallback is known: text that stays combined
-  ([ADR 54](0054-incoming-text-combined-not-rewritten.md)), AI Off, the
+  ([ADR 54](0054-incoming-text-combined-not-rewritten.md)), AI Off, a chat
+  whose switches are Off
+  ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q14), the
   budget, a failure or nothing to rewrite. With softening On, a block still
   waiting for its hostile-wording decision is not yet settled, so readiness
   waits. Notifications instead use ADR 20's immediate bounded screen and

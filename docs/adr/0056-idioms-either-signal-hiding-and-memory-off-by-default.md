@@ -26,8 +26,9 @@ Russian chat gets Russian idioms, proverbs and set expressions, an English
 chat English ones and phrasal verbs. Not adopted: English practice in every
 chat, and a language chosen per chat.
 
-**Per-chat controls (Q2).** Each Correspondent Profile separates Automatic
-suggestions On/Off from Style: Friendly, Professional or Idioms (Q12).
+**Per-chat controls (Q2).** Each private chat's AI Menu separates Automatic
+suggestions On/Off from Style: Friendly, Professional or Idioms (Q12,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q4).
 The chat's member sets both, in the app and the web.
 
 **Either signal (Q3).** An incoming block's automatic suggestions need a usable
@@ -50,8 +51,9 @@ existing and running sets retain their style. Changing style starts no
 request and withdraws no set. Automation Off cancels queued automatic work
 only.
 
-**Guidance (Q6).** Owner-editable Friendly, Professional and Idioms fields
-under Settings → AI → Guidance have Save, Reset and versions for future
+**Guidance (Q6).** Owner-editable Friendly, Professional and Idioms fields,
+on Style's page in the AI Menu (ADR 62 Q17), have Save, Reset and versions
+for future
 sets of either kind. Friendly is warm, natural and conversational without
 forced slang or emojis; Professional is clear, respectful and businesslike
 without unnecessary formality. Shared Response suggestions guidance still
@@ -83,21 +85,23 @@ never learned.
 **Automatic suggestions, Style and the fold (Q12).**
 
 - **Separate controls per chat (A).** Each private chat has **Automatic
-  suggestions**, On by default, and **Style**, Friendly by default, with
-  exactly Friendly, Professional and Idioms as choices. Both live in its
-  Correspondent Profile, belong to that chat's member and are shared across
+  suggestions**, Off by default (ADR 62 Q2), and **Style**, Friendly by
+  default, with exactly Friendly, Professional and Idioms as choices. Both
+  live in its AI Menu, belong to that chat's member and are shared across
   their clients. The owner's server-wide switch is also Automatic
   suggestions. Automatic work needs both switches On; either Off hides
   automatic sets and stops new automatic work, without blocking or hiding
-  manual sets. On reuses valid automatic sets, without backfill. Calls count
+  manual sets. On reuses valid automatic sets and prepares one for the
+  chat's latest qualifying unanswered block under seven days old (ADR 62
+  Q8), with no other backfill. Calls count
   in the account member's Daily Budget. Groups and Saved Messages have no
   suggestions. There is no member-wide or account-wide style or inheritance.
 
-  Under ADR 58, either automation switch Off also pauses calendar reminders
-  while preserving schedules. On resumes at the next future occurrence,
-  without backfill. Account AI Off still permits reminder timing and alerts
-  while blocking reminder suggestions. Reminder suggestions otherwise retain
-  the same captured Style and writers as manual generation.
+  Under ADR 58, reminders alert whatever the automation switches say, and
+  their sets are prepared only while both are On (ADR 62 Q7). Account AI
+  Off still permits reminder timing and alerts while blocking reminder
+  suggestions. Reminder suggestions otherwise retain the same captured
+  Style and writers as manual generation.
 
   Existing Off maps to automation Off and Friendly; On to automation On and
   Friendly; Idioms to automation On and Idioms. Existing global On/Off is

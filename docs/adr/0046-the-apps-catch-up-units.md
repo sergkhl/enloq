@@ -29,8 +29,8 @@ clients, the web in the app's design inside its column.
 - Copying a voice note's transcript is CU1's.
 - Copying a message's #ID is dropped.
 - Emotion details (the reason, the source and the time behind the header
-  emoji) live in the Correspondent Profile, at the owner's direction:
-  "emotion details should be in a new user profile screen".
+  emoji) live on the Emotion page of the chat's AI Menu
+  ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q12).
 
 **Video stickers stay still on phones (Q10).** Telegram's video stickers are
 WebM clips with a transparent background. iOS plays no WebM, and Android's
@@ -42,19 +42,15 @@ ADR 42 Q7 allows. Not adopted: converting each sticker to an animated WebP.
 
 **The Correspondent Profile (Q11).** Tapping a private chat's header photo,
 name or emotion opens a profile of the person. It shows their photo and name,
-their @username, phone number when Telegram shares it, and bio, then the
-emotion with its details and Copy chat link. The service reads the username,
+their @username, phone number when Telegram shares it, and bio, then their
+Reminder Schedules ([ADR 58](0058-recurring-message-reminders.md) Q12) and
+Copy chat link. The service reads the username,
 phone and bio from Telegram each time the profile opens, through
 `users.GetFullUserRequest`, which its read allow-list permits, and keeps none
-of them. Offline, the profile shows what the cached chat holds. Later ADRs
-add the chat's own controls and what memory holds: Soften hostile
-messages ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)),
-Automatic suggestions and Style
-([ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)),
-Remember this chat, Cares about and Traits
-([ADR 55](0055-person-and-account-memory-and-traits.md)). Not adopted: a
-profile limited to what the service already stored, and one holding only the
-emotion details.
+of them. Offline, the profile shows what the cached chat holds. The chat's
+AI controls, the emotion's details, Cares about and Traits are in its AI Menu
+(ADR 62 Q4, Q12). Not adopted: a profile limited to what the service already
+stored, and one holding only the emotion details.
 
 **The agent's design.** These choices carry beyond a single screen:
 

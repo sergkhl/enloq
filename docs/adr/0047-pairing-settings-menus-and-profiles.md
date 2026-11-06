@@ -72,7 +72,9 @@ at the bottom.
 - **Notifications** holds this phone's or browser's switch, sound and test.
 - **Budget** holds the two budgets with today's spending.
 - **AI** holds the Processing Character Threshold, the Concurrency Limit, the
-  memory and suggestions switches and Guidance.
+  memory and suggestions switches and the paused-role notice; Guidance's
+  fields are in the chats' AI Menus
+  ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q11, Q18).
 - **Privacy** holds Pair a phone and the trusted browsers and devices with
   Forget.
 
@@ -86,9 +88,9 @@ and a tap on either opens the profile. Tapping a group's photo or name opens a
 **Group Profile**: the photo and title, the @username when the group is
 public, the member count and the description, read from Telegram on each
 opening and kept nowhere, with no member list. Offline it shows the cached
-photo and title. The group's ⋮ sheet keeps Group AI processing and Hide Bots
-([ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3). A group
-member's avatar or name opens that member's profile
+photo and title. The group's AI Menu holds Group AI processing and Hide Bots
+([ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3, ADR 62 Q13). A
+group member's avatar or name opens that member's profile
 ([ADR 51](0051-telegram-phone-look-and-new-messages.md) Q14).
 
 **Copy chat link in the profiles (Q8).** Copy chat link is in neither header;
@@ -121,8 +123,8 @@ address, under thirty an hour for the server, and wrong codes count toward the
 refusal limit. Not adopted: the host's Telegram login over SSH.
 
 **AI is the name (Q12).** The submenu formerly called Processing is **AI**,
-matching the AI view, the AI off tag and each account's AI switch, and
-Processing Guidance's row is **Guidance**.
+matching the AI view, the AI Menu and each account's AI switch. Processing
+Guidance's fields are in the AI Menus (ADR 62 Q11).
 
 **When the Owner Account is signed out (Q13).** When Connect can't post a code
 because the Owner Account is signed out, or isn't on the server yet, the

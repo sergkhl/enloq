@@ -86,14 +86,15 @@ its time, edit mark and versions. A block's long-press sheet offers Show
 original, and its originals' sheets Show AI text, with the robot icon and
 never sparkles. The choice holds for that block until the global Reading View
 changes or the chat is reopened, and starts no generation. The global Reading
-View is the header's robot toggle
-([ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13).
+View is AI view, the first row of the AI Menu the header's robot opens
+([ADR 52](0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q1).
 
 **The neutral face for uncertainty.** An `unknown` estimate (mixed emotion or
 too little evidence) shows 😐, named "Mixed or uncertain"; it is never
 presented as a recognized Neutral. With no current estimate (pending,
 expired, changed, invalid or unavailable) the header shows no emoji, and the
-Correspondent Profile ([ADR 46](0046-the-apps-catch-up-units.md)) says why.
+Emotion page of the chat's AI Menu (ADR 62 Q12) says why.
 No model call is added for this.
 
 **Remembered account.** Each browser and each phone remembers the account it

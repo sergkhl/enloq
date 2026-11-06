@@ -35,7 +35,9 @@ provenance. Adaptive tone, which also used emotion, was removed
 
 **Reaction Assessment (Q3).** One decision request per assessment asks a
 choice question for the emotion code and a yes/no question for whether
-suggestions would be useful.
+suggestions would be useful. It runs only while the chat's Emotion switch
+is On, asking usefulness only while Automatic suggestions is On too
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5).
 [ADR 26](0026-mobile-message-actions-and-send-status.md)'s triggers, quiet
 period, inputs, reuse, currentness and 12-hour lifetime are unchanged.
 
@@ -74,28 +76,36 @@ Generation roles keep their own routes
 **What one incoming request asks.** The emotion code, whether suggestions
 would be useful (ADR 49 Q2) and whether the latest block is sarcastic. An
 explicit hostile-wording question, independent of emotion, governs softening
-(ADR 53); its immediate
-notification screen follows ADR 20. Both use the same pinned decision route,
+(ADR 53). Each question is asked only while the chat's switch that uses it
+is On: the emotion for Emotion, usefulness for Automatic suggestions,
+hostility and sarcasm for Soften hostile messages; with all three Off no
+request runs (ADR 62 Q5). The immediate notification screen follows ADR 20. Both use the same pinned decision route,
 not a writing model.
 
-**Timing (Q5).** An emotion request runs only for a private chat's block that can
-become the current source under ADR 22, after its 30 quiet seconds:
+**Timing (Q5).** A block's decision request runs only in a private chat
+whose Emotion, Automatic suggestions or Soften hostile messages switch is
+On, for a block that can become the current source under ADR 22, after its
+30 quiet seconds:
 
 - **Text only.** A block of text is decided from its originals
   ([ADR 54](0054-incoming-text-combined-not-rewritten.md)).
-- **With media, softening On.** In a chat with softening On, the default, every
-  block is decided from its originals before any rewrite, and image meanings
-  don't feed the decision (ADR 53 Q7).
-- **With media, softening Off.** The decision runs right after the rewrite
-  validates and publishes, using its freshly generated image meanings. A
-  failed or withheld rewrite leaves emotion unavailable.
+- **With media, softening On.** In a chat with softening On, every block is
+  decided from its originals before any rewrite, and image meanings don't
+  feed the decision (ADR 53 Q7).
+- **With media, softening Off.** While Voice and images is On, the decision
+  runs right after the rewrite validates and publishes, using its freshly
+  generated image meanings. A failed or withheld rewrite leaves emotion
+  unavailable.
+- **Voice and images Off.** Nothing is transcribed or read, so a media block
+  is decided from its text and captions alone, and one with neither gets no
+  emotion (ADR 62 Q20).
 
 Every request reads the original wording, transcripts, image meanings when it
 has them, quote and forward attribution and bounded Supporting Context. Raw
 images, Person Memory and Account Memory are never sent, and nothing is
 inferred from faces. The header shows no emoji until the decision publishes,
-and the Correspondent Profile says it is waiting. Suggestions follow the
-decision automatically. With softening On, the block's readiness waits for
+and the Emotion page of the chat's AI Menu says it is waiting. Suggestions
+follow the decision automatically. With softening On, the block's readiness waits for
 its current hostility decision and required rewrite. Notifications instead
 use immediate screening with a five-second arrival deadline and the original
 fallback (ADR 20), not this quiet period or emotion's availability.

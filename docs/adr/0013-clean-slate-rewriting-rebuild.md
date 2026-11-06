@@ -86,7 +86,8 @@ Suggestions buttons. Send transmits the exact draft, asking first while it
 still contains bracketed instructions; generation leaves it intact, a chosen
 manual option replaces it and an automatic one inserts at the cursor, with
 Undo (ADR 25).
-Automatic suggestions and Style live in the Correspondent Profile (ADR 56).
+Automatic suggestions and Style live in the chat's AI Menu (ADR 56,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md)).
 There is no outgoing Rewrite, tone control, draft stream or Stop rewrite.
 Groups and Saved Messages keep send composers without AI actions. Photos,
 GIFs, stickers, captions, native reply targets and ordinary send guards stay.

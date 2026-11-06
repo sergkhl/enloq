@@ -43,9 +43,11 @@ briefings and their media stages. The composer offers ordinary sends, with
 neither outgoing Rewrite nor suggestions (ADR 25).
 Account Off blocks all new AI. A valid started stage may finish, but no next
 automatic stage starts while paused. The Group AI processing switch sits in
-the group's ⋮ actions sheet, beside Hide Bots
-([ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3). A passive AI off
-tag reflects either switch, and a factual status names any other pause.
+the group's AI Menu, beside Hide Bots
+([ADR 42](0042-groups-and-briefings-in-the-enloq-app.md) Q3,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q13). The header's
+robot is outlined while either switch is Off (ADR 62 Q14), and a factual
+status names any other pause.
 
 ### Daily briefings
 
@@ -246,7 +248,8 @@ Started work is not interrupted.
 
 **Hide Bots** is each member's own durable preference
 ([ADR 48](0048-members-on-the-shared-service.md)), On by default, in the
-group's ⋮ sheet. While it is on, every original from a native-verified bot
+group's AI Menu (ADR 62 Q13). While it is on, every original from a
+native-verified bot
 leaves group reading and briefings, old and new, with no model judgment.
 Hidden bots are handled exclusions: never model input, classifier targets,
 participants or uncovered sources, and a day of only bot posts completes
@@ -574,8 +577,8 @@ Four interviews settled this ADR, each numbered from Q1. The rollout code's
 - Q36: Private, Groups and Saved as icon tabs in the account header (ADR 50);
   each account's tab remembered while the app runs; no remembered chat
   (ADR 44).
-- Q37: Group AI processing in the group's ⋮ sheet (ADR 42 Q3); the account
-  switch in Manage accounts.
+- Q37: Group AI processing in the group's AI Menu (ADR 42 Q3, ADR 62 Q13);
+  the account switch in Manage accounts.
 - Q38: the Processing Character Threshold gates automatic briefings.
 - Q39: the whole day's eligible original text counts, without reset after a
   briefing.
@@ -689,7 +692,7 @@ Four interviews settled this ADR, each numbered from Q1. The rollout code's
   (ADR 45 Q8).
 - Q6, Q7: the slot sits at the right end of today's band, in AI reading
   only; the bar at the top of the list is gone.
-- Q8: Hide Bots is in the group's actions sheet.
+- Q8: Hide Bots is in the group's AI Menu (ADR 62 Q13).
 - Q11: a grey check when today is up to date.
 - Q13: earlier days have no slot, Retry or Analyzing; their automatic work
   continues unseen.

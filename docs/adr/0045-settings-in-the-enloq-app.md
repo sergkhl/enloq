@@ -38,12 +38,15 @@ items sit with the server-wide settings.
 
 **Submenus (Q5).** Replaced by ADR 47 Q6: Settings is four rows with icons,
 Notifications, Budget, AI and Privacy. Processing Guidance's fields, up to
-4,000 characters each, keep screens of their own as Guidance under AI.
+4,000 characters each, keep screens of their own, opened from the chats' AI
+Menus ([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q11).
 
 **Everything the web had (Q6).** Both budgets with today's spending, the
 Processing Character Threshold, the Concurrency Limit, the memory and
-Automatic suggestions switches, and Guidance with its paused-role notice are in both
-clients. The paused-role notice is the only way automatic rewriting resumes
+Automatic suggestions switches, and the paused-role notice are in both
+clients' Settings → AI, and Guidance's fields in both clients' AI Menus
+(ADR 62 Q11, Q18). The paused-role notice is the only way automatic
+rewriting resumes
 after three format failures. The web's five chimes and custom sound are not
 offered: the phone's push uses its own sound, and the web plays one.
 AI settings are server-wide and only the owner changes them; a member sees
@@ -57,7 +60,8 @@ app.
 
 **Messages lead to Settings (Q8).** "Waiting for budget" and "Suggestions wait
 for budget" open the Daily Budget under Settings → Budget. "Paused after
-repeated format failures" opens Guidance under Settings → AI. The Briefing
+repeated format failures" opens the paused-role notice under Settings → AI
+(ADR 62 Q18). The Briefing
 Slot's `Budget` opens the Group Briefing Budget. Each opens its page with the
 item scrolled into view and outlined for a moment.
 

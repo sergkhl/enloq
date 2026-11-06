@@ -50,13 +50,13 @@ automatic rewrite of incoming text
 ([ADR 54](0054-incoming-text-combined-not-rewritten.md)); media retains its
 ordinary rewrite.
 
-**On by default, one switch per chat (Q4).** Each private chat's
-Correspondent Profile has **Soften hostile messages**, On by default for
-the owner and every member, beside Remember this chat, Automatic suggestions
-and Style. It controls softening and notification screening in that chat;
-Off permits immediate original previews. This vocabulary replaces Calming,
-Calm this chat and Calmed throughout the feature. Existing per-chat On/Off
-choices are preserved.
+**Off by default, one switch per chat (Q4).** Each private chat's AI Menu
+has **Soften hostile messages**, Off by default for the owner and every
+member, beside its other switches
+([ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2). It controls
+softening and notification screening in that chat; Off permits immediate
+original previews. This vocabulary replaces Calming, Calm this chat and
+Calmed throughout the feature.
 
 **The Softened label (Q5).** Each softened message carries a small
 **Softened** label, its original one tap away. No header tag is added.
@@ -83,13 +83,15 @@ follow it. An unavailable or unusable decision authorizes no softening;
 notifications use ADR 20's original fallback.
 
 **The softening guidance (Q8).** The owner-editable **Soften hostile
-messages** field in Settings → AI → Guidance holds Q3's wording after a
-fixed softening frame. It joins the Faithfulness Rules and incoming guidance
+messages** field, on that switch's page in the AI Menu (ADR 62 Q17), holds
+Q3's wording after a fixed softening frame. It joins the Faithfulness Rules
+and incoming guidance
 only for hostile blocks. The decision's fixed hostile-wording criteria are
 independent of editable Emotion extraction guidance.
 
-**Scope in time (Q9).** Switching On redoes nothing already shown; switching
-Off leaves softened renderings intact.
+**Scope in time (Q9).** Switching On softens the chat's latest incoming
+block if it is hostile and under seven days old (ADR 62 Q8) and redoes
+nothing else; switching Off leaves softened renderings intact.
 
 **The mood emoji (Q10).** It keeps its separate emotion rule. Softened text
 asserts no emotion merely because hostility was found.

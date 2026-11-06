@@ -192,13 +192,16 @@ refreshed as above. The pending-send suspension and non-send restoration
 rules apply only while its captured inputs remain valid.
 
 **Controls.** Settings → AI names the owner's server-wide switch
-**Automatic suggestions**, initially On. Each private chat's Correspondent
-Profile separates **Automatic suggestions** On/Off from **Style**
-Friendly/Professional/Idioms, set by that chat's member (ADR 56 Q12).
+**Automatic suggestions**, initially On. Each private chat's AI Menu
+separates **Automatic suggestions** On/Off, Off by default, from **Style**
+Friendly/Professional/Idioms, set by that chat's member (ADR 56 Q12,
+[ADR 62](0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2).
 Automation Off hides automatic sets and cancels queued automatic work, while
 started work may finish into cache; it neither hides nor disables manual
-sets. On reuses still-valid automatic sets and resumes at the next qualifying
-new or changed source, without backfill. An account whose AI processing is
+sets. On reuses still-valid automatic sets, prepares one for the chat's
+latest qualifying unanswered block under seven days old (ADR 62 Q8) and
+otherwise resumes at the next qualifying new or changed source, without
+backfill. An account whose AI processing is
 Off prepares neither kind of set. Owner-editable guidance retains Save,
 Reset and versions for future calls: Response suggestions, When to suggest,
 Friendly, Professional and Idioms (ADR 56 Q6).
