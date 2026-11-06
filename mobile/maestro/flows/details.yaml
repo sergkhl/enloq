@@ -19,9 +19,10 @@ appId: ${APP_ID}
     timeout: 30000
 - tapOn: "Message details.*"
 - extendedWaitUntil:
-    visible: "AI view"
+    visible:
+      id: "ai-menu"
     timeout: 15000
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - extendedWaitUntil:
     visible: "Later message 39"
     timeout: 15000
@@ -80,6 +81,6 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: "Later message 39"
     timeout: 10000
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - tapOn: "Back to conversations"
 - assertVisible: "Account: Demo account. Switch account"

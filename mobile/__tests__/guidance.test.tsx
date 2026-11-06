@@ -8,12 +8,14 @@ import {
 import React from "react";
 import { BackHandler } from "react-native";
 import { mockParams, mockRouter, mockStore, reset, serve } from "./setup";
+import AiPage from "../app/ai/[account]/[peer]";
+import GuidanceField from "../app/guidance/[field]";
 import Ai from "../app/settings/ai";
-import Guidance from "../app/settings/guidance";
-import GuidanceField from "../app/settings/guidance/[field]";
 import { ConnectionProvider } from "../src/connection";
 
-// ADR 45 ST3: Processing guidance, its paused roles and each field's editor.
+// ADR 45 ST3: Processing guidance, its paused roles in Settings → AI and each
+// field's editor, opened from the AI Menu page of the control it shapes
+// (ADR 62 Q11, Q17, Q18).
 const SAVED = JSON.stringify({
   origin: "https://enloq.example.com",
   token: "t0ken",
@@ -42,6 +44,8 @@ let guidance: {
   paused: string[];
 };
 let posts: { path: string; body: unknown }[];
+let role: "owner" | "member";
+let calls: { url: string }[];
 
 function budget() {
   return {
@@ -61,6 +65,7 @@ beforeEach(() => {
   reset();
   mockStore.set("enloq.credential", SAVED);
   posts = [];
+  role = "owner";
   guidance = {
     version: 7,
     defaults_revision: 5,
@@ -68,7 +73,7 @@ beforeEach(() => {
     defaults: DEFAULTS,
     paused: [],
   };
-  serve((url, init) => {
+  calls = serve((url, init) => {
     const path = url.replace("https://enloq.example.com/api/", "");
     if (path === "accounts")
       return {
@@ -82,6 +87,11 @@ beforeEach(() => {
         },
       };
     if (path === "auth/browsers") return { status: 200, body: [] };
+    if (path === "members/me")
+      return {
+        status: 200,
+        body: { id: "m", role, state: "active", name: "", agreement: null },
+      };
     if (path.startsWith("settings")) {
       if (init.method === "POST") {
         const body = JSON.parse(init.body!);
@@ -107,7 +117,8 @@ beforeEach(() => {
             processing_threshold: 200,
             memory: true,
             suggestions: true,
-            guidance,
+            // Only the owner reads Processing Guidance (ADR 48 Q13).
+            guidance: role === "owner" ? guidance : null,
           }),
         ),
       };
@@ -119,59 +130,15 @@ beforeEach(() => {
 const mount = (element: React.ReactElement) =>
   render(<ConnectionProvider>{element}</ConnectionProvider>);
 
-test("Settings → AI's Guidance row names the version and a pause", async () => {
-  guidance.paused = ["incoming_rewrite"];
-  await mount(<Ai />);
-  await fireEvent.press(
-    await screen.findByRole("button", {
-      name: "Guidance, Paused, Version 7",
-    }),
-  );
-  expect(mockRouter.push).toHaveBeenCalledWith("/settings/guidance");
-});
-
-test("the fields are grouped, each saying whether it was edited", async () => {
-  await mount(<Guidance />);
-  expect(await screen.findByText(/^Version 7\. Changes apply/)).toBeTruthy();
-  expect(screen.getByText("Rewriting")).toBeTruthy();
-  expect(screen.getByText("Suggestion styles")).toBeTruthy();
-  expect(screen.getByText("Other work")).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Professional, Edited" }),
-  ).toBeTruthy();
-  // Each memory has its own field (ADR 55 Q24).
-  expect(
-    screen.getByRole("button", { name: "Person memory, Default" }),
-  ).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Account memory, Default" }),
-  ).toBeTruthy();
-  // Idiom sets have their own field, after Response suggestions (ADR 56 Q6).
-  const rows = screen
-    .getAllByRole("button")
-    .map((row) => row.props.accessibilityLabel);
-  expect(rows.indexOf("Idioms, Default")).toBe(
-    rows.indexOf("Response suggestions, Default") + 1,
-  );
-  // The first line previews each field.
-  expect(screen.getByText("Rewrite clearly.")).toBeTruthy();
-  await fireEvent.press(
-    screen.getByRole("button", { name: "Incoming rewriting, Default" }),
-  );
-  expect(mockRouter.push).toHaveBeenCalledWith({
-    pathname: "/settings/guidance/[field]",
-    params: { field: "incoming" },
-  });
-});
-
-test("a paused role is kept or reset from its notice", async () => {
+test("Settings → AI holds the paused roles with Keep and Reset, and no Guidance row", async () => {
   guidance.paused = ["incoming_rewrite", "chat_memory"];
-  await mount(<Guidance />);
+  await mount(<Ai />);
   expect(
     await screen.findByText(
       /^Incoming rewrites failed the output format three times/,
     ),
   ).toBeTruthy();
+  expect(screen.queryByText("Guidance")).toBeNull();
   await fireEvent.press(
     screen.getByRole("button", {
       name: "Keep guidance for Memory updates",
@@ -199,12 +166,97 @@ test("a paused role is kept or reset from its notice", async () => {
   );
 });
 
+describe("an AI Menu page's Guidance", () => {
+  beforeEach(() => {
+    mockParams.account = "1";
+    mockParams.peer = "user:101";
+  });
+  const fields = () =>
+    screen
+      .getAllByRole("button")
+      .map((row) => row.props.accessibilityLabel as string)
+      .filter((label) => /for all chats$/i.test(label ?? ""));
+
+  test.each([
+    [
+      "style",
+      [
+        "Response suggestions, For all chats",
+        "Friendly, For all chats",
+        "Professional, Edited, for all chats",
+        "Idioms, For all chats",
+      ],
+    ],
+    ["suggestions", ["When to suggest, For all chats"]],
+    ["emotion", ["Emotion extraction, For all chats"]],
+    [
+      "calming",
+      [
+        "Soften hostile messages, For all chats",
+        "Faithfulness rules, For all chats",
+      ],
+    ],
+    [
+      "media",
+      [
+        "Incoming rewriting, For all chats",
+        "Faithfulness rules, For all chats",
+      ],
+    ],
+    [
+      "remember",
+      ["Person memory, For all chats", "Account memory, For all chats"],
+    ],
+  ])(
+    "%s's page lists its fields, each for all chats",
+    async (control, names) => {
+      mockParams.control = control;
+      await mount(<AiPage />);
+      expect(
+        await screen.findByText(/^Version 7\. Changes apply/),
+      ).toBeTruthy();
+      expect(fields()).toEqual(names);
+    },
+  );
+
+  test("a field opens its editor", async () => {
+    mockParams.control = "style";
+    await mount(<AiPage />);
+    await fireEvent.press(
+      await screen.findByRole("button", {
+        name: "Professional, Edited, for all chats",
+      }),
+    );
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: "/guidance/[field]",
+      params: { field: "tone_professional" },
+    });
+  });
+
+  test("a member's page has none (ADR 48 Q13)", async () => {
+    role = "member";
+    mockParams.control = "style";
+    await mount(<AiPage />);
+    expect(await screen.findAllByRole("radio")).toHaveLength(3);
+    await waitFor(() =>
+      expect(calls.some((call) => call.url.endsWith("/api/members/me"))).toBe(
+        true,
+      ),
+    );
+    await act(async () => undefined);
+    expect(screen.queryByText("Guidance")).toBeNull();
+    expect(fields()).toEqual([]);
+  });
+});
+
 test("a field saves its text, then resets after a confirmation", async () => {
   mockParams.field = "tone_professional";
   await mount(<GuidanceField />);
   const box = await screen.findByLabelText("Professional");
   expect(box.props.value).toBe("My own style rules.");
   expect(screen.getByText("19/4000")).toBeTruthy();
+  // One text for all chats (ADR 62 Q11).
+  expect(screen.getByText("For all chats · Version 7")).toBeTruthy();
   const save = () => screen.getByRole("button", { name: "Save" });
   expect(save().props.accessibilityState).toMatchObject({ disabled: true });
   await fireEvent.changeText(box, "Shorter.");
@@ -279,7 +331,7 @@ test("leaving with unsaved text asks first, from Back and from Android's back", 
     screen.getByText("Discard your changes to Incoming rewriting?"),
   ).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Discard" }));
-  expect(mockRouter.replace).toHaveBeenCalledWith("/settings/guidance");
+  expect(mockRouter.replace).toHaveBeenCalledWith("/chats");
   added.mockRestore();
 });
 

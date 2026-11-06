@@ -1517,6 +1517,103 @@
         "title": "Chat",
         "type": "object"
       },
+      "ChatAi": {
+        "additionalProperties": false,
+        "description": "A chat's AI Menu in its conversation snapshot, so the header and the\nmenu draw without further reads: the account's AI processing, whether AI\nwork can run in the chat (Q14) and, in a private chat, its own switches\nand Style with the owner's server-wide switches over them. Writes keep\neach switch's own route.",
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "boolean"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suggestions"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "enum": [
+                  "friendly",
+                  "professional",
+                  "idioms"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Style"
+          },
+          "calming": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Calming"
+          },
+          "remember": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Remember"
+          },
+          "server_suggestions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Server Suggestions"
+          },
+          "server_memory": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Server Memory"
+          }
+        },
+        "required": [
+          "account",
+          "running"
+        ],
+        "title": "ChatAi",
+        "type": "object"
+      },
       "ChatReminders": {
         "additionalProperties": false,
         "properties": {

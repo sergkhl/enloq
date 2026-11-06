@@ -18,7 +18,8 @@ yet answered. Proposed choices in a plan are not accepted decisions.
 
 1. [The AI Menu and private-chat AI Off by default](2026-11-06-ai-menu-and-off-by-default.md):
    ADR 62 in three phases (the menu, no hidden text rewriting, the switches
-   Off by default); awaits the owner's go-ahead.
+   Off by default), being delivered phase by phase since the owner's
+   go-ahead.
 
 Other open work is in [TODO.md](TODO.md). An accepted ADR is not evidence of
 implementation or deployment.

@@ -1,14 +1,21 @@
-import { expect, MAYA, openMayaChat, OWNER_ACCOUNT, test } from "./maya";
+import {
+  expect,
+  MAYA,
+  openAiMenu,
+  openMayaChat,
+  OWNER_ACCOUNT,
+  test,
+} from "./maya";
 
 // ADR 55 PM7 on the live service, in the Maya chat only (AGENTS.md, Live
-// Telegram sends): the Correspondent Profile shows Remember this chat, Cares
-// about and Traits, and Manage accounts opens About you with the account's
-// own memory and traits. It only reads: Remember this chat, memory and traits
+// Telegram sends): the chat's AI Menu shows Remember this chat, and its page
+// Cares about and Traits (ADR 62 Q12), and Manage accounts opens About you
+// with the account's own memory and traits. It only reads: Remember this chat, memory and traits
 // are the owner's and are not touched, and nothing is sent.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
 const ACCOUNT = `/api/accounts/${OWNER_ACCOUNT}`;
 
-test("the profile and About you show memory and traits", async ({ page }) => {
+test("the AI Menu and About you show memory and traits", async ({ page }) => {
   test.setTimeout(120000);
   for (const path of [
     `${CHAT}/remember`,
@@ -28,10 +35,14 @@ test("the profile and About you show memory and traits", async ({ page }) => {
   expect(own.scales).toHaveLength(14);
 
   await openMayaChat(page, "owner");
-  await page.getByRole("button", { name: /open profile$/ }).tap();
+  const menu = await openAiMenu(page);
   await expect(
-    page.getByRole("switch", { name: "Remember this chat" }),
+    menu.getByRole("switch", { name: "Remember this chat" }),
   ).toHaveAttribute("aria-checked", String(remembered));
+  await menu.getByRole("button", { name: "Remember this chat" }).tap();
+  await expect(
+    page.getByRole("heading", { name: "Remember this chat" }),
+  ).toBeVisible();
   for (const title of ["Cares about", "Traits"])
     await expect(
       page.getByRole("heading", { name: title, exact: true }),

@@ -3,6 +3,7 @@
 import asyncio
 import json
 
+from ..domain.ai_menu import ChatAi
 from ..domain.models import (
     Conflict,
     GroupProcessing,
@@ -191,6 +192,10 @@ class Conversations:
                 if message.date >= self.store.clock() - RETENTION
             ]
         opening, unread = self.previews.opening_view(key)
+        retained = group and not any(
+            row["key"] == key
+            for row in self.store.recent_chats("group", cached_access=True)
+        )
         return dict(
             chat={**chat.model_dump(), "key": key},
             timezone=self.store.timezone,
@@ -202,14 +207,10 @@ class Conversations:
             reminders=[]
             if group
             else [item.model_dump() for item in self.reminders.pending(key)],
-            # ADR 53: the profile's switch, kept with the app's snapshot.
-            calming=None if group else self.calming.on(key),
+            # ADR 62: the AI Menu's switches and the robot's state.
+            ai=self.ai_menu(key, group=group, retained=retained).model_dump(),
             group_processing=self.group_processing(key).model_dump() if group else None,
-            retained=group
-            and not any(
-                row["key"] == key
-                for row in self.store.recent_chats("group", cached_access=True)
-            ),
+            retained=retained,
             messages=self.briefings.annotate(messages)
             if group
             else self.store.history.annotate(messages),
@@ -241,7 +242,7 @@ class Conversations:
             emotion=None,
             suggestions=None,
             reminders=[],
-            calming=None,
+            ai=None,
             group_processing=None,
             retained=False,
             messages=self.store.history.annotate(self.store.messages(key)),
@@ -257,6 +258,30 @@ class Conversations:
             briefing_update=None,
             progress=None,
             older={"available": 0, "notice": None},
+        )
+
+    def ai_menu(self, key, *, group, retained=False):
+        """A chat's AI Menu (ADR 62): the account's AI, the chat's switches
+        under the owner's server-wide ones, and whether AI work can run there
+        (Q14). Emotion and Voice and images have no switch yet, so a private
+        chat's AI runs wherever its account's does; a group's runs while its
+        Group AI processing does, and a retained group's never."""
+        account = bool(self.account_processing_enabled())
+        if group:
+            return ChatAi(
+                account=account,
+                running=not retained and self.group_processing(key).effective,
+            )
+        settings = self.suggestions.automatic(key)
+        return ChatAi(
+            account=account,
+            running=account,
+            suggestions=settings["automatic"],
+            style=settings["style"],
+            calming=self.calming.on(key),
+            remember=self.memory.remembered(key),
+            server_suggestions=bool(self.suggestions.enabled()),
+            server_memory=bool(self.memory.enabled()),
         )
 
     def group_processing(self, key):

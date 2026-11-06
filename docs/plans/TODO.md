@@ -80,11 +80,6 @@ None of these is adopted, implemented or authorized.
   on opening a group, the pinned Today band is sometimes not drawn while its
   in-list copy sits as a sliver at the top, so `groups.yaml` misses "Briefing
   up to date". Recompute the pinned day after the opening scroll.
-- **The reminders journey's request count** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
-  in a full `npm --prefix web run journeys` run, `journeys/reminders.spec.ts`
-  expects 3 suggestion requests and receives 4, because its count includes
-  requests from journeys that ran earlier on the same fixture server; alone it
-  passes. Count only its own requests.
 - **Account Memory sources** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)):
   a note's sources name their chats, but neither client shows them.
 - **Image caches after Forget** ([ADR 38](../adr/0038-mobile-expo-client.md)
@@ -94,6 +89,9 @@ None of these is adopted, implemented or authorized.
 - **Reopened sheets on iOS** ([ADR 38](../adr/0038-mobile-expo-client.md)): on
   the iOS 26.5 simulator a `Modal` sheet opened a second time empties
   XCTest's snapshot of the app; whether VoiceOver loses it too is unverified.
+  Since [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+  the Maestro journeys open the AI Menu several times per run to switch AI
+  view, so the iPhone run needs this solved or the view set another way.
 - **Expo tooling advisories**: `npm audit` lists advisories in Expo's build
   tooling only; take the SDK's patch releases as they ship, never
   `npm audit fix --force`.
@@ -113,18 +111,6 @@ Act only if they recur or grow.
   Spark 1.3 for the memory update (Q28).
 
 ## Waiting on the owner
-
-- **The AI Menu and private-chat AI Off by default**
-  ([ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)):
-  adopted, not implemented; [its plan](2026-11-06-ai-menu-and-off-by-default.md)
-  awaits the owner's go-ahead. Until a phase is delivered, the code, journeys
-  and runbooks keep the earlier behavior: the robot as a one-tap Reading View
-  toggle and the "AI off" tag, the per-chat switches in the Correspondent
-  Profile with Soften hostile messages and Automatic suggestions On by
-  default, emotion and voice and image rewriting in every recent chat,
-  reminders paused by Automatic suggestions Off, memory learning only what
-  other stages sent, Guidance in Settings → AI, the group ⋮ and the hidden
-  `text_rewriting` switch.
 
 - **Reminder iOS acceptance** ([ADR 58](../adr/0058-recurring-message-reminders.md)):
   iOS simulator journeys remain with the next Mac build; iOS push retains the

@@ -17,7 +17,7 @@ appId: ${APP_ID}
     element: "Photo album.*"
     timeout: 30000
 - tapOn: "Photo album.*"
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - extendedWaitUntil:
     visible: "Album, 3 items"
     timeout: 15000
@@ -40,5 +40,5 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: "[0-9] / 4"
     timeout: 10000
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - tapOn: "Back to conversations"

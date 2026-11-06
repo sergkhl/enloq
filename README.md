@@ -24,7 +24,7 @@ Python service. Enloq comes from *en* (縁, human connection) and *loqui*
   <tbody>
     <tr>
       <td width="33%" valign="top">
-        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a softened message, marked Softened, with the original available through the AI view toggle"></a>
+        <a href="docs/screenshots/enloq-reading.png"><img src="docs/screenshots/enloq-reading.png" width="270" alt="Enloq conversation showing a softened message, marked Softened, with the original available through AI view in the chat's AI Menu"></a>
       </td>
       <td width="33%" valign="top">
         <a href="docs/screenshots/enloq-reply.png"><img src="docs/screenshots/enloq-reply.png" width="270" alt="Enloq reply suggestions with Accept, Decline and Later options above an edited draft, with separate Suggestions and Send buttons"></a>
@@ -61,8 +61,9 @@ Telegram delivery or native-device acceptance.*
   until you press Send, which asks first while bracketed text remains. When
   the latest block shows a clear emotion or calls for a reply, suggestions
   also appear on their own and can offer Accept, Decline and Later stances.
-  Each chat's profile can turn softening and automatic suggestions off and
-  set the suggestions' style: Friendly, Professional or Idioms.
+  Each chat's AI Menu, opened by the robot in its header, switches softening,
+  automatic suggestions and memory and sets the suggestions' style: Friendly,
+  Professional or Idioms.
 - **Remember what matters.** In chats with memory on, note what each person and
   the owner care about for the suggestions to read, and collect the owner's
   traits and habits for them alone.

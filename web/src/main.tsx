@@ -15,8 +15,8 @@ import "./reading.css";
 import "./sending.css";
 import { AskScreen } from "./AskScreen";
 import { AiBubble, OriginalBubble, type MenuTarget } from "./Bubble";
+import { AiPage, GroupAiMenu, PrivateAiMenu, useChatAi } from "./AiMenu";
 import { ConversationHeader } from "./ConversationHeader";
-import { GroupSheet } from "./GroupSheet";
 import { MessageSheet } from "./MessageSheet";
 import { EarlierBar } from "./EarlierBar";
 import {
@@ -51,7 +51,7 @@ import { messageRuns, type RunEntry, type RunPlace } from "../../shared/runs";
 import { albumRuns } from "../../shared/gallery";
 import { openPath } from "../../shared/newMessage";
 import { PendingSend } from "./PendingSends";
-import { useEmotion, type Emotion } from "./Emotion";
+import { useEmotion } from "./Emotion";
 import { useSuggestions } from "./Suggestions";
 import { useAccountProcessing } from "./ProcessingControl";
 import { useReadingView } from "./ReadingView";
@@ -71,7 +71,7 @@ import {
   NotificationsScreen,
   SettingsScreen,
 } from "./SettingsScreen";
-import { GuidanceFieldScreen, GuidanceScreen } from "./GuidanceScreen";
+import { GuidanceFieldScreen } from "./GuidanceScreen";
 import { installLogging } from "./logs";
 import { LogsScreen } from "./LogsScreen";
 import { PrivacyScreen } from "./DevicesScreen";
@@ -79,6 +79,7 @@ import { ScreenBoundary } from "./ScreenBoundary";
 import { PairPhoneScreen } from "./PairPhoneScreen";
 import { PeopleScreen } from "./PeopleScreen";
 import { STAGE_TARGETS, type SettingsTarget } from "../../shared/settings";
+import { AI_SCOPES, type AiControl } from "../../shared/aiMenu";
 import {
   openedByNotification,
   useNotificationNavigation,
@@ -136,8 +137,10 @@ function Conversation({
   onTarget,
   onProfile,
   onReminder,
+  onField,
   setNavigationGuard,
   viewingActive,
+  covered = false,
   visible,
 }: {
   account: number;
@@ -157,15 +160,17 @@ function Conversation({
   onProfile: (profile: {
     title: string;
     photoId: string | null;
-    emotion: Emotion | null;
-    timezone: string;
     // A group member's profile, from their avatar or name (ADR 51 Q14).
     member?: string;
   }) => void;
   // The Reminder Bar opens a reminder's editor (ADR 58 Q13).
   onReminder?: (schedule: string) => void;
+  // An AI Menu page's Guidance field opens its editor (ADR 62 Q11).
+  onField?: (name: string) => void;
   setNavigationGuard: (guard: (() => Promise<boolean>) | null) => void;
   viewingActive: boolean;
+  // A screen covers it.
+  covered?: boolean;
   visible: boolean;
 }) {
   const group = chat.kind === "group";
@@ -198,10 +203,11 @@ function Conversation({
   const retainedOriginals = useRef(older);
   retainedOriginals.current = older;
   const [error, setError] = useState("");
-  // A message's sheet, the group's actions sheet, and a short note such as
-  // "Chat link copied" beside the reading bar.
+  // A message's sheet, the chat's AI Menu and the page of one of its
+  // controls (ADR 62), and a short note such as "Copied" under the header.
   const [sheet, setSheet] = useState<MenuTarget | null>(null);
-  const [actions, setActions] = useState(false);
+  const [aiMenu, setAiMenu] = useState(false);
+  const [page, setPage] = useState<AiControl | null>(null);
   // Ask this group over the group (ADR 59 Q1): open, or hidden while the
   // group shows one of its answer's sources.
   const [asking, setAsking] = useState<"open" | "source" | null>(null);
@@ -343,10 +349,12 @@ function Conversation({
   useChanges((change) => {
     if (
       touchesChat(change, account, chat.key) ||
-      change.shared.includes("suggestions_enabled")
+      // The AI Menu's account and server-wide switches (ADR 62).
+      change.shared.some((scope) => AI_SCOPES.includes(scope))
     )
       void refresh();
   }, 15000);
+  const chatAi = useChatAi(account, chat.peer, data?.ai, refresh);
   const nativeById = new Map<number, NativeMessage>();
   for (const source of [...older, ...(data?.messages || [])]) {
     const prior = nativeById.get(source.message_id);
@@ -816,7 +824,14 @@ function Conversation({
             peer={chat.peer}
             messages={messages}
           >
-            <section className="conversation-pane" aria-label="Conversation">
+            <section
+              className="conversation-pane"
+              aria-label="Conversation"
+              // A screen over the conversation, such as a Guidance field's
+              // editor, leaves it out of reach until it closes.
+              inert={covered}
+              aria-hidden={covered || undefined}
+            >
               {/* Message Selection and deletion (ADR 31, ADR 34, ADR 46 CU4). */}
               <MessageDeletionProvider
                 account={account}
@@ -846,11 +861,7 @@ function Conversation({
                     title={chat.title}
                     photoId={chat.photo_id}
                     emotion={group ? undefined : emotion}
-                    aiOff={
-                      processing === false ||
-                      (group &&
-                        groupProcessing.value?.processing_enabled === false)
-                    }
+                    ai={chatAi.ai}
                     // Back from an answer's source returns to the answer.
                     onBack={
                       asking === "source" ? () => setAsking("open") : onBack
@@ -858,15 +869,11 @@ function Conversation({
                     backLabel={
                       asking === "source" ? "Back to answer" : undefined
                     }
-                    onActions={group ? () => setActions(true) : undefined}
-                    view={saved ? undefined : reading.view}
-                    onView={reading.choose}
+                    onMenu={saved ? undefined : () => setAiMenu(true)}
                     onProfile={() =>
                       onProfile({
                         title: chat.title,
                         photoId: chat.photo_id,
-                        emotion: group ? null : emotion,
-                        timezone: data?.timezone || "UTC",
                       })
                     }
                   />
@@ -889,13 +896,14 @@ function Conversation({
                       <LocalViewing
                         account={account}
                         peer={chat.peer}
-                        // The Ask screen covers the stream, as the app's
-                        // covers its group (ADR 59 Q1).
+                        // The Ask screen and an AI Menu page cover the
+                        // stream, as the app's cover the chat (ADR 59 Q1).
                         active={
                           viewingActive &&
                           !!data &&
                           !!opening.current &&
-                          asking !== "open"
+                          asking !== "open" &&
+                          !page
                         }
                         readyOnly={group}
                         version={data}
@@ -967,8 +975,6 @@ function Conversation({
                               onProfile({
                                 title: message.author || "",
                                 photoId: message.author_photo_id ?? null,
-                                emotion: null,
-                                timezone: data?.timezone || "UTC",
                                 member: message.author_peer!,
                               });
                             }}
@@ -1105,16 +1111,47 @@ function Conversation({
                     onClose={() => setSheet(null)}
                   />
                 )}
-                {actions && group && (
-                  <GroupSheet
+                {aiMenu && group && (
+                  <GroupAiMenu
                     processing={retainedWork ? null : groupProcessing}
                     accountEnabled={processing}
                     hideBots={hideBots}
+                    reading={reading}
+                    onOpen={(control) => {
+                      setAiMenu(false);
+                      setPage(control);
+                    }}
                     onAsk={() => {
-                      setActions(false);
+                      setAiMenu(false);
                       setAsking("open");
                     }}
-                    onClose={() => setActions(false)}
+                    onClose={() => setAiMenu(false)}
+                  />
+                )}
+                {aiMenu && !group && !saved && (
+                  <PrivateAiMenu
+                    ai={chatAi}
+                    reading={reading}
+                    onOpen={(control) => {
+                      setAiMenu(false);
+                      setPage(control);
+                    }}
+                    onClose={() => setAiMenu(false)}
+                  />
+                )}
+                {page && (
+                  <AiPage
+                    control={page}
+                    account={account}
+                    peer={chat.peer}
+                    ai={chatAi}
+                    reading={reading}
+                    emotion={group ? null : emotion}
+                    timezone={data?.timezone || "UTC"}
+                    processing={retainedWork ? null : groupProcessing}
+                    accountEnabled={processing}
+                    onField={(name) => onField?.(name)}
+                    onBack={() => setPage(null)}
                   />
                 )}
                 {asking && group && (
@@ -1323,12 +1360,11 @@ function App() {
     | { kind: "settings" }
     | { kind: "notifications" }
     | { kind: "budget"; section: "daily" | "group" | null }
-    | { kind: "ai" }
+    | { kind: "ai"; section?: "paused" }
     | { kind: "privacy" }
     | { kind: "logs" }
     | { kind: "people" }
     | { kind: "pair" }
-    | { kind: "guidance" }
     | { kind: "field"; name: string }
     | { kind: "accounts" }
     | { kind: "login"; expected?: Account }
@@ -1349,19 +1385,18 @@ function App() {
         peer: string;
         title: string;
         photoId: string | null;
-        emotion: Emotion | null;
-        timezone: string;
         member?: string;
       };
   const [screens, setScreens] = useState<Screen[]>([]);
   const top = screens.at(-1);
   const open = (screen: Screen) => setScreens((stack) => [...stack, screen]);
   const back = () => setScreens((stack) => stack.slice(0, -1));
-  // A budget message opens Settings → Budget, a pause Guidance (ADR 45 Q8).
+  // A budget message opens Settings → Budget, a format pause Settings → AI's
+  // notice (ADR 45 Q8, ADR 62 Q18).
   const openTarget = (target: SettingsTarget) =>
     open(
-      target === "guidance"
-        ? { kind: "guidance" }
+      target === "paused"
+        ? { kind: "ai", section: "paused" }
         : { kind: "budget", section: target },
     );
   // A pending reminder's row, or an alert naming one, opens its chat's
@@ -1965,8 +2000,10 @@ function App() {
               schedule,
             })
           }
+          onField={(name) => open({ kind: "field", name })}
           setNavigationGuard={setNavigationGuard}
           viewingActive={!top && !navigating}
+          covered={!!top}
           visible
         />
       ) : listShown ? (
@@ -2070,8 +2107,8 @@ function App() {
       {top?.kind === "ai" && (
         <AiScreen
           timezone={overview?.timezone || "UTC"}
+          section={top.section ?? null}
           onBack={back}
-          onGuidance={() => open({ kind: "guidance" })}
         />
       )}
       {top?.kind === "privacy" && (
@@ -2086,12 +2123,6 @@ function App() {
       )}
       {top?.kind === "logs" && <LogsScreen onBack={back} />}
       {top?.kind === "pair" && <PairPhoneScreen onBack={back} />}
-      {top?.kind === "guidance" && (
-        <GuidanceScreen
-          onBack={back}
-          onField={(name) => open({ kind: "field", name })}
-        />
-      )}
       {top?.kind === "field" && (
         <GuidanceFieldScreen key={top.name} name={top.name} onBack={back} />
       )}
@@ -2110,8 +2141,6 @@ function App() {
           }}
           title={top.title}
           photoId={top.photoId}
-          emotion={top.emotion}
-          timezone={top.timezone}
           onReminder={(schedule) =>
             open({
               kind: "reminder",

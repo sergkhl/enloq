@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ORIGIN, trust, openSettings } from "./fixture";
+import { ORIGIN, openAiMenu, openAiPage, trust, openSettings } from "./fixture";
 
 // ADR 49: contrasting answer stances above the composer (Q4, Q8), the When to
 // suggest field (Q9) and the owner's notice of a decision-model outage (Q14).
-// ADR 56: a fold kept for every client (Q12 B) and each chat's Suggestions
-// choice in its profile (Q12 A).
+// ADR 56: a fold kept for every client (Q12 B) and each chat's Automatic
+// suggestions and Style, in its AI Menu since ADR 62.
 test.beforeEach(async ({ page }) => {
   await trust(page);
 });
@@ -89,19 +89,16 @@ test("Suggestions is held with its spinner while a set is prepared, and without 
   await expect(button).toBeEnabled();
 });
 
-test("the profile controls Automatic suggestions separately from shared Style", async ({
+test("the AI Menu controls Automatic suggestions separately from shared Style", async ({
   page,
 }) => {
   await answers(page);
   const area = page.getByRole("region", { name: "Response suggestions" });
   await expect(area.getByRole("button", { name: /^Accept/ })).toBeVisible();
-  const profile = page.getByRole("button", {
-    name: /^Suggestion fixture,.* open profile$/,
-  });
   const choice = page.getByRole("radiogroup", { name: "Style" });
-  const automatic = page.getByRole("switch", { name: "Automatic suggestions" });
   try {
-    await profile.tap();
+    // Style's page holds its choice (ADR 62 Q16).
+    await openAiPage(page, "Style");
     await expect(
       choice.getByRole("radio", { name: "Friendly" }),
     ).toHaveAttribute("aria-checked", "true");
@@ -112,9 +109,19 @@ test("the profile controls Automatic suggestions separately from shared Style", 
       "aria-checked",
       "true",
     );
+    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    // The menu's switch turns automation off, keeping the Style.
+    let menu = await openAiMenu(page);
+    await expect(
+      menu.getByRole("button", { name: "Style, Idioms" }),
+    ).toBeVisible();
+    const automatic = menu.getByRole("switch", {
+      name: "Automatic suggestions",
+    });
     await expect(automatic).toHaveAttribute("aria-checked", "true");
     await automatic.tap();
     await expect(automatic).toHaveAttribute("aria-checked", "false");
+    await menu.getByRole("button", { name: "Style, Idioms" }).tap();
     await choice.getByRole("radio", { name: "Professional" }).tap();
     await expect(
       choice.getByRole("radio", { name: "Professional" }),
@@ -126,10 +133,13 @@ test("the profile controls Automatic suggestions separately from shared Style", 
     await expect(
       page.getByRole("button", { name: "Suggestions", exact: true }),
     ).toBeEnabled();
-    await profile.tap();
+    menu = await openAiMenu(page);
+    await expect(
+      menu.getByRole("button", { name: "Style, Professional" }),
+    ).toBeVisible();
     await automatic.tap();
     await expect(automatic).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await page.keyboard.press("Escape");
     await expect(area.getByRole("button", { name: /^Accept/ })).toBeVisible();
   } finally {
     // The journeys share the fixture: the chat goes back to On.
@@ -141,7 +151,7 @@ test("the profile controls Automatic suggestions separately from shared Style", 
   }
 });
 
-test("Settings → AI reports a decision-model outage; Guidance offers When to suggest", async ({
+test("Settings → AI reports a decision-model outage; the AI Menu offers When to suggest", async ({
   page,
 }) => {
   const outage = await page.request.post("/fixture/decision-outage", {
@@ -156,17 +166,30 @@ test("Settings → AI reports a decision-model outage; Guidance offers When to s
     await expect(
       page.getByText(/^Decision model unavailable since /),
     ).toBeVisible();
-    await page.getByRole("button", { name: /^Guidance/ }).tap();
-    // Idiom sets have their own field (ADR 56 Q6).
+    // Guidance left Settings → AI for the AI Menus (ADR 62 Q11).
+    await expect(page.getByRole("button", { name: /^Guidance/ })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Back" }).tap();
+    await page.getByRole("button", { name: "Back" }).tap();
+    await answers(page);
+    // Idiom sets have their own field, on Style's page (ADR 56 Q6, ADR 62
+    // Q17).
+    await openAiPage(page, "Style");
     await expect(
-      page.getByRole("button", { name: "Idioms, Default" }),
+      page.getByRole("button", { name: "Idioms, For all chats" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "When to suggest, Default" }).tap();
+    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await openAiPage(page, "Automatic suggestions");
+    await page
+      .getByRole("button", { name: "When to suggest, For all chats" })
+      .tap();
     await expect(
       page.getByRole("textbox", { name: "When to suggest" }),
     ).toHaveValue(/^Answer yes when the latest communication asks the owner/);
-    await page.getByRole("button", { name: "Back" }).tap();
-    await page.getByRole("button", { name: "Back" }).tap();
+    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await page.getByRole("button", { name: "Back to conversations" }).tap();
   } finally {
     const restored = await page.request.post("/fixture/decision-restored", {
       data: {},

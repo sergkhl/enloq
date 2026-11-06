@@ -7,3 +7,5 @@ npx --no-install openapi-typescript ../config/api-schema.json -o src/api-schema.
 # The Enloq app (ADR 38) reads the same DTOs; its TypeScript 6 cannot host
 # openapi-typescript, so the web's generator writes both copies.
 npx --no-install openapi-typescript ../config/api-schema.json -o ../mobile/src/api-schema.d.ts
+# The app's copy is kept in its Prettier style, which its format check skips.
+../mobile/node_modules/.bin/prettier --ignore-path /dev/null --write ../mobile/src/api-schema.d.ts >/dev/null

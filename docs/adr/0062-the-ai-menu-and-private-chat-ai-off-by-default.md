@@ -274,5 +274,3 @@ images.
 ## Open owner gates
 
 - Per-chat Processing Guidance is a proposal ([TODO](../plans/TODO.md)).
-- Nothing here is implemented; the code keeps the earlier behavior until the
-  owner authorizes a plan ([TODO](../plans/TODO.md)).

@@ -136,6 +136,7 @@ describe("AI controls in the conversation", () => {
       messages: [],
       blocks: [],
       unread_sources: [],
+      ai: { account: true, running: true },
     } as unknown as Snapshot;
     serve((url, init) => {
       if (url.endsWith("/api/accounts"))
@@ -303,11 +304,16 @@ describe("AI controls in the conversation", () => {
     ).toHaveLength(1);
   });
 
-  test("the header says AI off and opens the profile", async () => {
+  test("the header opens the profile, with no AI off tag (ADR 62 Q14)", async () => {
     aiEnabled = false;
     served.messages = [message(1)];
+    served.ai = { account: false, running: false } as Snapshot["ai"];
     await mount();
-    expect(await screen.findByText("AI off")).toBeTruthy();
+    // The robot is an outline and says why, in place of the tag.
+    expect(
+      await screen.findByLabelText("AI Menu, AI off in this chat"),
+    ).toBeTruthy();
+    expect(screen.queryByText("AI off")).toBeNull();
     await fireEvent.press(screen.getByLabelText("Anna, open profile"));
     const { mockRouter } = require("./setup");
     expect(mockRouter.push).toHaveBeenCalledWith({
@@ -318,47 +324,25 @@ describe("AI controls in the conversation", () => {
 });
 
 describe("the Correspondent Profile", () => {
-  let memory: Record<string, unknown>;
-  let posts: { url: string; body: unknown }[];
   let online: boolean;
-  let calming: boolean;
-  let suggesting: { automatic: boolean; style: string };
-  let refuseSettings = false;
+  let reads: string[];
 
   beforeEach(() => {
     reset();
     online = true;
-    calming = true;
-    suggesting = { automatic: true, style: "friendly" };
-    refuseSettings = false;
-    posts = [];
+    reads = [];
     mockStore.set("enloq.credential", SAVED);
     mockParams.account = "1";
     mockParams.peer = "user:101";
-    memory = {
-      entries: [],
-      revision: "m1",
-      coverage: null,
-      error: null,
-      enabled: true,
-      waiting: false,
-      updating: false,
-    };
     writeCached("chat:1/user:101", {
       timezone: "UTC",
       chat: { account_id: 1, peer: "user:101", title: "Anna", photo_id: null },
       messages: [],
       blocks: [],
-      emotion: {
-        code: "worried",
-        reason: "available",
-        source: "incoming",
-        source_time: Date.now() / 1000,
-        expires_at: Date.now() / 1000 + 3600,
-      },
     });
-    serve((url, init) => {
+    serve((url) => {
       if (!online) return Promise.reject(new TypeError("offline")) as never;
+      reads.push(url);
       if (url.endsWith("/api/accounts"))
         return {
           status: 200,
@@ -380,67 +364,8 @@ describe("the Correspondent Profile", () => {
             bio: "Designer in Riga.",
           },
         };
-      if (url.endsWith("/calming")) {
-        if (init.method === "POST") {
-          const body = JSON.parse(init.body!);
-          posts.push({ url, body });
-          calming = body.enabled;
-        }
-        return { status: 200, body: { enabled: calming } };
-      }
-      if (url.endsWith("/suggestions/settings")) {
-        if (init.method === "POST") {
-          const body = JSON.parse(init.body!);
-          posts.push({ url, body });
-          if (refuseSettings)
-            return {
-              status: 400,
-              body: { detail: "Settings could not be saved" },
-            };
-          suggesting = body;
-        }
-        return { status: 200, body: suggesting };
-      }
-      // ADR 55: Remember this chat, Off by default since ADR 56, and the
-      // person's traits, untouched here.
-      if (url.endsWith("/remember"))
-        return { status: 200, body: { enabled: false } };
-      if (url.endsWith("/traits"))
-        return {
-          status: 200,
-          body: {
-            revision: 0,
-            enabled: true,
-            scales: [],
-            notes: [],
-            habits: null,
-            error: null,
-          },
-        };
-      if (url.endsWith("/memory") && init.method === "GET")
-        return { status: 200, body: memory };
-      if (url.includes("/memory")) {
-        const body = JSON.parse(init.body!);
-        posts.push({ url, body });
-        if (url.endsWith("/memory/entries"))
-          memory = {
-            ...memory,
-            revision: "m2",
-            entries: [
-              {
-                id: "e1",
-                text: body.text,
-                citations: [],
-                source: "owner",
-                outdated: null,
-                sources: [],
-              },
-            ],
-          };
-        if (url.endsWith("/memory/clear"))
-          memory = { ...memory, revision: "m3", entries: [] };
-        return { status: 200, body: memory };
-      }
+      if (url.includes("/reminders"))
+        return { status: 200, body: { items: [], language: null } };
       throw new Error(`unexpected ${url}`);
     });
   });
@@ -452,108 +377,27 @@ describe("the Correspondent Profile", () => {
       </ConnectionProvider>,
     );
 
-  test("it reads the person's details and edits what they care about (ADR 55)", async () => {
+  test("it keeps the person and their reminders; the AI controls left it (ADR 62 Q4)", async () => {
     await mount();
     expect(await screen.findByText("Anna Petrova")).toBeTruthy();
     expect(screen.getByText("@anna_p")).toBeTruthy();
     expect(screen.getByText("Designer in Riga.")).toBeTruthy();
-    expect(screen.getByText("😟 Worried")).toBeTruthy();
-    const cares = within(await screen.findByTestId("memory-panel"));
-    expect(cares.getByText("Nothing noted yet.")).toBeTruthy();
-    await fireEvent.changeText(
-      cares.getByLabelText("Add a note"),
-      "Prefers Friday",
-    );
-    expect(cares.getByText("14/300 bytes")).toBeTruthy();
-    await fireEvent.press(cares.getByRole("button", { name: "Add note" }));
-    expect(await cares.findByText("Prefers Friday")).toBeTruthy();
-    expect(posts[0]).toEqual({
-      url: expect.stringContaining("/chats/user%3A101/memory/entries"),
-      body: { revision: "m1", text: "Prefers Friday" },
-    });
-    expect(cares.getByText("Added or edited by you")).toBeTruthy();
-    await fireEvent.press(cares.getByText("Clear…"));
+    expect(screen.getByText("Reminders")).toBeTruthy();
+    for (const gone of [
+      "Soften hostile messages",
+      "Automatic suggestions",
+      "Remember this chat",
+      "Cares about",
+      "Traits",
+      "Emotion",
+    ])
+      expect(screen.queryByText(gone)).toBeNull();
+    // It reads none of the chat's AI routes.
     expect(
-      cares.getByText("Remove every note about this person?"),
-    ).toBeTruthy();
-    await fireEvent.press(cares.getByText("Clear memory"));
-    expect(await cares.findByText("Nothing noted yet.")).toBeTruthy();
-    expect(posts[1]!.body).toEqual({ revision: "m2" });
-  });
-
-  test("Soften hostile messages is on and can be switched off", async () => {
-    await mount();
-    await screen.findByText("Anna Petrova");
-    const calm = screen.getByLabelText("Soften hostile messages");
-    await waitFor(() => expect(calm.props.value).toBe(true));
-    await fireEvent(calm, "valueChange", false);
-    await waitFor(() =>
-      expect(posts).toEqual([
-        {
-          url: expect.stringContaining("/chats/user%3A101/calming"),
-          body: { enabled: false },
-        },
-      ]),
-    );
-    await waitFor(() =>
-      expect(screen.getByLabelText("Soften hostile messages").props.value).toBe(
-        false,
+      reads.filter((url) =>
+        /\/(calming|remember|suggestions\/settings|memory|traits)$/.test(url),
       ),
-    );
-  });
-
-  test("Automatic suggestions can be turned off independently of Style", async () => {
-    await mount();
-    await screen.findByText("Anna Petrova");
-    const automatic = await screen.findByLabelText("Automatic suggestions");
-    expect(automatic.props.value).toBe(true);
-    expect(
-      screen.getByRole("radio", { name: "Friendly", checked: true }),
-    ).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "Idioms" })).toBeTruthy();
-    await fireEvent(automatic, "valueChange", false);
-    await waitFor(() =>
-      expect(posts).toEqual([
-        {
-          url: expect.stringContaining(
-            "/chats/user%3A101/suggestions/settings",
-          ),
-          body: { automatic: false, style: "friendly" },
-        },
-      ]),
-    );
-    await waitFor(() =>
-      expect(screen.getByLabelText("Automatic suggestions").props.value).toBe(
-        false,
-      ),
-    );
-    expect(
-      screen.getByRole("radio", { name: "Friendly", checked: true }),
-    ).toBeTruthy();
-  });
-
-  test("Style applies with automation off and save failures remain visible", async () => {
-    suggesting = { automatic: false, style: "professional" };
-    await mount();
-    const idioms = await screen.findByRole("radio", { name: "Idioms" });
-    refuseSettings = true;
-    await fireEvent.press(idioms);
-    expect(await screen.findByText("Settings could not be saved")).toBeTruthy();
-    expect(
-      screen.getByRole("radio", { name: "Professional", checked: true }),
-    ).toBeTruthy();
-    refuseSettings = false;
-    await fireEvent.press(screen.getByRole("radio", { name: "Idioms" }));
-    expect(
-      await screen.findByRole("radio", { name: "Idioms", checked: true }),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Idioms, proverbs, set expressions and phrasal verbs in this chat's language.",
-      ),
-    ).toBeTruthy();
-    expect(screen.queryByText("Settings could not be saved")).toBeNull();
-    expect(posts.at(-1)?.body).toEqual({ automatic: false, style: "idioms" });
+    ).toEqual([]);
   });
 
   test("it copies the chat link, which left the header (ADR 47 Q8)", async () => {
@@ -570,15 +414,12 @@ describe("the Correspondent Profile", () => {
     online = false;
     await mount();
     expect(await screen.findByText("Anna")).toBeTruthy();
-    expect(screen.getByText("😟 Worried")).toBeTruthy();
     expect(
       await screen.findByText(
-        "The person's Telegram details, memory and traits need the server.",
+        "The person's Telegram details and reminders need the server.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Nothing noted yet.")).toBeNull();
-    expect(screen.queryByLabelText("Remember this chat")).toBeNull();
-    expect(screen.queryByRole("radio", { name: "On" })).toBeNull();
+    expect(screen.queryByText("Reminders")).toBeNull();
   });
 });
 

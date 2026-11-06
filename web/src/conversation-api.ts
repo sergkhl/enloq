@@ -185,8 +185,8 @@ export type ConversationData = {
   emotion?: components["schemas"]["EmotionView"] | null;
   suggestions?: components["schemas"]["SuggestionsView"] | null;
   group_processing?: GroupProcessing | null;
-  // ADR 53: whether this private chat calms frustrated or angry messages.
-  calming?: boolean | null;
+  // ADR 62: the chat's AI Menu, its switches and whether AI runs there.
+  ai?: components["schemas"]["ChatAi"] | null;
   briefings?: DailyBriefing[];
   chat: Chat;
   messages: NativeMessage[];

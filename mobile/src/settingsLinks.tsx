@@ -7,9 +7,11 @@ import type { SettingsTarget } from "../../shared/settings";
 
 export { STAGE_TARGETS, type SettingsTarget } from "../../shared/settings";
 
-// Since ADR 47 Q6 a budget opens Settings → Budget, and a pause Guidance.
+// Since ADR 47 Q6 a budget opens Settings → Budget, and a format pause
+// Settings → AI's notice (ADR 62 Q18).
 export function openSettings(target: SettingsTarget) {
-  if (target === "guidance") router.push("/settings/guidance");
+  if (target === "paused")
+    router.push({ pathname: "/settings/ai", params: { section: "paused" } });
   else
     router.push({ pathname: "/settings/budget", params: { section: target } });
 }

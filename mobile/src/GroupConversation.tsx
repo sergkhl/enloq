@@ -49,7 +49,7 @@ import {
   SlotView,
   SpoilerToggle,
 } from "./GroupReading";
-import { GroupSheet } from "./GroupSheet";
+import { GroupAiMenu, RobotButton, showChat } from "./AiMenu";
 import {
   DeletionCards,
   DeletionContext,
@@ -63,7 +63,6 @@ import { MessageMenu, type MenuTarget } from "./MessageMenu";
 import { forgetRows, MediaRow, showRows } from "./motion";
 import { setVoiceQueue, stopPlayback } from "./playback";
 import { PendingSend } from "./PendingSend";
-import { ReadingToggle } from "./Reading";
 import { useReplies } from "./replies";
 import { ConnectionStatus } from "./Status";
 import { usePalette, type Palette } from "./theme";
@@ -121,6 +120,12 @@ export function GroupConversation({
     merge,
   } = useConversation(account, peer, source);
   const composer = useComposer(account, peer, snapshot, reload, readAt);
+  // The AI Menu's pages show this group's latest read (ADR 62).
+  useEffect(() => {
+    if (snapshot)
+      showChat(`${account}/${peer}`, { snapshot, readAt, live, reload });
+  }, [account, peer, snapshot, readAt, live, reload]);
+  useEffect(() => () => showChat(`${account}/${peer}`, null), [account, peer]);
   const bots = useHideBots();
   const hideBots = bots.hideBots;
   const hourCycle = useHourCycle();
@@ -172,7 +177,7 @@ export function GroupConversation({
     setNotice("");
   }, [view]);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
-  // The group's ⋮ sheet (ADR 42 Q3), a change it is saving and its refusal.
+  // The group's AI Menu (ADR 62 Q13), a change it is saving and its refusal.
   const [sheet, setSheet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sheetNote, setSheetNote] = useState("");
@@ -859,33 +864,16 @@ export function GroupConversation({
                 {title}
               </Text>
             </Pressable>
-            {!accountEnabled || processing?.processing_enabled === false ? (
-              <Text
-                style={[
-                  styles.offTag,
-                  { color: palette.muted, borderColor: palette.line },
-                ]}
-              >
-                AI off
-              </Text>
-            ) : null}
-            {/* The Reading View's robot, before ⋮ (ADR 52 Q13). */}
-            <ReadingToggle view={view} choose={choose} palette={palette} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Conversation actions"
-              hitSlop={8}
+            {/* The robot opens the group's AI Menu, filled while its Group
+              AI processing runs (ADR 62 Q13, Q14). */}
+            <RobotButton
+              ai={snapshot?.ai}
+              palette={palette}
               onPress={() => {
                 setSheetNote("");
                 setSheet(true);
               }}
-            >
-              <Ionicons
-                name="ellipsis-vertical"
-                size={22}
-                color={palette.muted}
-              />
-            </Pressable>
+            />
           </View>
           <View style={styles.status}>
             {copied ? (
@@ -1068,34 +1056,31 @@ export function GroupConversation({
             accountName={accountName}
             chatName={title}
           />
-          <GroupSheet
+          <GroupAiMenu
             visible={sheet}
+            account={account}
+            peer={peer}
             processing={processing}
             accountEnabled={accountEnabled}
+            retained={retained}
             hideBots={hideBots}
+            view={view}
+            onView={(next) => void choose(next)}
             busy={saving || unreachable}
             note={sheetNote}
             palette={palette}
-            onProcessing={
-              retained
-                ? null
-                : () =>
-                    void save(() =>
-                      api(`${path}/processing`, {
-                        body: { enabled: !processing?.processing_enabled },
-                      }),
-                    )
+            onProcessing={() =>
+              void save(() =>
+                api(`${path}/processing`, {
+                  body: { enabled: !processing?.processing_enabled },
+                }),
+              )
             }
-            onAsk={
-              retained
-                ? null
-                : () => {
-                    setSheet(false);
-                    router.push({
-                      pathname: "/ask/[account]/[peer]",
-                      params: { account: String(account), peer },
-                    });
-                  }
+            onAsk={() =>
+              router.push({
+                pathname: "/ask/[account]/[peer]",
+                params: { account: String(account), peer },
+              })
             }
             onHideBots={() => void save(() => bots.choose(!hideBots))}
             onClose={() => setSheet(false)}
@@ -1175,13 +1160,6 @@ const styles = StyleSheet.create({
   loading: { marginTop: 40 },
   messages: { padding: 12, gap: 8 },
   small: { fontSize: 13 },
-  offTag: {
-    fontSize: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
   empty: { textAlign: "center", padding: 24 },
   earlier: { alignItems: "center", padding: 12 },
   wide: { marginHorizontal: -12 },

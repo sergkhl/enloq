@@ -24,7 +24,7 @@ import type {
   Snapshot,
 } from "../src/conversation";
 
-// ADR 42 AG5: today's Briefing Slot and the group's ⋮ sheet.
+// ADR 42 AG5: today's Briefing Slot and the group's AI Menu (ADR 62 Q13).
 const SAVED = JSON.stringify({
   origin: "https://enloq.example.com",
   token: "t0ken",
@@ -107,6 +107,20 @@ const PROCESSING = {
   reason: "ready",
 };
 
+// A group's AI Menu state as the service sends it (ADR 62 Q14).
+function groupAi(account: boolean, running: boolean) {
+  return {
+    account,
+    running,
+    suggestions: null,
+    style: null,
+    calming: null,
+    remember: null,
+    server_suggestions: null,
+    server_memory: null,
+  };
+}
+
 function snapshot(extra: Partial<Snapshot> = {}): Snapshot {
   return {
     timezone: "UTC",
@@ -128,6 +142,8 @@ function snapshot(extra: Partial<Snapshot> = {}): Snapshot {
       day: TODAY,
     },
     group_processing: PROCESSING,
+    // The robot is filled while the group's AI runs (ADR 62 Q14).
+    ai: groupAi(true, true),
     unread_sources: [],
     opening_source: null,
     operations: [],
@@ -398,24 +414,41 @@ describe("the group's header", () => {
       pathname: "/profile/[account]/[peer]",
       params: { account: "1", peer: "chat:42" },
     });
-    // Copy chat link lives in the Group Profile (ADR 47 Q8).
+    // Copy chat link lives in the Group Profile (ADR 47 Q8), and the ⋮ left
+    // for the AI Menu (ADR 62 Q13).
     expect(screen.queryByLabelText("Copy chat link")).toBeNull();
-    expect(screen.getByLabelText("Conversation actions")).toBeTruthy();
+    expect(screen.queryByLabelText("Conversation actions")).toBeNull();
+    expect(screen.getByLabelText("AI Menu, AI on in this chat")).toBeTruthy();
   });
 });
 
-describe("the group's actions sheet", () => {
-  test("Group AI processing switches with its notes and the AI off tag", async () => {
+describe("the group's AI Menu", () => {
+  const openMenu = async () =>
+    fireEvent.press(await screen.findByLabelText(/^AI Menu/));
+
+  test("it holds AI view, Group AI processing, Ask this group and Hide bots", async () => {
     await mount();
     await screen.findByText("Planning");
     expect(screen.queryByText("AI off")).toBeNull();
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await openMenu();
+    expect(screen.getByRole("switch", { name: "AI view" }).props.value).toBe(
+      true,
+    );
     const row = screen.getByRole("switch", { name: "Group AI processing" });
-    expect(row.props.accessibilityState).toMatchObject({ checked: true });
+    expect(row.props.value).toBe(true);
+    expect(screen.getByRole("button", { name: "Ask this group" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide bots" }).props.value).toBe(
+      true,
+    );
     served = snapshot({
-      group_processing: { ...PROCESSING, processing_enabled: false },
+      group_processing: {
+        ...PROCESSING,
+        processing_enabled: false,
+        effective: false,
+      },
+      ai: groupAi(true, false),
     });
-    await fireEvent.press(row);
+    await fireEvent(row, "valueChange", false);
     await waitFor(() =>
       expect(posts).toEqual([
         { path: "/processing", body: { enabled: false } },
@@ -423,11 +456,14 @@ describe("the group's actions sheet", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("switch", { name: "Group AI processing" }).props
-          .accessibilityState,
-      ).toMatchObject({ checked: false }),
+        screen.getByRole("switch", { name: "Group AI processing" }).props.value,
+      ).toBe(false),
     );
-    expect(screen.getByText("AI off")).toBeTruthy();
+    // Off, it offers Ask this group no more (ADR 59 Q1), and the robot is
+    // an outline with no tag beside it.
+    expect(screen.queryByRole("button", { name: "Ask this group" })).toBeNull();
+    expect(screen.getByLabelText("AI Menu, AI off in this chat")).toBeTruthy();
+    expect(screen.queryByText("AI off")).toBeNull();
   });
 
   test.each([
@@ -441,14 +477,14 @@ describe("the group's actions sheet", () => {
     served = snapshot({ group_processing: { ...PROCESSING, ...change } });
     await mount();
     await screen.findByText("Planning group");
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await openMenu();
     expect(screen.getByText(note)).toBeTruthy();
   });
 
-  test("Ask this group opens its screen while Group AI processing is On", async () => {
+  test("Ask this group opens its screen, and Group AI processing its page", async () => {
     await mount();
     await screen.findByText("Planning");
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await openMenu();
     await fireEvent.press(
       screen.getByRole("button", { name: "Ask this group" }),
     );
@@ -456,29 +492,50 @@ describe("the group's actions sheet", () => {
       pathname: "/ask/[account]/[peer]",
       params: { account: "1", peer: "chat:42" },
     });
-    // Off, the sheet offers it no more (ADR 59 Q1).
-    served = snapshot({
-      group_processing: { ...PROCESSING, processing_enabled: false },
-    });
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    await openMenu();
     await fireEvent.press(
-      screen.getByRole("switch", { name: "Group AI processing" }),
+      screen.getByRole("button", { name: "Group AI processing" }),
     );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("button", { name: "Ask this group" }),
-      ).toBeNull(),
-    );
+    expect(mockRouter.push).toHaveBeenLastCalledWith({
+      pathname: "/ai/[account]/[peer]",
+      params: { account: "1", peer: "chat:42", control: "group" },
+    });
   });
 
-  test("account AI Off shows its note and the AI off tag", async () => {
+  test("account AI Off shows its note under Group AI processing", async () => {
     accountAI = false;
+    served = snapshot({
+      group_processing: {
+        ...PROCESSING,
+        account_processing_enabled: false,
+        effective: false,
+      },
+      ai: groupAi(false, false),
+    });
     await mount();
-    expect(await screen.findByText("AI off")).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    expect(
+      await screen.findByLabelText("AI Menu, AI off in this chat"),
+    ).toBeTruthy();
+    await openMenu();
     expect(
       screen.getByText("AI processing is Off for this account."),
     ).toBeTruthy();
+  });
+
+  test("a retained group's holds AI view and Hide bots", async () => {
+    served = snapshot({
+      retained: true,
+      ai: groupAi(true, false),
+    });
+    await mount();
+    await screen.findByText("Planning group");
+    await openMenu();
+    expect(screen.getByRole("switch", { name: "AI view" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide bots" })).toBeTruthy();
+    expect(
+      screen.queryByRole("switch", { name: "Group AI processing" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ask this group" })).toBeNull();
   });
 
   test("a refused switch says why and keeps its state", async () => {
@@ -492,19 +549,24 @@ describe("the group's actions sheet", () => {
     };
     await mount();
     await screen.findByText("Planning");
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
-    await fireEvent.press(
+    await openMenu();
+    await fireEvent(
       screen.getByRole("switch", { name: "Group AI processing" }),
+      "valueChange",
+      false,
     );
     expect(
       await screen.findByText("Group access changed; try again"),
     ).toBeTruthy();
-    await fireEvent.press(screen.getByRole("switch", { name: "Hide bots" }));
+    await fireEvent(
+      screen.getByRole("switch", { name: "Hide bots" }),
+      "valueChange",
+      false,
+    );
     expect(await screen.findByText("Hide bots must be On or Off")).toBeTruthy();
-    expect(
-      screen.getByRole("switch", { name: "Hide bots" }).props
-        .accessibilityState,
-    ).toMatchObject({ checked: true });
+    expect(screen.getByRole("switch", { name: "Hide bots" }).props.value).toBe(
+      true,
+    );
   });
 
   test("Hide bots Off shows a bot's posts, which can be exempted", async () => {
@@ -512,8 +574,12 @@ describe("the group's actions sheet", () => {
     await mount();
     await screen.findByText("The planning session is on Friday.");
     expect(screen.queryByText("Bot reminder.")).toBeNull();
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
-    await fireEvent.press(screen.getByRole("switch", { name: "Hide bots" }));
+    await openMenu();
+    await fireEvent(
+      screen.getByRole("switch", { name: "Hide bots" }),
+      "valueChange",
+      false,
+    );
     expect(posts).toContainEqual({
       path: "hide-bots",
       body: { hide_bots: false },
@@ -747,7 +813,8 @@ describe("writing in a group (AG6)", () => {
     expect(screen.getByText("A kept draft")).toBeTruthy();
     expect(screen.queryByLabelText("Message")).toBeNull();
     expect(screen.queryByLabelText("Send")).toBeNull();
-    await fireEvent.press(screen.getByLabelText("Conversation actions"));
+    // Its AI Menu holds AI view and Hide bots (ADR 62 Q13).
+    await fireEvent.press(screen.getByLabelText(/^AI Menu/));
     expect(
       screen.queryByRole("switch", { name: "Group AI processing" }),
     ).toBeNull();

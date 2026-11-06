@@ -1,9 +1,7 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { linkSegments } from "../../shared/links";
 import { mediaLabel, type NativeMessage } from "./conversation";
-import type { ReadingView } from "./data";
 import {
   FileCard,
   isVoice,
@@ -18,43 +16,8 @@ import type { Palette } from "./theme";
 import { VideoCard, VideoMessage } from "./VideoMedia";
 import { VoiceNote } from "./VoiceNote";
 
-// Reading pieces both conversation screens share: the header's AI toggle, the
-// Unread messages line and a message's own content.
-
-// The Reading View as one robot in the header (ADR 52 Q13): pressed shows
-// the AI view, unpressed Originals.
-export function ReadingToggle({
-  view,
-  choose,
-  palette,
-}: {
-  view: ReadingView;
-  choose: (view: ReadingView) => Promise<void>;
-  palette: Palette;
-}) {
-  const ai = view === "ai";
-  return (
-    <Pressable
-      accessibilityRole="togglebutton"
-      accessibilityLabel="AI view"
-      accessibilityState={{ checked: ai }}
-      hitSlop={8}
-      onPress={() => void choose(ai ? "originals" : "ai")}
-      style={[
-        styles.toggle,
-        ai
-          ? { backgroundColor: palette.accent, borderColor: palette.accent }
-          : { borderColor: palette.line },
-      ]}
-    >
-      <MaterialCommunityIcons
-        name={ai ? "robot" : "robot-outline"}
-        size={20}
-        color={ai ? palette.onAccent : palette.muted}
-      />
-    </Pressable>
-  );
-}
+// Reading pieces both conversation screens share: the Unread messages line
+// and a message's own content.
 
 // ADR 28: the Unread messages line above the earliest unseen message.
 export function UnreadLine({ palette }: { palette: Palette }) {
@@ -244,14 +207,6 @@ function VersionBody({
 }
 
 const styles = StyleSheet.create({
-  toggle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   small: { fontSize: 13 },
   unread: {
     flexDirection: "row",

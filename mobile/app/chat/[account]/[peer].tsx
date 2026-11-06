@@ -29,6 +29,12 @@ import {
 import { reactionChoice } from "../../../../shared/reactions";
 import { isReply, outsideReplies } from "../../../../shared/replyQuote";
 import { editedName } from "../../../../shared/versions";
+import {
+  PrivateAiMenu,
+  RobotButton,
+  showChat,
+  useChatAi,
+} from "../../../src/AiMenu";
 import { useAttention } from "../../../src/attention";
 import { Avatar } from "../../../src/Avatar";
 import { ComposerBar } from "../../../src/Composer";
@@ -84,7 +90,7 @@ import { runCorners, Tail } from "../../../src/Tail";
 import { AlbumGrid } from "../../../src/AlbumGrid";
 import { messageRuns, type RunPlace } from "../../../../shared/runs";
 import { albumRuns } from "../../../../shared/gallery";
-import { MessageBody, ReadingToggle, UnreadLine } from "../../../src/Reading";
+import { MessageBody, UnreadLine } from "../../../src/Reading";
 import { useReplies, type Replies } from "../../../src/replies";
 import { ReplyQuote } from "../../../src/ReplyQuote";
 import { ConnectionStatus } from "../../../src/Status";
@@ -169,6 +175,14 @@ export function Conversation({
     );
   }, [api, account, peer, live, pending.length]);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
+  // The AI Menu (ADR 62), whose pages show this chat's latest read.
+  const [aiMenu, setAiMenu] = useState(false);
+  const chatAi = useChatAi(account, peer, snapshot?.ai, readAt, reload);
+  useEffect(() => {
+    if (snapshot)
+      showChat(`${account}/${peer}`, { snapshot, readAt, live, reload });
+  }, [account, peer, snapshot, readAt, live, reload]);
+  useEffect(() => () => showChat(`${account}/${peer}`, null), [account, peer]);
   const { view: chosen, choose } = useReadingView();
   // The account's own Saved Messages (ADR 50): originals only, with no AI,
   // unseen messages or reactions (Q3, Q17).
@@ -496,20 +510,14 @@ export function Conversation({
                   </Text>
                 ) : null}
               </Pressable>
-              {!aiEnabled && !saved ? (
-                <Text
-                  style={[
-                    styles.aiOff,
-                    { color: palette.muted, borderColor: palette.line },
-                  ]}
-                >
-                  AI off
-                </Text>
-              ) : null}
-              {/* The Reading View's robot at the header's end (ADR 52 Q13);
-              Saved Messages has no AI. */}
+              {/* The robot at the header's end opens the AI Menu, filled
+              while AI runs here (ADR 62 Q1, Q14); Saved Messages has none. */}
               {saved ? null : (
-                <ReadingToggle view={view} choose={choose} palette={palette} />
+                <RobotButton
+                  ai={chatAi.ai}
+                  palette={palette}
+                  onPress={() => setAiMenu(true)}
+                />
               )}
             </View>
           )}
@@ -740,6 +748,22 @@ export function Conversation({
             accountName={accountName}
             chatName={title}
           />
+          {saved ? null : (
+            <PrivateAiMenu
+              visible={aiMenu}
+              account={account}
+              peer={peer}
+              ai={chatAi}
+              view={view}
+              onView={(next) => void choose(next)}
+              offline={
+                !live ||
+                (connection.status === "paired" && connection.unreachable)
+              }
+              palette={palette}
+              onClose={() => setAiMenu(false)}
+            />
+          )}
         </SafeAreaView>
       </GalleryProvider>
     </DeletionContext.Provider>
@@ -1298,13 +1322,6 @@ const styles = StyleSheet.create({
   person: { flexDirection: "row", alignItems: "center", gap: 10 },
   hidden: { display: "none" },
   reminders: { paddingHorizontal: 10, paddingTop: 6 },
-  aiOff: {
-    fontSize: 12,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
   blockStatus: { flexDirection: "row", alignItems: "center", gap: 10 },
   retry: { fontSize: 14, fontWeight: "600" },
   latest: {

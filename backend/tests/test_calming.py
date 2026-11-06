@@ -134,9 +134,9 @@ async def test_queued_legacy_mood_release_requires_a_new_hostility_decision(rig,
 def test_calming_is_on_by_default_and_a_chat_turns_it_off(rig):
     app, _, _ = rig
     assert app.calming.view(KEY) == {"enabled": True}
-    assert app.conversation(KEY)["calming"] is True
+    assert app.conversation(KEY)["ai"]["calming"] is True
     assert app.calming.set(KEY, False) == {"enabled": False}
-    assert app.conversation(KEY)["calming"] is False
+    assert app.conversation(KEY)["ai"]["calming"] is False
     assert app.store.rows("SELECT enabled FROM calming")[0]["enabled"] == 0
     # Setting the same value keeps the chat's choice and when it was made.
     changed = app.store.rows("SELECT changed FROM calming")[0]["changed"]

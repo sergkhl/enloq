@@ -1050,7 +1050,7 @@ sarcasm toward anyone qualify in context. Anger, frustration, emphatic
 profanity, friendly teasing and neutral reporting of an insult do not qualify
 alone. A missing or malformed answer authorizes no softening.
 
-The profile switch is **Soften hostile messages**, On by default. Its existing
+The chat's AI Menu switch is **Soften hostile messages**, On by default. Its existing
 internal `calming` table, endpoint and snapshot key preserve per-chat choices;
 `blocks.calmed` preserves the flag belonging to each validated rendering.
 Both clients display **Softened**. Off starts no arrival screen and no new

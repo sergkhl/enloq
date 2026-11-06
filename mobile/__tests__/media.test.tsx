@@ -296,9 +296,10 @@ describe("media in the conversation", () => {
       nativeEvent: { actionName: "increment" },
     });
     expect(player().seeks.at(-1)).toBe(2);
-    await fireEvent.press(
-      screen.getByRole("togglebutton", { name: "AI view" }),
-    );
+    // AI view, in the AI Menu the robot opens (ADR 62 Q1).
+    await fireEvent.press(screen.getByLabelText(/^AI Menu/));
+    const aiView = screen.getByRole("switch", { name: "AI view" });
+    await fireEvent(aiView, "valueChange", !aiView.props.value);
     await waitFor(() => expect(player().playing).toBe(false));
     expect(player().lockScreen).toBeNull();
   });

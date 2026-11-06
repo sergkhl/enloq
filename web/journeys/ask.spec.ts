@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { seedGroups, trust } from "./fixture";
+import { openAiMenu, seedGroups, trust } from "./fixture";
 
-// ADR 59 Q1: Ask this group answers from the group's cached originals with
-// checked source links. The fixture's writer answers from the first message
+// ADR 59 Q1: Ask this group, in the group's AI Menu (ADR 62 Q13), answers
+// from the group's cached originals with checked source links. The fixture's writer answers from the first message
 // it is given, and its decision model keeps the citation.
 test.beforeEach(async ({ page }) => {
   await trust(page);
@@ -15,8 +15,7 @@ test("Ask this group answers with a source that opens the group, and Back return
   await page.getByRole("tab", { name: "Groups" }).tap();
   await page.getByRole("button", { name: /^Basic discussion/ }).tap();
   // Offered only while Group AI processing is On.
-  await page.getByRole("button", { name: "Conversation actions" }).tap();
-  const sheet = page.getByRole("dialog", { name: "Conversation actions" });
+  const sheet = await openAiMenu(page);
   await expect(
     sheet.getByRole("button", { name: "Ask this group" }),
   ).toHaveCount(0);
@@ -42,7 +41,7 @@ test("Ask this group answers with a source that opens the group, and Back return
   const partly = page.getByText("Not all of this is in its sources.");
   await expect(partly).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Conversation actions" }).tap();
+  await openAiMenu(page);
   await sheet.getByRole("button", { name: "Ask this group" }).tap();
   const ask = page.getByRole("region", { name: "Ask this group" });
   const question = ask.getByRole("textbox", { name: "Question" });
@@ -77,7 +76,7 @@ test("Ask this group answers with a source that opens the group, and Back return
   await expect(
     page.getByRole("button", { name: "Back to conversations" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Conversation actions" }).tap();
+  await openAiMenu(page);
   await sheet.getByRole("button", { name: "Ask this group" }).tap();
   await expect(question).toHaveValue("");
   await expect(ask.getByText("An authored answer.")).toHaveCount(0);

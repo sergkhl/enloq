@@ -1,5 +1,12 @@
 import { expect, request, test } from "@playwright/test";
-import { ORIGIN, seedGroups, trust, openSettings } from "./fixture";
+import {
+  ORIGIN,
+  openAiMenu,
+  openAiPage,
+  seedGroups,
+  trust,
+  openSettings,
+} from "./fixture";
 
 // MW4: Settings and the account screens in the app's design (ADR 45), a menu
 // of Notifications, Budget, AI and Privacy since ADR 47 Q6.
@@ -46,22 +53,8 @@ test("Settings changes and restores the controls, lists trust and disconnects", 
   await expect(suggestions).toHaveAttribute("aria-checked", "false");
   await suggestions.tap();
   await expect(suggestions).toHaveAttribute("aria-checked", "true");
-
-  await page.getByRole("button", { name: /^Guidance/ }).tap();
-  await page.getByRole("button", { name: "Professional, Default" }).tap();
-  const text = page.getByRole("textbox", { name: "Professional" });
-  await text.fill(`${await text.inputValue()} Journey edit.`);
-  await page.getByRole("button", { name: "Save", exact: true }).tap();
-  const reset = page.getByRole("button", { name: "Reset to default" });
-  await expect(reset).toBeEnabled();
-  await reset.tap();
-  await page.getByRole("button", { name: "Confirm reset" }).tap();
-  await expect(reset).toBeDisabled();
-  await page.getByRole("button", { name: "Back" }).tap();
-  await expect(
-    page.getByRole("button", { name: "Professional, Default" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).tap();
+  // Guidance's fields are in the chats' AI Menus (ADR 62 Q11).
+  await expect(page.getByRole("button", { name: /^Guidance/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Back" }).tap();
 
   await page.getByRole("button", { name: /^Privacy/ }).tap();
@@ -73,6 +66,67 @@ test("Settings changes and restores the controls, lists trust and disconnects", 
   await expect(
     page.getByRole("heading", { name: "Pair this browser" }),
   ).toBeVisible();
+});
+
+// ADR 62 Q11, Q17: a Guidance field opens from the page of the control it
+// shapes, as one text for all chats, with Save, Reset and its default.
+test("a Guidance field opens from an AI Menu page and saves for all chats", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: /^Alex · weekend plans/ }).tap();
+  await openAiPage(page, "Style");
+  await page.getByRole("button", { name: "Professional, For all chats" }).tap();
+  await expect(page.getByText(/^For all chats · Version \d+$/)).toBeVisible();
+  const text = page.getByRole("textbox", { name: "Professional" });
+  await text.fill(`${await text.inputValue()} Journey edit.`);
+  await page.getByRole("button", { name: "Save", exact: true }).tap();
+  const reset = page.getByRole("button", { name: "Reset to default" });
+  await expect(reset).toBeEnabled();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+  await expect(
+    page.getByRole("button", { name: "Professional, Edited, for all chats" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Professional, Edited, for all chats" })
+    .tap();
+  await reset.tap();
+  await page.getByRole("button", { name: "Confirm reset" }).tap();
+  await expect(reset).toBeDisabled();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+  await expect(
+    page.getByRole("button", { name: "Professional, For all chats" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+  await expect(page.getByRole("heading", { name: /^Alex/ })).toBeVisible();
+});
+
+// ADR 62 Q18: a role paused after repeated format failures shows in
+// Settings → AI with Keep and Reset guidance.
+test("Settings → AI holds a paused role's notice with Keep", async ({
+  page,
+}) => {
+  const post = (path: string, data: object) =>
+    page.request.post(path, { data, headers: { Origin: ORIGIN } });
+  expect(
+    (
+      await post("/api/test/format-failures", {
+        role: "chat_memory",
+        failures: 3,
+      })
+    ).status(),
+  ).toBe(200);
+  try {
+    await openSettings(page);
+    await page.getByRole("button", { name: /^AI, Paused/ }).tap();
+    const notice = page.getByRole("group", { name: "Memory updates paused" });
+    await expect(notice).toBeVisible();
+    await notice
+      .getByRole("button", { name: "Keep guidance for Memory updates" })
+      .tap();
+    await expect(notice).toHaveCount(0);
+  } finally {
+    await post("/api/settings/guidance/keep", { role: "chat_memory" });
+  }
 });
 
 test("a spent group budget opens it in Settings, outlined", async ({
@@ -88,8 +142,8 @@ test("a spent group budget opens it in Settings, outlined", async ({
   try {
     await page.getByRole("tab", { name: "Groups" }).tap();
     await page.getByRole("button", { name: /^Basic discussion/ }).tap();
-    await page.getByRole("button", { name: "Conversation actions" }).tap();
-    const processing = page.getByRole("switch", {
+    const menu = await openAiMenu(page);
+    const processing = menu.getByRole("switch", {
       name: "Group AI processing",
     });
     await processing.tap();

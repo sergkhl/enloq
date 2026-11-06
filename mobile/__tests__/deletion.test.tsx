@@ -419,9 +419,10 @@ describe("selection and deletion in a private chat", () => {
     writeCached("deletion:1/user:101", []);
     await mount();
     expect(await screen.findByText("Deleted · 1 message")).toBeTruthy();
-    await fireEvent.press(
-      screen.getByRole("togglebutton", { name: "AI view" }),
-    );
+    // AI view, in the AI Menu the robot opens (ADR 62 Q1).
+    await fireEvent.press(screen.getByLabelText(/^AI Menu/));
+    const aiView = screen.getByRole("switch", { name: "AI view" });
+    await fireEvent(aiView, "valueChange", !aiView.props.value);
     await fireEvent(await screen.findByText("Message 1"), "longPress");
     expect(await screen.findByRole("menuitem", { name: "Copy" })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "Select" })).toBeNull();

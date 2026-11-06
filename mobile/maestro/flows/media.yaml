@@ -16,9 +16,10 @@ appId: ${APP_ID}
     timeout: 30000
 - tapOn: "Voice player.*"
 - extendedWaitUntil:
-    visible: "AI view"
+    visible:
+      id: "ai-menu"
     timeout: 15000
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 # The seed's first voice note lasts three minutes: Maestro over the tunnel
 # takes about a minute here. A playing note's clock keeps the screen
 # changing, so taps during playback wait at most half a second for it to
@@ -120,6 +121,6 @@ appId: ${APP_ID}
 - scrollUntilVisible:
     element: "Sticker.*"
     direction: UP
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - tapOn: "Back to conversations"
 - assertVisible: "Account: Demo account. Switch account"

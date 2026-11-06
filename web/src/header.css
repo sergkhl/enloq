@@ -1,4 +1,4 @@
-/* A conversation's header and its AI toggle (ADR 44 MW2, ADR 52 Q13). */
+/* A conversation's header (ADR 44 MW2); its robot is in aiMenu.css. */
 .conversation-header {
   display: flex;
   align-items: center;
@@ -35,23 +35,6 @@
   flex: none;
   font-size: 20px;
 }
-/* The Reading View as one robot (ADR 52 Q13): pressed is AI. */
-.reading-toggle {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-}
-.reading-toggle[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--paper);
-}
 .view-note {
   margin: 0;
   padding: 6px 12px 0;
@@ -59,7 +42,7 @@
   color: var(--muted);
 }
 
-/* A group's actions sheet: Group AI processing and Hide bots. */
+/* A sheet's switch rows, such as the AI Menu's (ADR 62). */
 .switch-line {
   display: flex;
   align-items: center;

@@ -140,16 +140,33 @@ export async function openRealGroup(page: Page) {
   await page.goto(`/?account=${MAYA}#${id}`);
   const ask = page.getByRole("button", { name: "Not now" });
   if (await ask.isVisible().catch(() => false)) await ask.click();
-  await expect(
-    page.getByRole("button", { name: "Conversation actions" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^AI Menu/ })).toBeVisible();
   return page;
 }
 
-// The header's robot toggles the Reading View, pressed for AI (ADR 52 Q13).
+// The header's robot opens the chat's AI Menu (ADR 62 Q1).
+export async function openAiMenu(page: Page) {
+  await page.getByRole("button", { name: /^AI Menu/ }).tap();
+  const menu = page.getByRole("dialog", { name: "AI Menu" });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+// AI view, the AI Menu's first row, switches the Reading View; the menu then
+// closes.
 export async function chooseView(page: Page, view: "ai" | "originals") {
-  const toggle = page.getByRole("button", { name: "AI view" });
+  const menu = await openAiMenu(page);
+  const toggle = menu.getByRole("switch", { name: "AI view" });
   const ai = String(view === "ai");
-  if ((await toggle.getAttribute("aria-pressed")) !== ai) await toggle.tap();
-  await expect(toggle).toHaveAttribute("aria-pressed", ai);
+  if ((await toggle.getAttribute("aria-checked")) !== ai) await toggle.tap();
+  await expect(toggle).toHaveAttribute("aria-checked", ai);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+}
+
+// The remembered Reading View, read without changing it.
+export async function readView(page: Page) {
+  const answer = await page.request.get("/api/preferences/reading-view");
+  expect(answer.status()).toBe(200);
+  return (await answer.json()).reading_view as "ai" | "originals";
 }

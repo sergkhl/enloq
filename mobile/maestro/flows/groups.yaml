@@ -1,6 +1,7 @@
 # Groups (ADR 42 AG7): the fixture's authored group, set up afresh by the
 # journeys script with Group AI processing Off and no briefing. Turning the
-# switch on and tapping Update briefs it with the offline fake engine; then a
+# switch on in the group's AI Menu (ADR 62 Q13) and tapping Update briefs it
+# with the offline fake engine; then a
 # citation reveals the day in place, a Reply is sent from its originals, and
 # Return to briefing shows today's "new messages" spoiler, which the send
 # opened. iOS reads a bubble as one label, so text is matched inside it.
@@ -28,15 +29,20 @@ appId: ${APP_ID}
 - assertVisible: "Authored member bio."
 - tapOn: "Back"
 - takeScreenshot: groups-1-unbriefed
-- tapOn: "Conversation actions"
-- tapOn: "Group AI processing"
+- tapOn:
+    id: "ai-menu"
+- assertVisible:
+    id: "ai-hide-bots-switch"
+- tapOn:
+    id: "ai-group-switch"
 - extendedWaitUntil:
     visible:
-      text: "Group AI processing"
+      id: "ai-group-switch"
       checked: true
     timeout: 15000
 # Ask this group (ADR 59), with the fixture's authored answer and its source.
-- tapOn: "Ask this group"
+- tapOn:
+    id: "ai-ask"
 - tapOn: "Question"
 - inputText: "When is the planning session?"
 - hideKeyboard

@@ -54,24 +54,27 @@ appId: ${APP_ID}
       enabled: true
     timeout: 15000
 - tapOn: "Undo suggestion"
-# Automation and Style are separate (ADR 56). Pausing hides the automatic
-# set while leaving manual generation available.
-- tapOn: "Suggestion fixture, .*open profile"
-- scrollUntilVisible:
-    element:
-      id: "automatic-suggestions"
-- assertVisible:
-    id: "automatic-suggestions"
-    checked: true
-- assertVisible:
-    id: "suggestion-style-idioms"
+# Automation and Style are separate (ADR 56), both in the chat's AI Menu
+# (ADR 62). Pausing hides the automatic set while leaving manual generation
+# available.
 - tapOn:
-    id: "automatic-suggestions"
+    id: "ai-menu"
+- assertVisible:
+    id: "ai-suggestions-switch"
+    checked: true
+- assertVisible: "Style, Friendly"
+- tapOn:
+    id: "ai-suggestions-switch"
 - extendedWaitUntil:
     visible:
-      id: "automatic-suggestions"
+      id: "ai-suggestions-switch"
       checked: false
     timeout: 15000
+# Style's page offers Idioms (ADR 56 Q20 A).
+- tapOn:
+    id: "ai-style"
+- assertVisible:
+    id: "suggestion-style-idioms"
 - tapOn: "Back"
 - assertNotVisible: "Hide suggestions"
 - assertVisible:
@@ -82,18 +85,16 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: "Acknowledge: Thank you for telling me[.]"
     timeout: 20000
-- tapOn: "Suggestion fixture, .*open profile"
-- scrollUntilVisible:
-    element:
-      id: "automatic-suggestions"
 - tapOn:
-    id: "automatic-suggestions"
+    id: "ai-menu"
+- tapOn:
+    id: "ai-suggestions-switch"
 - extendedWaitUntil:
     visible:
-      id: "automatic-suggestions"
+      id: "ai-suggestions-switch"
       checked: true
     timeout: 15000
-- tapOn: "Back"
+- runFlow: ../steps/close-sheet.yaml
 - extendedWaitUntil:
     visible: "Hide suggestions"
     timeout: 15000

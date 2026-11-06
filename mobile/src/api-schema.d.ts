@@ -623,6 +623,50 @@ export interface components {
        */
       photo_id: string | null;
     };
+    /**
+     * ChatAi
+     * @description A chat's AI Menu in its conversation snapshot, so the header and the
+     *     menu draw without further reads: the account's AI processing, whether AI
+     *     work can run in the chat (Q14) and, in a private chat, its own switches
+     *     and Style with the owner's server-wide switches over them. Writes keep
+     *     each switch's own route.
+     */
+    ChatAi: {
+      /** Account */
+      account: boolean;
+      /** Running */
+      running: boolean;
+      /**
+       * Suggestions
+       * @default null
+       */
+      suggestions: boolean | null;
+      /**
+       * Style
+       * @default null
+       */
+      style: ("friendly" | "professional" | "idioms") | null;
+      /**
+       * Calming
+       * @default null
+       */
+      calming: boolean | null;
+      /**
+       * Remember
+       * @default null
+       */
+      remember: boolean | null;
+      /**
+       * Server Suggestions
+       * @default null
+       */
+      server_suggestions: boolean | null;
+      /**
+       * Server Memory
+       * @default null
+       */
+      server_memory: boolean | null;
+    };
     /** ChatReminders */
     ChatReminders: {
       /** Items */

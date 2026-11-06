@@ -491,11 +491,28 @@ phone, coordinates or preview text, so a contact shows its name, a venue opens
 the maps app's search for it and a preview opens the message's link. Away
 from the latest message, Scroll to latest brings it back.
 
-## AI controls and the profile
+## The AI Menu and the profile
 
-A private chat's header ends with the Reading View's robot, pressed for AI
-reading. In AI reading, a block that is text only shows its originals
-together in one bubble headed "N messages · time", without "AI ·" or a status
+A conversation's header ends with the robot, which opens the chat's **AI
+Menu**, a bottom sheet
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)). The
+robot is filled while AI work can run in the chat and an outline otherwise,
+and its name says which ("AI Menu, AI on in this chat"); no "AI off" tag
+shows. The menu's first row is **AI view**, the Reading View for every chat:
+its switch flips it, so changing the view takes two taps. A private chat's
+rows follow, each with its line: **Automatic suggestions**, **Style** with its
+choice, **Emotion**, **Soften hostile messages**, **Voice and images** and
+**Remember this chat**. A tap on a switch flips it; a tap on a row opens the
+control's page, with its explanation, its switch or choice, its panels and,
+for the owner, its Processing Guidance fields. Emotion and Voice and images
+have pages and no switch yet. Under its switch, a server-wide switch that is
+Off says so ("Automatic suggestions is Off for all chats.", "Memory is Off
+for all chats."), and "AI processing is Off for this account." closes the
+menu while the account's AI is Off. Offline the switches wait for the server.
+Saved Messages has no robot.
+
+In AI reading, a block that is text only shows its originals together in one
+bubble headed "N messages · time", without "AI ·" or a status
 ([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)); a softened block's
 head ends with "Softened"
 ([ADR 53](adr/0053-calming-hostile-messages-and-removing-adaptive-tone.md)); a
@@ -503,42 +520,52 @@ block with an image, a voice note or a video circle shows its rewrite. A block
 without AI text that failed or stopped shows Retry beside its status and in
 its long-press sheet, off while the account's AI processing is off. A
 rewritten block's sheet offers Show original, and its originals' sheets Show
-AI text: the choice holds for that block alone until the header's robot
-changes. Under a finished block, "Not analysed: …" names what the AI skipped.
-At the top of the loaded history "N earlier blocks are not rewritten" offers
-Rewrite for blocks with an image, a voice note or a video circle; a run shows
-"Analyzing earlier messages · n of m" with a bar and Stop, and afterwards how
-many remain and why. A private chat's header says AI off while the account's
-processing is off.
+AI text: the choice holds for that block alone until AI view changes. Under a
+finished block, "Not analysed: …" names what the AI skipped. At the top of
+the loaded history "N earlier blocks are not rewritten" offers Rewrite for
+blocks with an image, a voice note or a video circle; a run shows "Analyzing
+earlier messages · n of m" with a bar and Stop, and afterwards how many
+remain and why.
+
+The pages: **Automatic suggestions**, On by default, with When to suggest;
+**Style**, Friendly by default, with Friendly, Professional and Idioms for
+both generation kinds and the Response suggestions, Friendly, Professional
+and Idioms fields
+([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md));
+**Emotion**, the latest estimate with its reason, source and time, and
+Emotion extraction; **Soften hostile messages**, On by default, for hostile
+wording independently of anger or frustration, with its own field and
+Faithfulness rules; **Voice and images**, with Incoming rewriting and
+Faithfulness rules; and **Remember this chat**, off by default, with **Cares
+about**, the chat's Person Memory, **Traits**, and the Person memory and
+Account memory fields
+([ADR 55](adr/0055-person-and-account-memory-and-traits.md)). Each field is
+one text for all chats, marked so, and opens its editor ([Settings](#settings)).
+Cares about lists the entries with their source and adds, edits, removes and
+clears them, with Retry after a failed update. An entry holds 300 bytes, so
+the field counts bytes: letters outside English count two. Traits show
+counted habits, scales with their confidence and notes; the owner sets or
+clears any scale, which the model then never changes, and adds, edits or
+removes notes. **About you**, from Manage accounts, shows the same for the
+account's holder: You care about and Your traits. A page shows the open
+chat's latest read, which the chat beneath it keeps up to date.
 
 The header shows the emotion's emoji right after the name, which gives way
 first. Tapping the photo, name or emoji opens the **Correspondent Profile**:
 the person's photo, name, @username, phone number when Telegram shares it and
 bio, which the service reads from Telegram on each opening and never stores;
-the emotion with its reason, source and time; **Soften hostile messages**, On
-by default, for hostile wording independently of anger or frustration;
-**Automatic suggestions**, On by default; and **Style**, Friendly by default,
-with Friendly, Professional and Idioms choices for both generation kinds
-([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md));
-**Remember this chat**, off by default; **Cares about**, the chat's Person
-Memory; **Traits**; and Copy chat link
-([ADR 55](adr/0055-person-and-account-memory-and-traits.md)). Cares about lists
-the entries with their source and adds, edits, removes and clears them, with
-Retry after a failed update. An entry holds 300 bytes, so the field counts
-bytes: letters outside English count two. Traits show counted habits, scales
-with their confidence and notes; the owner sets or clears any scale, which the
-model then never changes, and adds, edits or removes notes. **About you**, from
-Manage accounts, shows the same for the account's holder: You care about and
-Your traits. Offline the profile shows the cached chat's photo, name and
-emotion and says the rest needs the server.
+their **Reminders** with Add reminder
+([ADR 58](adr/0058-recurring-message-reminders.md) Q12); and Copy chat link.
+Offline the profile shows the cached chat's photo and name and says the rest
+needs the server.
 
 Tapping a group's photo and name opens the **Group Profile**: the group's
 photo and title, its @username when public, its member count and description,
 read from Telegram on each opening and never stored (`…/group-profile`,
 `channels.GetFullChannel` or `messages.GetFullChat`), with no member list,
 then Copy chat link. A group that lost access, or a phone offline, shows the
-cached photo and title with the reason. Group AI processing and Hide bots stay
-in the group's ⋮ sheet. A group member's avatar or name opens their profile:
+cached photo and title with the reason. Group AI processing and Hide bots are
+in the group's AI Menu. A group member's avatar or name opens their profile:
 photo, name, @username and bio, read on opening, with **Message**, which opens
 the private chat with them as New Message does.
 
@@ -596,10 +623,12 @@ be tapped while the server can't be reached. A citation (`#12`) or **Show day
 originals** swaps the day's card for its cached originals in place, the cited
 one outlined, and **Return to briefing** at the top of the day brings the card
 back. A Reply Quote to a summarized, folded or hidden message reveals it the
-same way. The header's ⋮ opens **Group AI processing**, with why it can't
-brief, and **Hide bots**; a passive AI off tag shows while account or group
-AI is Off. A bot original that Hide bots hides offers **Stop ignoring this
-bot** in its long-press menu once it shows.
+same way. The group's AI Menu holds AI view, **Group AI processing** with
+why it can't brief and, on its page, the owner's Group briefings field, **Ask
+this group** while it is On, and **Hide bots**; a retained group's holds AI
+view and Hide bots. The robot is an outline while account or group AI is Off.
+A bot original that Hide bots hides offers **Stop ignoring this bot** in its
+long-press menu once it shows.
 
 The composer offers Send without suggestion generation, and acts only while
 the group's native access is verified. Offline, the Groups list and
@@ -677,10 +706,10 @@ icon and what it holds on the right, and opens a page of its own:
   changes**.
 - **AI** (a chip; **Paused** while a role is paused): **Minimum characters**
   (the Processing Character Threshold, 0 to 10,000, which governs group
-  briefings), **Model calls at once** (1 to 8), the **Memory** and
-  **Automatic suggestions** switches, and **Guidance** (Processing Guidance), which
-  names its version. While the decision model is unavailable, a notice above
-  them says since when.
+  briefings), **Model calls at once** (1 to 8) and the **Memory** and
+  **Automatic suggestions** switches. While the decision model is
+  unavailable, a notice above them says since when, and a role paused after
+  repeated format failures has its notice there too.
 - **Privacy** (a lock; the trusted count): **Pair a phone**
   ([above](#pairing)), then **Trusted browsers and devices**.
 - **Logs** (a page of text): this phone's last 500 entries, every request with
@@ -711,24 +740,28 @@ Settings without losing an unsaved edit. A refusal shows under its control.
 Nothing is kept offline: while the server can't be reached, the last values
 stay shown and can't be changed.
 
-Guidance groups its 14 fields as Rewriting, Tones and Other work, each marked
-Edited or Default over its first line. A field's editor has Save, **Reset to
-default** after a confirmation and the default text; leaving with unsaved text
-asks first (iOS's swipe back is off meanwhile). A role paused after three
-format failures shows a notice with **Keep** and **Reset guidance**, which
-restores that role's fields.
+Processing Guidance's fields are on the AI Menu pages of the controls they
+shape, for the owner only, each marked "For all chats" or "Edited, for all
+chats" ([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+Q11, Q17). A field's editor says "For all chats · Version N" and has Save,
+**Reset to default** after a confirmation and the default text; leaving with
+unsaved text asks first (iOS's swipe back is off meanwhile). A role paused
+after three format failures shows its notice in Settings → AI with **Keep**
+and **Reset guidance**, which restores that role's fields (Q18).
 
 "Waiting for budget" in a chat and "Suggestions wait for budget" by the
 composer open the Daily Budget, "Paused after repeated format failures" opens
-Guidance, and a group's Budget in today's band opens the Group Briefing
-Budget; the Budget page scrolls there and outlines it briefly.
+Settings → AI with the paused-role notice, and a group's Budget in today's
+band opens the Group Briefing Budget; the page scrolls there and outlines it
+briefly.
 
 ## Using Enloq
 
 The app has no Help screen; this is what a Help screen would explain.
 
-- **Reading.** The robot in a chat's header switches between AI and Originals
-  reading for every chat. In AI reading, text arrives as it was sent, grouped
+- **Reading.** AI view, the first row of the AI Menu that the robot in a
+  chat's header opens, switches between AI and Originals reading for every
+  chat. In AI reading, text arrives as it was sent, grouped
   into one bubble per block; hostile wording is softened while Soften hostile messages is On and is marked
   Softened. Anger or frustration alone is left as sent. A block with an image, a voice note or
   a video message is rewritten as readable text. The originals keep the exact
@@ -764,7 +797,7 @@ The app has no Help screen; this is what a Help screen would explain.
   it, with Undo. Send asks first while [bracketed] text remains. Outgoing
   Rewrite and its tone controls are removed.
 - **Groups** list basic groups and supergroups active in the last seven days.
-  Group AI processing starts Off; turn it on in the group's ⋮. Groups offer
+  Group AI processing starts Off; turn it on in the group's AI Menu. Groups offer
   Send without suggestion generation, and send no sound or push.
 - **Budgets.** The Daily Budget pays private-chat processing, suggestions and
   arrival screening; the Group Briefing Budget pays briefings and their Retry.
@@ -776,9 +809,10 @@ The app has no Help screen; this is what a Help screen would explain.
   videos don't need it. Model calls at once limits all accounts together;
   private work precedes briefings, which precede idle memory. Transcription
   runs one at a time. The Memory switch
-  stops use and updates without deleting anything. Guidance applies from the
-  next model call; work already started keeps its version, and group
-  briefing guidance is separate from the private-chat fields.
+  stops use and updates without deleting anything. Guidance, on the AI Menu
+  pages, applies to all chats from the next model call; work already started
+  keeps its version, and group briefing guidance is separate from the
+  private-chat fields.
 
 ## Checks
 
@@ -807,19 +841,21 @@ The Maestro flows in `mobile/maestro/` (`journeys.yaml` runs
 `mobile/maestro/flows/` in order) walk the app on the booted simulator (Enloq)
 or the connected phone (Enloq Dev) against that fixture only: pairing by
 pasted link, with the notification ask that follows it dismissed on Android;
-both reading views; a Reply with Suggestions, a replacing choice, Undo and
-Send whose quote shows in the composer and after sending; a group with its
-Group Profile, Group AI processing, Ask this group, Update briefing through the
+both reading views through AI view in the AI Menu; a Reply with Suggestions,
+a replacing choice, Undo and Send whose quote shows in the composer and after
+sending; a group with its Group Profile and its AI Menu's Group AI
+processing and Ask this group, Update briefing through the
 fixture's fake engine, a citation and Return to briefing, a Reply and today's
 new-messages spoiler; Saved; on Android, reminders (the tab's rows, a pending reminder's
 chat with its Reminder Bar, set, Undo and Dismiss, the editor's Repeat, day
 grid and native time picker, and Remove's question); Settings
-through its menu to Budget, AI, Guidance, Privacy's Pair a phone QR code and
-Logs;
+through its menu to Budget, AI, Privacy's Pair a phone QR code and Logs, then
+a Guidance field edited and reset from a chat's Style page;
 media (a voice note's speed, a video message taking over, Copy transcript and
 Share from the sheet, a video, a GIF and stickers); the Media Carousel; New
 Message; message details (versions, forwarded and imported lines, cards,
-Scroll to latest and reactions); AI controls; deletion; GIF and sticker
+Scroll to latest and reactions); the AI Menu with Remember this chat's page;
+deletion; GIF and sticker
 sending; group recovery; and account switching. Android also runs response
 suggestions, notifications (turned on, which registers Enloq Dev with FCM, a
 test through the fixture's fake sender, then off), pairing again by the local

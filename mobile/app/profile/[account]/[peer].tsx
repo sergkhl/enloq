@@ -4,34 +4,18 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { chatLink } from "../../../../shared/chatRoute";
-import { emotionDetails } from "../../../../shared/emotion";
 import { openPath } from "../../../../shared/newMessage";
-import {
-  SUGGESTION_STYLES,
-  type SuggestionStyle,
-} from "../../../../shared/suggestions";
 import { offline as isOffline, type Schemas } from "../../../src/api";
 import { Avatar } from "../../../src/Avatar";
 import { chatKey, readCached } from "../../../src/cache";
 import { useConnection } from "../../../src/connection";
 import type { Snapshot } from "../../../src/conversation";
-import { MemoryPanel } from "../../../src/MemoryPanel";
 import { ProfileReminders } from "../../../src/Reminders";
-import {
-  ChoiceRow,
-  Explanation,
-  RowNote,
-  Section,
-  SwitchRow,
-} from "../../../src/settingsUi";
+import { Explanation, RowNote, Section } from "../../../src/settingsUi";
 import { usePalette } from "../../../src/theme";
-import { TraitsPanel } from "../../../src/TraitsPanel";
 import { BackHeader, Button, Screen } from "../../../src/ui";
 
 type Profile = Schemas["CorrespondentProfile"];
-// Calm this chat and Remember this chat answer alike.
-type ChatSetting = Schemas["Calming"] | Schemas["Remembering"];
-type Suggesting = Schemas["SuggestionSettings"];
 type GroupProfile = Schemas["GroupProfile"];
 type MemberProfileValue = Schemas["MemberProfile"];
 
@@ -130,120 +114,11 @@ function CopyChatLink({ account, peer }: { account: number; peer: string }) {
   );
 }
 
-// A chat's own switch: Calm this chat, on unless turned off here (ADR 53
-// Q4), or Remember this chat, off unless turned on here since ADR 56 (Q9).
-function ChatSwitch({
-  account,
-  peer,
-  setting,
-  label,
-  explanation,
-  testID,
-}: {
-  account: number;
-  peer: string;
-  setting: "calming" | "remember";
-  label: string;
-  explanation: string;
-  testID: string;
-}) {
-  const { api } = useConnection();
-  const path = `accounts/${account}/chats/${encodeURIComponent(peer)}/${setting}`;
-  const { value, problem } = useRead<ChatSetting>(path);
-  const [saved, setSaved] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState("");
-  const enabled = saved ?? value?.enabled ?? null;
-  async function change(next: boolean) {
-    setBusy(true);
-    setFailure("");
-    try {
-      const answer = await api<ChatSetting>(path, { body: { enabled: next } });
-      setSaved(answer.enabled);
-    } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <>
-      <SwitchRow
-        label={label}
-        explanation={explanation}
-        value={enabled ?? false}
-        disabled={enabled === null || busy}
-        testID={testID}
-        onChange={(next) => void change(next)}
-      />
-      {failure || problem ? (
-        <RowNote tone="error">{failure || problem}</RowNote>
-      ) : null}
-    </>
-  );
-}
-
-// The chat's Suggestions choice (ADR 56 Q12 A): Off, On or, once it can be
-// chosen, Idioms; On unless chosen here. A choice applies from the next
-// message that qualifies; a set already written stays (Q5).
-function SuggestionsChoice({
-  account,
-  peer,
-}: {
-  account: number;
-  peer: string;
-}) {
-  const { api } = useConnection();
-  const path = `accounts/${account}/chats/${encodeURIComponent(peer)}/suggestions/settings`;
-  const { value, problem } = useRead<Suggesting>(path);
-  const [saved, setSaved] = useState<Suggesting | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState("");
-  const current = saved ?? value;
-  async function change(automatic: boolean, style: SuggestionStyle) {
-    setBusy(true);
-    setFailure("");
-    try {
-      setSaved(await api<Suggesting>(path, { body: { automatic, style } }));
-    } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <>
-      <SwitchRow
-        label="Automatic suggestions"
-        value={current?.automatic ?? true}
-        disabled={!current || busy}
-        testID="automatic-suggestions"
-        explanation="Prepare suggestions automatically; manual generation stays available."
-        onChange={(on) => current && void change(on, current.style)}
-      />
-      <ChoiceRow
-        label="Style"
-        options={SUGGESTION_STYLES}
-        value={current?.style ?? null}
-        explanation={
-          SUGGESTION_STYLES.find((s) => s.value === current?.style)?.explanation
-        }
-        disabled={!current || busy}
-        testID="suggestion-style"
-        onChange={(style) => current && void change(current.automatic, style)}
-      />
-      {failure || problem ? (
-        <RowNote tone="error">{failure || problem}</RowNote>
-      ) : null}
-    </>
-  );
-}
-
 // The Correspondent Profile (ADR 46 Q11, CU3): the person's photo and name,
-// with their @username, a phone Telegram shares and bio; the emotion's
-// details; Calm this chat, the Suggestions choice (ADR 56) and Remember this
-// chat; what the person cares about and their traits (ADR 55 Q25); and Copy
-// chat link.
+// with their @username, a phone Telegram shares and bio; their Reminder
+// Schedules (ADR 58 Q12); and Copy chat link. The chat's AI controls, the
+// emotion's details, what the person cares about and their traits are in its
+// AI Menu (ADR 62 Q4, Q12).
 function CorrespondentProfile({
   account,
   peer,
@@ -261,7 +136,6 @@ function CorrespondentProfile({
     `accounts/${account}/chats/${encodeURIComponent(peer)}/profile`,
   );
   const title = chat?.chat.title ?? "";
-  const details = emotionDetails(chat?.emotion, chat?.timezone ?? "UTC");
   return (
     <Screen header={<BackHeader title="Profile" />}>
       <View style={styles.head}>
@@ -290,73 +164,22 @@ function CorrespondentProfile({
       ) : null}
       {offline ? (
         <RowNote tone="warning">
-          The person's Telegram details, memory and traits need the server.
+          The person's Telegram details and reminders need the server.
         </RowNote>
       ) : problem ? (
         <RowNote tone="error">{problem}</RowNote>
       ) : !profile ? (
         <Explanation>Reading the profile…</Explanation>
       ) : null}
-      <Section title="Emotion">
-        <View style={styles.block}>
-          <Text style={[styles.label, { color: palette.text }]}>
-            {details.label}
-          </Text>
-          <Text style={{ color: palette.text }}>{details.reason}</Text>
-          <Text style={[styles.small, { color: palette.muted }]}>
-            {details.source}
-            {details.time ? ` · ${details.time}` : ""}
-          </Text>
-        </View>
-      </Section>
       {offline ? null : (
-        <>
-          <Section title="Soften hostile messages">
-            {/* It applies to messages rewritten from then on; calmed ones
-                stay calmed (ADR 53 Q9). */}
-            <ChatSwitch
-              account={account}
-              peer={peer}
-              setting="calming"
-              label="Soften hostile messages"
-              explanation="Hostile wording is softened while keeping every fact, request, deadline and threat. Anger or frustration alone stays unchanged."
-              testID="calm-this-chat"
-            />
-          </Section>
-          <Section title="Suggestions">
-            <SuggestionsChoice account={account} peer={peer} />
-          </Section>
-          {/* The person's Reminder Schedules and Add reminder (ADR 58 Q12). */}
-          <Section title="Reminders">
-            <ProfileReminders
-              account={account}
-              peer={peer}
-              title={profile?.name || title}
-            />
-          </Section>
-          <Section title="Memory">
-            {/* Off by default (ADR 56 Q9); off, the chat teaches neither
-                memory and nothing in it reads them (ADR 55 Q18). */}
-            <ChatSwitch
-              account={account}
-              peer={peer}
-              setting="remember"
-              label="Remember this chat"
-              explanation="Off by default. On, Enloq notes what this person cares about and their traits, and what you care about from this chat. Off, this chat teaches and uses neither; what's noted stays until you clear it."
-              testID="remember-this-chat"
-            />
-          </Section>
-          <Section title="Cares about">
-            <View style={styles.block}>
-              <MemoryPanel account={account} peer={peer} />
-            </View>
-          </Section>
-          <Section title="Traits">
-            <View style={styles.block}>
-              <TraitsPanel account={account} peer={peer} subject="person" />
-            </View>
-          </Section>
-        </>
+        // The person's Reminder Schedules and Add reminder (ADR 58 Q12).
+        <Section title="Reminders">
+          <ProfileReminders
+            account={account}
+            peer={peer}
+            title={profile?.name || title}
+          />
+        </Section>
       )}
       <CopyChatLink account={account} peer={peer} />
     </Screen>
@@ -447,7 +270,8 @@ function MemberProfile({
 
 // The Group Profile (ADR 47 Q7): the group's photo and title, its @username
 // when public, its member count and description, with no member list, then
-// Copy chat link. Group AI processing and Hide bots stay in the ⋮ sheet.
+// Copy chat link. Group AI processing and Hide bots are in the group's AI
+// Menu (ADR 62 Q13).
 function GroupProfileScreen({
   account,
   peer,
@@ -514,8 +338,6 @@ const styles = StyleSheet.create({
   head: { alignItems: "center", gap: 4, paddingVertical: 8 },
   name: { fontSize: 22, fontWeight: "700", marginTop: 8, textAlign: "center" },
   bio: { fontSize: 16, lineHeight: 22 },
-  block: { padding: 12, gap: 4 },
-  label: { fontSize: 17, fontWeight: "600" },
   small: { fontSize: 13 },
   copy: { flexDirection: "row", alignItems: "center", gap: 10 },
   fill: { flex: 1 },

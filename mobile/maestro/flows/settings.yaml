@@ -1,8 +1,9 @@
 # Settings (ADR 45 ST5), a menu since ADR 47 Q6, on the fixture: the gear
 # opens it; Budget changes and restores the Group Briefing Budget, AI turns
-# Suggestions off and on again and edits a guidance field and resets it, and
-# Privacy's Pair a phone shows its QR code, cancelled on leaving. Every value
-# ends as it began.
+# Suggestions off and on again, and Privacy's Pair a phone shows its QR code,
+# cancelled on leaving. Then a chat's AI Menu edits a Guidance field for all
+# chats on Style's page and resets it (ADR 62 Q11, Q17). Every value ends as
+# it began.
 appId: ${APP_ID}
 ---
 # Settings is the account sheet's last row (ADR 51 Q19, Q21).
@@ -42,30 +43,8 @@ appId: ${APP_ID}
 - assertVisible:
     id: "suggestions-switch"
     checked: true
-- scrollUntilVisible:
-    element: "Guidance.*"
-- tapOn: "Guidance.*"
-- scrollUntilVisible:
-    element: "Friendly, Default"
-- tapOn: "Friendly, Default"
-- tapOn:
-    id: "guidance-text"
-- inputText: " Journey edit."
-- hideKeyboard
-- tapOn: "Save"
-- assertVisible:
-    text: "Reset to default"
-    enabled: true
-- tapOn: "Reset to default"
-- tapOn: "Confirm reset"
-- extendedWaitUntil:
-    visible:
-      text: "Reset to default"
-      enabled: false
-    timeout: 15000
-- tapOn: "Back"
-- assertVisible: "Friendly, Default"
-- tapOn: "Back"
+# Guidance's fields are in the chats' AI Menus (ADR 62 Q11).
+- assertNotVisible: "Guidance.*"
 - tapOn: "Back"
 - tapOn: "Privacy.*"
 - tapOn: "Pair a phone"
@@ -87,4 +66,34 @@ appId: ${APP_ID}
     timeout: 15000
 - tapOn: "Back"
 - tapOn: "Back"
+- assertVisible: "Account: Demo account. Switch account"
+# A Guidance field on Style's page, one text for all chats.
+- tapOn: "Alex · weekend plans.*"
+- tapOn:
+    id: "ai-menu"
+- tapOn:
+    id: "ai-style"
+- scrollUntilVisible:
+    element: "Friendly, For all chats"
+- tapOn: "Friendly, For all chats"
+- assertVisible: "For all chats . Version .*"
+- tapOn:
+    id: "guidance-text"
+- inputText: " Journey edit."
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible:
+    text: "Reset to default"
+    enabled: true
+- tapOn: "Reset to default"
+- tapOn: "Confirm reset"
+- extendedWaitUntil:
+    visible:
+      text: "Reset to default"
+      enabled: false
+    timeout: 15000
+- tapOn: "Back"
+- assertVisible: "Friendly, For all chats"
+- tapOn: "Back"
+- tapOn: "Back to conversations"
 - assertVisible: "Account: Demo account. Switch account"

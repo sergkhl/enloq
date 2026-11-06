@@ -1,0 +1,84 @@
+/* A chat's AI Menu and its robot (ADR 62), in the app's design. */
+
+/* The robot: filled while AI work can run in the chat (Q14). */
+.robot-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+}
+.robot-button[data-on="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+}
+
+/* The sheet scrolls once its rows outgrow the screen. */
+.sheet-bottom.ai-menu {
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+.ai-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 20px;
+  min-height: 52px;
+}
+.ai-row-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px 0;
+  text-align: left;
+  color: var(--ink);
+}
+.ai-row-label {
+  font-size: 17px;
+}
+.ai-row-detail,
+.ai-row-line {
+  color: var(--muted);
+}
+.ai-row-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-row-line,
+.ai-row-note {
+  font-size: 13px;
+  line-height: 18px;
+}
+.ai-row-note {
+  color: #8a5a00;
+}
+@media (prefers-color-scheme: dark) {
+  .ai-row-note {
+    color: #e0b25a;
+  }
+}
+/* The row's switch keeps only its knob; the row names it. */
+.switch-line.ai-switch {
+  width: auto;
+  padding: 6px 0;
+}
+.switch-line.ai-switch > span:first-child {
+  flex: none;
+}
+.ai-row-more {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  padding: 4px;
+  color: var(--muted);
+}

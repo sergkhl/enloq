@@ -994,8 +994,10 @@ Viewing history or exact sources reads the 30-day cache without implicit
 native backfill.
 
 Group AI processing is initially Off, durable per account and typed group, and
-switched in the group's ⋮ sheet beside **Hide bots**; it works only while the
-account's AI processing is On. The header's reading toggle stays a separate global preference.
+switched in the group's AI Menu beside **Hide bots**
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q13); it
+works only while the account's AI processing is On. AI view, the menu's first
+row, stays a separate global preference.
 Groups have ordinary Send, attachment and reply controls and no outgoing
 Rewrite, tone controls or suggestion generation.
 
@@ -1129,7 +1131,8 @@ human chats default to AI On
 ([ADR 14](adr/0014-account-ai-processing-and-reading-view.md)). Each account's
 **AI processing** switch in Manage accounts controls that account across
 trusted clients, reconnects and restarts; it does not change any budget. While
-it is Off, a private chat's header shows **AI off**, and sync, sending,
+it is Off, each chat's robot is an outline and its AI Menu says so (ADR 62
+Q14), and sync, sending,
 originals, cached results and drafts carry on. Inactive chats are excluded
 from background work; their drafts stay saved. Opening originals or **Load
 earlier messages** never widens model eligibility or rewrites old history;
@@ -1144,7 +1147,7 @@ What the AI does with an incoming private block
   is useful and whether its wording is hostile). In AI reading its
   originals show together in one bubble headed "N messages · time", with no
   AI label or status.
-- **Soften hostile messages.** With the profile switch On (the default),
+- **Soften hostile messages.** With the chat's AI Menu switch On (the default),
   explicitly hostile wording is softened, independently of mood. Anger or
   frustration alone leaves text unchanged. The block head ends with
   **Softened**. Unseen readiness waits for its decision and validated output;
@@ -1185,8 +1188,9 @@ Each block shows its Processing Stage: Waiting for a quiet moment, Queued,
 Preparing, Transcribing, Reading images, Analyzing, Waiting for budget,
 Provider busy (retrying shortly), Paused after repeated format failures,
 Paused while AI processing is Off, Nothing to rewrite, or its error. Waiting
-for budget opens Settings → Budget and the format pause opens Guidance
-([ADR 45](adr/0045-settings-in-the-enloq-app.md) Q8). Chat rows with pending
+for budget opens Settings → Budget and the format pause Settings → AI's
+paused-role notice ([ADR 45](adr/0045-settings-in-the-enloq-app.md) Q8, ADR 62
+Q18). Chat rows with pending
 work show a small activity marker. Clients update from change notifications on
 `/api/events` (chat keys and setting names, never content). Committed changes
 wake this feed at once, including from HTTP worker threads; the server keeps a
@@ -1275,21 +1279,29 @@ Regenerate, and composing stays available. New incoming messages, the owner's
 next message from any client, changed sources or 12 hours from the source time
 remove the options without touching inserted text. The Settings
 **Suggestions** switch hides them for every account and stops queued work.
-Each private chat's Correspondent Profile chooses **Off · On · Idioms**; Idiom
+Each private chat's AI Menu holds its **Automatic suggestions** switch and its
+**Style**, Friendly, Professional or Idioms, for both generation kinds; Idiom
 sets use idioms, proverbs, set expressions and phrasal verbs in the chat's
 language.
 
-The header's robot toggle ([ADR 52](adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md)
-Q13), named "AI view", switches the reading view: pressed shows AI, unpressed
-Originals. The choice is global across accounts and restarts, independent of
-tone and AI processing, and both views stay usable while processing is Off;
-switching preserves drafts and cached results. A private chat's header shows
-Back, the photo, the name, the emotion emoji right after it, the **AI off** tag
-while processing is Off and the toggle; a group's adds its ⋮. Tapping the
-photo, name or emoji opens the Correspondent Profile.
+The header's robot ([ADR 52](adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md)
+Q13, [ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md))
+opens the chat's **AI Menu**, whose first row, **AI view**, switches the
+reading view: On shows AI, Off Originals. The choice is global across accounts
+and restarts, independent of tone and AI processing, and both views stay
+usable while processing is Off; switching preserves drafts and cached
+results. The robot is filled while AI work can run in the chat and an outline
+otherwise, its accessible name saying which (Q14). A private chat's menu
+follows with Automatic suggestions, Style, Emotion, Soften hostile messages,
+Voice and images and Remember this chat, each with its line and a page; a
+server-wide switch that is Off is named under the chat switch it overrides,
+and account AI Off under the rows. A header shows Back, the photo, the name,
+in a private chat the emotion emoji right after it, and the robot; there is
+no AI off tag and no ⋮. Tapping the photo, name or emoji opens the
+Correspondent Profile: the person, their Reminders and Copy chat link (Q4).
 
-The emoji shows the current inferred emotion; the profile gives its label,
-reason, source and time. It expires after 12 hours without starting work.
+The emoji shows the current inferred emotion; the AI Menu's Emotion page gives
+its label, reason, source and time. It expires after 12 hours without starting work.
 Unknown and unavailable evidence use 😐, keeping their distinct labels and
 reasons; that icon alone does not establish a neutral estimate.
 
@@ -1342,11 +1354,11 @@ browsers revalidate every use, so they can no longer display that media.
 
 **Memory** ([ADR 55](adr/0055-person-and-account-memory-and-traits.md)) has
 two parts: Person Memory, what one private chat's person cares about, shown as
-**Cares about** in the Correspondent Profile, and Account Memory, what the
-account's holder cares about, shown in Manage accounts → **About you**. Both
-show the subject's traits beside them, which no model reads. **Remember this
-chat**, in each Correspondent Profile, starts Off; while Off, the chat teaches
-neither memory and reads neither. Updates fold messages already sent to a model after 30 quiet minutes
+**Cares about** on Remember this chat's page in the chat's AI Menu (ADR 62
+Q12), and Account Memory, what the account's holder cares about, shown in
+Manage accounts → **About you**. Both show the subject's traits beside them,
+which no model reads. **Remember this chat**, in each private chat's AI Menu,
+starts Off; while Off, the chat teaches neither memory and reads neither. Updates fold messages already sent to a model after 30 quiet minutes
 in the chat and idle rewriting and transcription across accounts, one memory
 call at a time across the server. Entries cite their sources; a deleted or
 edited cited message removes its entry without a model call. The owner can
@@ -1375,15 +1387,20 @@ once; arrival work precedes suggestions and idle memory, and local
 transcription runs one at a time. A block whose provider refused the call shows _Provider busy, retrying
 shortly_ and retries up to three times at no cost before asking for Retry.
 
-**Guidance**, under Settings → AI, groups the editable Processing Guidance
-fields as Rewriting (Faithfulness rules, Incoming rewriting, Soften hostile
-messages), Suggestion styles (Professional, Friendly) and Other work
-(Emotion extraction, Person memory, Account memory, Response suggestions,
-Idioms, When to suggest and Group briefings), each with its default and
-**Reset to default**; saving creates a new version used from the next model
-call. Emptying the faithfulness rules shows a warning. If a role's output keeps
-failing format checks after a change, it pauses and Settings offers **Reset
-guidance** or **Keep**; automatic work for that role waits meanwhile.
+The owner's editable Processing Guidance fields sit in the chats' AI Menus,
+each on the page of the control it shapes and marked for all chats, since they
+stay server-wide ([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+Q11, Q17): When to suggest under Automatic suggestions; Response suggestions,
+Friendly, Professional and Idioms under Style; Emotion extraction under
+Emotion; Soften hostile messages and Faithfulness rules under Soften hostile
+messages; Incoming rewriting and Faithfulness rules under Voice and images;
+Person memory and Account memory under Remember this chat; and Group
+briefings under a group's Group AI processing. Each opens its editor with its
+default and **Reset to default**; saving creates a new version used from the
+next model call. Members see none. Emptying the faithfulness rules shows a
+warning. If a role's output keeps failing format checks after a change, it
+pauses and Settings → AI offers **Reset guidance** or **Keep** (Q18);
+automatic work for that role waits meanwhile.
 
 Draft updates are revision-checked. A failed save blocks navigation; unsaved
 text has a per-tab recovery copy until saved. Send shows the submission at
@@ -1638,9 +1655,9 @@ attachments and incoming image understanding.
 The reading view is global ([Working and recovery](#working-and-recovery)),
 but a rewritten block's sheet offers **Show original** (**Show originals** for
 several sources) and its originals' sheets **Show AI text**, both with the
-robot icon. The choice holds for that block alone until the header's toggle
-changes ([ADR 52](adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md)
-Q13) and starts no AI work. Local choices survive refresh, streaming and native
+robot icon. The choice holds for that block alone until AI view changes
+([ADR 52](adr/0052-deleted-messages-hiding-and-the-header-ai-toggle.md) Q13)
+and starts no AI work. Local choices survive refresh, streaming and native
 changes while the chat stays open; reopening, reloading or changing the global
 view resets them. No source or version choice edits Telegram or generates a
 reply.

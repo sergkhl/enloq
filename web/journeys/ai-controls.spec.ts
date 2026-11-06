@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ORIGIN, trust } from "./fixture";
+import { ORIGIN, openAiMenu, openAiPage, trust } from "./fixture";
 
 // CU3 (ADR 46): AI controls and the Correspondent Profile in the web, in
-// the app's design.
+// the app's design; since ADR 62 the controls are in the chat's AI Menu.
 test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
 test.beforeEach(async ({ page }) => {
@@ -29,7 +29,7 @@ async function view(page: Page, reading_view: "ai" | "originals") {
   await post(page, "/api/preferences/reading-view", { reading_view });
 }
 
-test("the profile reads the person's details, what they care about and their traits", async ({
+test("the profile keeps the person, and the AI Menu holds the chat's controls", async ({
   page,
 }) => {
   await post(page, "/api/test/details");
@@ -42,13 +42,58 @@ test("the profile reads the person's details, what they care about and their tra
   await expect(page.getByRole("heading", { name: "Morgan Lee" })).toBeVisible();
   await expect(page.getByText("@authored_morgan")).toBeVisible();
   await expect(page.getByText("Authored bio for the journeys.")).toBeVisible();
-  await expect(page.getByText("No current estimate")).toBeVisible();
+  // The chat's AI controls and panels left the profile (ADR 62 Q4, Q12).
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expect(page.getByText("Cares about")).toHaveCount(0);
+  // The profile holds Copy chat link since ADR 47 Q8.
+  await page.getByRole("button", { name: "Copy chat link" }).tap();
+  await expect(page.getByText("Chat link copied")).toBeVisible();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+
+  // The robot is filled while AI runs here, and names it (Q14).
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI on in this chat" }),
+  ).toBeVisible();
+  const menu = await openAiMenu(page);
+  // AI view comes first, then the chat's controls with their lines (Q15).
+  await expect(menu.locator(".ai-row-label")).toHaveText([
+    "AI view",
+    "Automatic suggestions",
+    /^Style · Friendly$/,
+    "Emotion",
+    "Soften hostile messages",
+    "Voice and images",
+    "Remember this chat",
+  ]);
+  await expect(
+    menu.getByText("Show AI text where it exists, in every chat."),
+  ).toBeVisible();
   // Remember this chat is Off by default since ADR 56 (Q9).
   await expect(
-    page.getByRole("switch", { name: "Remember this chat" }),
+    menu.getByRole("switch", { name: "Remember this chat" }),
   ).toHaveAttribute("aria-checked", "false");
+  // Emotion's page holds the emotion's details and, for the owner, its
+  // Guidance field for all chats (Q12, Q17).
+  await menu.getByRole("button", { name: "Emotion", exact: true }).tap();
+  await expect(page.getByRole("heading", { name: "Emotion" })).toBeVisible();
+  await expect(page.getByText("No current estimate")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Emotion extraction, For all chats" })
+    .tap();
   await expect(
-    page.getByText(/^Off by default\. On, Enloq notes what this person/),
+    page.getByRole("textbox", { name: "Emotion extraction" }),
+  ).toBeVisible();
+  await expect(page.getByText(/^For all chats · Version \d+$/)).toBeVisible();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+  await page.getByRole("button", { name: "Back", exact: true }).tap();
+
+  // Remember this chat's page holds what they care about and their traits.
+  await openAiPage(page, "Remember this chat");
+  await expect(
+    page.getByText(/^On, Enloq notes what this person cares about/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Person memory, For all chats" }),
   ).toBeVisible();
   const cares = section(page, "Cares about");
   await expect(cares.getByText("Nothing noted yet.")).toBeVisible();
@@ -90,11 +135,40 @@ test("the profile reads the person's details, what they care about and their tra
     .getByRole("button", { name: "Remove: Answers late at night" })
     .tap();
   await expect(traits.getByText("Answers late at night")).toHaveCount(0);
-  // The profile holds Copy chat link since ADR 47 Q8.
-  await page.getByRole("button", { name: "Copy chat link" }).tap();
-  await expect(page.getByText("Chat link copied")).toBeVisible();
   await page.getByRole("button", { name: "Back", exact: true }).tap();
   await expect(page.getByText("Later message 39")).toBeVisible();
+});
+
+// ADR 62 Q14: the AI Menu says why nothing runs, and the robot is an outline.
+test("account AI Off outlines the robot and says so in the AI Menu", async ({
+  page,
+}) => {
+  await post(page, "/api/test/details");
+  await page.reload();
+  await page.getByRole("button", { name: /^Message details/ }).tap();
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI on in this chat" }),
+  ).toBeVisible();
+  try {
+    await post(page, "/api/accounts/1/processing", { ai_enabled: false });
+    await expect(
+      page.getByRole("button", { name: "AI Menu, AI off in this chat" }),
+    ).toBeVisible();
+    const menu = await openAiMenu(page);
+    await expect(
+      menu.getByText("AI processing is Off for this account."),
+    ).toBeVisible();
+    // The passive "AI off" tag left the header.
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".conversation-header")).not.toContainText(
+      "AI off",
+    );
+  } finally {
+    await post(page, "/api/accounts/1/processing", { ai_enabled: true });
+  }
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI on in this chat" }),
+  ).toBeVisible();
 });
 
 test("a failed block retries, and a block shows its originals alone", async ({

@@ -17,9 +17,10 @@ appId: ${APP_ID}
     timeout: 30000
 - tapOn: "Deletion fixture.*"
 - extendedWaitUntil:
-    visible: "AI view"
+    visible:
+      id: "ai-menu"
     timeout: 15000
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - extendedWaitUntil:
     visible: "Please send the authored layout."
     timeout: 15000
@@ -49,6 +50,6 @@ appId: ${APP_ID}
     visible: "Deleted . 2 messages"
     timeout: 20000
 - assertNotVisible: "2 selected"
-- tapOn: "AI view"
+- runFlow: ../steps/ai-view.yaml
 - tapOn: "Back to conversations"
 - assertVisible: "Account: Demo account. Switch account"

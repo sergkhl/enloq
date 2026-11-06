@@ -1,0 +1,11 @@
+# AI view, the first row of a chat's AI Menu (ADR 62 Q1): the robot opens the
+# menu, the row's switch flips the Reading View, and a tap above the sheet
+# closes it again.
+appId: ${APP_ID}
+---
+- tapOn:
+    id: "ai-menu"
+- tapOn:
+    id: "ai-view-switch"
+- tapOn:
+    point: "50%,10%"

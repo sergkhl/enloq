@@ -1,4 +1,11 @@
-import { expect, MAYA, openRealGroup, REAL_GROUP, test } from "./maya";
+import {
+  expect,
+  MAYA,
+  openAiMenu,
+  openRealGroup,
+  REAL_GROUP,
+  test,
+} from "./maya";
 
 // ADR 59 on real traffic, in the real group Maya joined at the owner's word:
 // from her side only, and it sends nothing, since other people are there (the
@@ -35,11 +42,9 @@ test("Ask answers in the real group, and nothing is sent", async ({ page }) => {
   try {
     await openRealGroup(page);
     await page.reload();
-    await page.getByRole("button", { name: "Conversation actions" }).tap();
-    await page
-      .getByRole("dialog", { name: "Conversation actions" })
-      .getByRole("button", { name: "Ask this group" })
-      .tap();
+    // Ask this group, in the group's AI Menu (ADR 62 Q13).
+    const menu = await openAiMenu(page);
+    await menu.getByRole("button", { name: "Ask this group" }).tap();
     const ask = page.getByRole("region", { name: "Ask this group" });
     const question = ask.getByRole("textbox", { name: "Question" });
     const send = ask.getByRole("button", { name: "Ask", exact: true });

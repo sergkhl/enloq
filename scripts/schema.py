@@ -66,6 +66,7 @@ from enloq.api.routes import (
 )
 from enloq.api.traits import ScaleEdit, TraitsView
 from enloq.application.previews import ConversationPreview, ConversationRow
+from enloq.domain.ai_menu import ChatAi
 from enloq.domain.catalog import (
     CatalogItem,
     CatalogMetadata,
@@ -197,6 +198,7 @@ _, schema = models_json_schema(
             MemberProfile,
             GroupProcessing,
             GroupProcessingEdit,
+            ChatAi,
             Calming,
             CalmingEdit,
             VideoPreparation,

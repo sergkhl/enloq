@@ -1,7 +1,9 @@
 import React from "react";
-import { Bot, ChevronLeft, EllipsisVertical } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+import { RobotButton } from "./AiMenu";
 import { Avatar } from "./Avatar";
 import type { Emotion } from "./Emotion";
+import type { ChatAi } from "../../shared/aiMenu";
 import "./header.css";
 
 // The app's emotion faces (mobile/app/chat/[account]/[peer].tsx): the emoji
@@ -20,41 +22,37 @@ const FACES: Record<string, [string, string]> = {
 };
 
 // A conversation's header in the app's design (ADR 44 Q1, MW2): Back, the
-// avatar, the name with the emotion right after it (ADR 47), the passive AI
-// off tag, the Reading View's robot (ADR 52 Q13) and, in a group, the ⋮
-// actions sheet. The photo and name open the chat's profile, which holds Copy
-// chat link since ADR 47 Q8.
+// avatar, the name with the emotion right after it (ADR 47) and the robot
+// that opens the chat's AI Menu, filled while AI runs there (ADR 62 Q1,
+// Q14). The photo and name open the chat's profile, which holds Copy chat
+// link since ADR 47 Q8.
 export function ConversationHeader({
   account,
   peer,
   title,
   photoId,
   emotion,
-  aiOff,
+  ai,
   onBack,
   backLabel = "Back to conversations",
-  onActions,
   onProfile,
-  view,
-  onView,
+  onMenu,
 }: {
   account: number;
   peer: string;
   title: string;
   photoId: string | null;
   emotion?: Emotion;
-  aiOff: boolean;
+  // The chat's AI Menu state, null until its snapshot is read.
+  ai?: ChatAi | null;
   onBack: () => void;
   // Where Back goes: the list, or an Ask this group answer (ADR 59 Q1).
   backLabel?: string;
-  // A group's actions sheet (ADR 42 Q3); private chats have none.
-  onActions?: () => void;
   // The photo and name open the Correspondent Profile (CU3) or, in a group,
   // the Group Profile (ADR 47 Q7).
   onProfile?: () => void;
-  // The global Reading View, pressed for AI; Saved Messages has none.
-  view?: "ai" | "originals";
-  onView?: (view: "ai" | "originals") => void;
+  // The AI Menu; Saved Messages has none.
+  onMenu?: () => void;
 }) {
   const face = emotion?.code ? FACES[emotion.code] : null;
   const emoji = face && (
@@ -107,28 +105,7 @@ export function ConversationHeader({
           {emoji}
         </span>
       )}
-      {aiOff && <span className="ai-off-tag">AI off</span>}
-      {view && onView && (
-        <button
-          type="button"
-          className="reading-toggle"
-          aria-label="AI view"
-          aria-pressed={view === "ai"}
-          onClick={() => onView(view === "ai" ? "originals" : "ai")}
-        >
-          <Bot size={20} aria-hidden />
-        </button>
-      )}
-      {onActions && (
-        <button
-          type="button"
-          className="header-icon muted"
-          aria-label="Conversation actions"
-          onClick={onActions}
-        >
-          <EllipsisVertical size={22} aria-hidden />
-        </button>
-      )}
+      {onMenu && <RobotButton ai={ai} onOpen={onMenu} />}
     </header>
   );
 }

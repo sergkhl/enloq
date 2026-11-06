@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { peerTab } from "../../shared/chatRoute";
 import type { GroupFilter } from "../../shared/groupBriefings";
 import type { OlderState, Progress } from "../../shared/aiControls";
+import { AI_SCOPES } from "../../shared/aiMenu";
 import type { DeletionOperation } from "../../shared/deletion";
 import type { ReactionView } from "../../shared/reactions";
 import type { Schemas } from "./api";
@@ -116,8 +117,8 @@ export type Snapshot = {
   briefings?: DailyBriefing[];
   briefing_update?: BriefingUpdate | null;
   group_processing?: Schemas["GroupProcessing"] | null;
-  // Whether this private chat calms frustrated or angry messages (ADR 53).
-  calming?: boolean | null;
+  // The chat's AI Menu: its switches and whether AI runs there (ADR 62).
+  ai?: Schemas["ChatAi"] | null;
   // A retained group (ADR 34): cached history, read-only.
   retained?: boolean;
   // The chat's recent deletions (ADR 31, ADR 46 CU4).
@@ -360,7 +361,9 @@ export function useConversation(
   useServerChanges((change) => {
     if (
       change.kind === "refresh" ||
-      change.chats[String(account)]?.includes(`${account}/${peer}`)
+      change.chats[String(account)]?.includes(`${account}/${peer}`) ||
+      // The AI Menu's account and server-wide switches (ADR 62).
+      change.shared.some((scope) => AI_SCOPES.includes(scope))
     )
       void reader.current();
   });
@@ -389,13 +392,15 @@ export function useConversation(
       },
     [snapshot, earlier],
   );
+  // One function for the chat's life, which its AI Menu's pages hold.
+  const reload = useCallback(() => reader.current(), []);
   return {
     snapshot: merged,
     live,
     readAt,
     captured: captured ?? [],
     error,
-    reload: () => reader.current(),
+    reload,
     loadEarlier,
     merge,
   };

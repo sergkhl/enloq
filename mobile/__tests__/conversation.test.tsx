@@ -257,10 +257,11 @@ describe("the conversation screen", () => {
   test("Originals reading is the global choice", async () => {
     await mount();
     await screen.findByText("Anna greets you and asks about tonight.");
-    // The header's robot, pressed for AI (ADR 52 Q13).
-    const toggle = screen.getByRole("togglebutton", { name: "AI view" });
-    expect(toggle.props.accessibilityState).toEqual({ checked: true });
-    await fireEvent.press(toggle);
+    // AI view, the first row of the AI Menu the robot opens (ADR 62 Q1).
+    await fireEvent.press(screen.getByLabelText(/^AI Menu/));
+    const toggle = screen.getByRole("switch", { name: "AI view" });
+    expect(toggle.props.value).toBe(true);
+    await fireEvent(toggle, "valueChange", false);
     expect(await screen.findByText("Hello from Anna")).toBeTruthy();
     expect(view).toBe("originals");
     expect(
@@ -276,16 +277,18 @@ describe("the conversation screen", () => {
     holding = true;
     await mount();
     await screen.findByText("Anna greets you and asks about tonight.");
-    await fireEvent.press(
-      screen.getByRole("togglebutton", { name: "AI view" }),
+    await fireEvent.press(screen.getByLabelText(/^AI Menu/));
+    await fireEvent(
+      screen.getByRole("switch", { name: "AI view" }),
+      "valueChange",
+      false,
     );
     expect(await screen.findByText("Hello from Anna")).toBeTruthy();
     // The read that started first answers with the old choice afterwards.
     await act(async () => held?.("ai"));
-    expect(
-      screen.getByRole("togglebutton", { name: "AI view" }).props
-        .accessibilityState,
-    ).toEqual({ checked: false });
+    expect(screen.getByRole("switch", { name: "AI view" }).props.value).toBe(
+      false,
+    );
     expect(view).toBe("originals");
   });
 
@@ -354,10 +357,14 @@ describe("the conversation screen", () => {
       pathname: "/settings/budget",
       params: { section: "daily" },
     });
+    // A format pause opens Settings → AI's notice (ADR 62 Q18).
     await fireEvent.press(
       screen.getByText("Paused after repeated format failures"),
     );
-    expect(mockRouter.push).toHaveBeenCalledWith("/settings/guidance");
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: "/settings/ai",
+      params: { section: "paused" },
+    });
     expect(
       screen.getByRole("link", { name: "Waiting for budget" }),
     ).toBeTruthy();

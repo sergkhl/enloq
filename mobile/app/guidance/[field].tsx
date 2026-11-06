@@ -11,16 +11,18 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SmallButton } from "../../../src/BudgetCard";
-import { useConnection } from "../../../src/connection";
-import { GUIDANCE_FIELDS, GUIDANCE_LIMIT } from "../../../../shared/guidance";
-import { message, useSettings } from "../../../src/settings";
-import { Explanation, RowNote } from "../../../src/settingsUi";
-import { usePalette } from "../../../src/theme";
+import { SmallButton } from "../../src/BudgetCard";
+import { useConnection } from "../../src/connection";
+import { GUIDANCE_FIELDS, GUIDANCE_LIMIT } from "../../../shared/guidance";
+import { message, useSettings } from "../../src/settings";
+import { Explanation, RowNote } from "../../src/settingsUi";
+import { usePalette } from "../../src/theme";
 
-// One Processing Guidance field's editor (ADR 45): the text with its count,
-// Save, Reset to default after a confirmation, and the default text. Leaving
-// with unsaved text asks first, from Back, Android's back or iOS's swipe.
+// One Processing Guidance field's editor (ADR 45), opened from the AI Menu
+// page of the control it shapes (ADR 62 Q11, Q17): the text with its count,
+// Save, Reset to default after a confirmation, and the default text. It is
+// one text for all chats, with the guidance's version. Leaving with unsaved
+// text asks first, from Back, Android's back or iOS's swipe.
 export default function GuidanceFieldRoute() {
   const { connection } = useConnection();
   if (connection.status === "unpaired") return <Redirect href="/pair" />;
@@ -30,7 +32,7 @@ export default function GuidanceFieldRoute() {
 
 function leave() {
   if (router.canGoBack()) router.back();
-  else router.replace("/settings/guidance");
+  else router.replace("/chats");
 }
 
 function Editor() {
@@ -114,6 +116,9 @@ function Editor() {
         ) : (
           <>
             <Explanation>{field.explanation}</Explanation>
+            <Explanation>
+              {`For all chats · Version ${settings?.guidance?.version ?? 0}`}
+            </Explanation>
             {asking === "leave" ? (
               <View style={[styles.ask, { borderColor: palette.line }]}>
                 <Text style={[styles.body, { color: palette.text }]}>

@@ -39,10 +39,3 @@
   width: 44px;
   height: 44px;
 }
-/* Its row in the group's ⋮ sheet. */
-.sheet-item.ask-row > span {
-  flex: 1;
-}
-.sheet-item.ask-row svg {
-  color: var(--muted);
-}

@@ -95,11 +95,12 @@ export const EXPLAIN = {
     "Changes apply from the next model call. A protected core keeps messages as data and enforces the output format.",
 };
 
-// A budget or pause message's Settings section (ADR 45 Q8).
-export type SettingsTarget = "daily" | "group" | "guidance";
+// A budget or pause message's Settings section (ADR 45 Q8): a budget, or
+// Settings → AI's paused-role notice (ADR 62 Q18).
+export type SettingsTarget = "daily" | "group" | "paused";
 
 // The private chat stages that Settings can act on.
 export const STAGE_TARGETS: Record<string, SettingsTarget> = {
   budget: "daily",
-  format_paused: "guidance",
+  format_paused: "paused",
 };

@@ -27,12 +27,14 @@ def register(app):
         conversation = app.state.accounts.get(1)
         store = conversation.store
         if body.get("action") == "stats":
+            # Reminder sets only: earlier journeys' chats may still finish
+            # suggestions of their own on the shared fixture.
             return {
                 "requests": len(
                     [
                         1
-                        for role, _ in conversation.engine.calls
-                        if role == "response_suggestions"
+                        for role, packet in conversation.engine.calls
+                        if role == "response_suggestions" and packet.get("reminders")
                     ]
                 ),
                 "record": conversation.suggestions.record(KEY),

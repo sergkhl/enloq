@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { chooseView, seedGroups, trust } from "./fixture";
+import { chooseView, openAiMenu, seedGroups, trust } from "./fixture";
 
 // MW2: reading in the app's design.
 test.use({ permissions: ["clipboard-read", "clipboard-write"] });
@@ -73,12 +73,31 @@ test("a group's briefing opens a citation in place and returns", async ({
   await seedGroups(page);
   await page.getByRole("tab", { name: "Groups" }).tap();
   await page.getByRole("button", { name: /^Basic discussion/ }).tap();
-  await expect(page.getByText("AI off")).toBeVisible();
-  await page.getByRole("button", { name: "Conversation actions" }).tap();
-  const processing = page.getByRole("switch", { name: "Group AI processing" });
+  // The robot is an outline while Group AI processing is Off (ADR 62 Q14),
+  // and the group's AI Menu holds its switch (Q13).
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI off in this chat" }),
+  ).toBeVisible();
+  const menu = await openAiMenu(page);
+  await expect(menu.locator(".ai-row-label")).toHaveText([
+    "AI view",
+    "Group AI processing",
+    "Hide bots",
+  ]);
+  const processing = menu.getByRole("switch", { name: "Group AI processing" });
   await processing.tap();
   await expect(processing).toHaveAttribute("aria-checked", "true");
+  // Ask this group shows while Group AI processing is On (ADR 59 Q1).
+  await expect(menu.locator(".ai-row-label")).toHaveText([
+    "AI view",
+    "Group AI processing",
+    "Ask this group",
+    "Hide bots",
+  ]);
   await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI on in this chat" }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: /^Update briefing/ })
     .first()
@@ -129,9 +148,7 @@ test("a group's header opens its Group Profile, which copies the chat link", asy
   await page.getByRole("button", { name: "Copy chat link" }).tap();
   await expect(page.getByText("Chat link copied")).toBeVisible();
   await page.getByRole("button", { name: "Back", exact: true }).tap();
-  await expect(
-    page.getByRole("button", { name: "Conversation actions" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^AI Menu/ })).toBeVisible();
 });
 
 // ADR 51 Q13, Q14: in a group another person's run has their name and avatar,

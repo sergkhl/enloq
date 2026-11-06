@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { ORIGIN, trust } from "./fixture";
+import { ORIGIN, openAiMenu, trust } from "./fixture";
 
-// ADR 53: a calmed message carries a small Calmed label (Q5), and the
-// Correspondent Profile's Calm this chat turns calming off for that chat
-// (Q4), leaving what was calmed as it is (Q9).
+// ADR 53: a calmed message carries a small Calmed label (Q5), and the chat's
+// AI Menu's Soften hostile messages turns calming off for that chat (Q4, ADR
+// 62), leaving what was calmed as it is (Q9).
 test.beforeEach(async ({ page }) => {
   await trust(page);
 });
 
-test("a hostile message shows Softened, and its profile turns softening off", async ({
+test("a hostile message shows Softened, and its AI Menu turns softening off", async ({
   page,
 }) => {
   const seeded = await page.request.post("/api/test/calming", {
@@ -25,25 +25,35 @@ test("a hostile message shows Softened, and its profile turns softening off", as
     .last();
   await expect(bubble.locator(".calmed-mark")).toHaveText(" · Softened");
 
-  const profile = page.getByRole("button", {
-    name: /^Calming fixture,.* open profile$/,
-  });
-  await profile.tap();
-  const calm = page.getByRole("switch", { name: "Soften hostile messages" });
+  // A tap on the menu's switch flips it in place (ADR 62 Q16).
+  let menu = await openAiMenu(page);
+  const calm = menu.getByRole("switch", { name: "Soften hostile messages" });
   await expect(calm).toHaveAttribute("aria-checked", "true");
   await expect(calm).toBeEnabled();
   await calm.tap();
   await expect(calm).toHaveAttribute("aria-checked", "false");
-  await page.getByRole("button", { name: "Back", exact: true }).tap();
+  await page.keyboard.press("Escape");
   // Switching off leaves the calmed message calmed.
   await expect(bubble.locator(".calmed-mark")).toHaveText(" · Softened");
 
-  // The choice is kept, and turns calming back on.
-  await profile.tap();
+  // The choice is kept, and its page turns calming back on, under its
+  // Guidance fields for all chats (Q17).
+  menu = await openAiMenu(page);
   await expect(calm).toHaveAttribute("aria-checked", "false");
-  await expect(calm).toBeEnabled();
-  await calm.tap();
-  await expect(calm).toHaveAttribute("aria-checked", "true");
+  await menu.getByRole("button", { name: "Soften hostile messages" }).tap();
+  const pageCalm = page.getByRole("switch", {
+    name: "Soften hostile messages",
+  });
+  await expect(pageCalm).toHaveAttribute("aria-checked", "false");
+  await expect(
+    page.getByRole("button", { name: /^Soften hostile messages, / }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Faithfulness rules, / }),
+  ).toBeVisible();
+  await expect(pageCalm).toBeEnabled();
+  await pageCalm.tap();
+  await expect(pageCalm).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Back", exact: true }).tap();
 });
 

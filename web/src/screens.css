@@ -310,7 +310,8 @@
 .browser-notifications > * + * {
   border-top: 1px solid var(--line);
 }
-/* Processing guidance (ADR 45). */
+/* Processing guidance (ADR 45): Settings → AI's paused-role notice (ADR 62
+   Q18), outlined when a block's pause opened it, and a field's editor. */
 .paused-role {
   display: flex;
   flex-direction: column;
@@ -320,23 +321,17 @@
   background: #f6dfb0;
   color: #6b4500;
 }
+.paused-role + .paused-role {
+  margin-top: 12px;
+}
+.paused-role.outlined {
+  outline: 2px solid var(--accent);
+}
 .paused-role p,
 .ask p {
   margin: 0;
   font-size: 15px;
   line-height: 21px;
-}
-.guidance-preview {
-  margin: -4px 0 0;
-  padding-bottom: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 13px;
-  color: var(--muted);
-}
-.screen-card > div:has(> .guidance-preview) + div {
-  border-top: 1px solid var(--line);
 }
 .ask {
   display: flex;

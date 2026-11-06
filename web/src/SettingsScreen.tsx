@@ -39,6 +39,7 @@ import {
   resetLabel,
   type BudgetFamily,
 } from "../../shared/settings";
+import { PAUSED_ROLES } from "../../shared/guidance";
 import { PEOPLE, waitingLabel } from "../../shared/people";
 
 export type Settings = components["schemas"]["Settings"];
@@ -258,19 +259,50 @@ export function BudgetScreen({
 }
 
 // Settings → AI (ADR 47 Q12): the Processing Character Threshold, the
-// Concurrency Limit, the Chat Memory and suggestions switches, and Guidance;
-// above them, while it lasts, a decision-model outage (ADR 49 Q14).
+// Concurrency Limit and the Memory and suggestions switches; above them,
+// while it lasts, a decision-model outage (ADR 49 Q14), and each role paused
+// after repeated format failures with Keep and Reset guidance (ADR 62 Q18).
+// A block's "Paused after repeated format failures" opens it with the notice
+// outlined (ADR 45 Q8). Processing Guidance's fields are in the chats' AI
+// Menus (ADR 62 Q11).
 export function AiScreen({
   timezone,
+  section,
   onBack,
-  onGuidance,
 }: {
   timezone: string;
+  section: "paused" | null;
   onBack: () => void;
-  onGuidance: () => void;
 }) {
   const { settings, error, write } = useSettings();
   const outage = settings?.decision_model;
+  const [outlined, setOutlined] = useState(section === "paused");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const notice = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
+  const paused = settings?.guidance?.paused ?? [];
+  useEffect(() => {
+    if (section !== "paused" || scrolled.current || !paused.length) return;
+    scrolled.current = true;
+    notice.current?.scrollIntoView({ block: "start" });
+  }, [section, paused.length]);
+  useEffect(() => {
+    if (!outlined) return;
+    const timer = setTimeout(() => setOutlined(false), 2500);
+    return () => clearTimeout(timer);
+  }, [outlined]);
+  async function act(path: string, body: unknown) {
+    setBusy(true);
+    setProblem("");
+    try {
+      await write(path, body);
+    } catch (failure) {
+      setProblem(message(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <ScreenFrame title="AI" onBack={onBack}>
       {outage && !outage.available && outage.since ? (
@@ -278,6 +310,50 @@ export function AiScreen({
           {decisionModelNotice(outage.since, timezone)}
         </Note>
       ) : null}
+      {paused.length > 0 && (
+        <div ref={notice}>
+          {paused.map((role) => {
+            const label = PAUSED_ROLES[role]?.label ?? role;
+            return (
+              <div
+                key={role}
+                className={`paused-role${outlined ? " outlined" : ""}`}
+                role="group"
+                aria-label={`${label} paused`}
+              >
+                <p>
+                  {`${label} failed the output format three times since the last guidance change, so automatic processing waits. Deliberate Rewrite still works.`}
+                </p>
+                <div className="button-row">
+                  <SmallButton
+                    label="Keep"
+                    name={`Keep guidance for ${label}`}
+                    disabled={busy}
+                    onClick={() => void act("guidance/keep", { role })}
+                  />
+                  <SmallButton
+                    label="Reset guidance"
+                    name={`Reset guidance for ${label}`}
+                    primary
+                    disabled={busy}
+                    onClick={() =>
+                      void act("guidance", {
+                        fields: Object.fromEntries(
+                          (PAUSED_ROLES[role]?.fields ?? []).map((field) => [
+                            field,
+                            null,
+                          ]),
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {problem && <Note>{problem}</Note>}
       {settings ? (
         <Section>
           <MinimumCharacters
@@ -298,12 +374,6 @@ export function AiScreen({
             route="suggestions"
             value={settings.suggestions}
             write={write}
-          />
-          <LinkRow
-            label="Guidance"
-            detail={`Version ${settings.guidance?.version ?? 0}`}
-            badge={settings.guidance?.paused.length ? "Paused" : undefined}
-            onOpen={onGuidance}
           />
         </Section>
       ) : error ? (

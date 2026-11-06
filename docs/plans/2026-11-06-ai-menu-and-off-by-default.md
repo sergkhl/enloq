@@ -1,7 +1,8 @@
 # The AI Menu and private-chat AI Off by default
 
 Last meaningful update: 2026-11-06
-Status: active; implementation awaits the owner's go-ahead.
+Status: active since the owner's go-ahead on 2026-11-06; Phase 1 is being
+delivered.
 
 Deliver the adopted
 [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md), with
@@ -168,6 +169,21 @@ quality in [inference](../inference.md#retained-acceptance-limits).
 
 - 2026-11-06: written from ADR 62 as adopted in `1e3be1f`. No code changed,
   no model requests, no sends.
+- 2026-11-06, Phase 1 built: the snapshot's `ai` object (`ChatAi`), the AI
+  Menu and its pages in both clients, the trimmed profiles, Settings → AI's
+  paused-role notice and `shared/aiMenu.ts`. Until Phase 3 gives Emotion and
+  Voice and images their switches, their rows have pages and no switch, so
+  Guidance's Emotion extraction and Incoming rewriting fields and the
+  emotion's details have their homes from Phase 1 on; a private chat's robot
+  is filled whenever its account's AI is On, since emotion and media
+  rewriting still run in every recent chat. A screen over the web's
+  conversation now makes it inert, so a field editor opened from a page
+  leaves one Back in reach. `scripts/reminder_fixture.py` counts only
+  reminder-set requests, which settles TODO's reminders-journey count.
+  Checks in the task checkout: `./scripts/check` passed (ruff, backend
+  4,039, the 66 web journeys, the app's typecheck, Prettier and 361 Jest
+  tests), and the Android journeys passed on the S9+ in 38 minutes with
+  Enloq Dev against the fixture, the AI Menu steps included.
 
 ## Open findings
 

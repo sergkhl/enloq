@@ -10,13 +10,15 @@ import { mockParams, mockStore, reset, serve } from "./setup";
 import React from "react";
 import { messageDate } from "../../shared/messageTime";
 import AboutRoute from "../app/about/[account]";
-import ProfileRoute from "../app/profile/[account]/[peer]";
+import AiPageRoute from "../app/ai/[account]/[peer]";
+import { showChat } from "../src/AiMenu";
 import type { Schemas } from "../src/api";
-import { writeCached } from "../src/cache";
 import { ConnectionProvider } from "../src/connection";
+import type { Snapshot } from "../src/conversation";
 
-// ADR 55: Remember this chat, the person's Cares about and Traits in the
-// Correspondent Profile, and About you, opened from Manage accounts.
+// ADR 55: Remember this chat, the person's Cares about and Traits on its
+// page in the chat's AI Menu (ADR 62 Q12), and About you, opened from Manage
+// accounts.
 
 type Traits = Schemas["TraitsView"];
 type Scale = Schemas["TraitScale"];
@@ -146,11 +148,40 @@ const ACCOUNTS = {
   ],
 };
 
-describe("the Correspondent Profile's memory and traits", () => {
+describe("Remember this chat's page: memory and traits", () => {
   let traits: Traits;
   let memory: Schemas["MemoryView"];
   let remember: boolean;
   let posts: { url: string; body: unknown }[];
+
+  // The open chat's snapshot, as the chat screen beneath the page reads it.
+  const publish = (): void =>
+    showChat("1/user:101", {
+      snapshot: {
+        timezone: "UTC",
+        chat: {
+          account_id: 1,
+          peer: "user:101",
+          title: "Anna",
+          photo_id: null,
+        },
+        messages: [],
+        blocks: [],
+        ai: {
+          account: true,
+          running: true,
+          suggestions: true,
+          style: "friendly",
+          calming: true,
+          remember,
+          server_suggestions: true,
+          server_memory: true,
+        },
+      } as unknown as Snapshot,
+      readAt: Date.now(),
+      live: true,
+      reload: async () => publish(),
+    });
 
   beforeEach(() => {
     reset();
@@ -170,23 +201,12 @@ describe("the Correspondent Profile's memory and traits", () => {
     mockStore.set("enloq.credential", SAVED);
     mockParams.account = "1";
     mockParams.peer = "user:101";
-    writeCached("chat:1/user:101", {
-      timezone: "UTC",
-      chat: { account_id: 1, peer: "user:101", title: "Anna", photo_id: null },
-      messages: [],
-      blocks: [],
-    });
+    mockParams.control = "remember";
+    publish();
     serve((url, init) => {
       if (url.endsWith("/api/accounts")) return { status: 200, body: ACCOUNTS };
-      if (url.endsWith("/profile"))
-        return {
-          status: 200,
-          body: { name: "Anna Petrova", username: "", phone: null, bio: "" },
-        };
-      if (url.endsWith("/calming"))
-        return { status: 200, body: { enabled: true } };
-      if (url.endsWith("/suggestions/settings"))
-        return { status: 200, body: { automatic: true, style: "friendly" } };
+      if (url.endsWith("/api/settings"))
+        return { status: 404, body: { detail: "Not here" } };
       if (url.endsWith("/remember")) {
         if (init.method === "POST") {
           const body = JSON.parse(init.body!);
@@ -210,7 +230,7 @@ describe("the Correspondent Profile's memory and traits", () => {
   const mount = () =>
     render(
       <ConnectionProvider>
-        <ProfileRoute />
+        <AiPageRoute />
       </ConnectionProvider>,
     );
   const traitsPanel = async () =>
@@ -218,13 +238,12 @@ describe("the Correspondent Profile's memory and traits", () => {
 
   test("Remember this chat is off by default, and turns on (ADR 56 Q9)", async () => {
     await mount();
-    await screen.findByText("Anna Petrova");
-    const switchRow = screen.getByLabelText("Remember this chat");
+    const switchRow = await screen.findByLabelText("Remember this chat");
     await waitFor(() => expect(switchRow.props.disabled).toBe(false));
     expect(switchRow.props.value).toBe(false);
     expect(
       screen.getByText(
-        "Off by default. On, Enloq notes what this person cares about and their traits, and what you care about from this chat. Off, this chat teaches and uses neither; what's noted stays until you clear it.",
+        "On, Enloq notes what this person cares about and their traits, and what you care about from this chat. Off, this chat teaches and uses neither; what's noted stays until you clear it.",
       ),
     ).toBeTruthy();
     await fireEvent(switchRow, "valueChange", true);

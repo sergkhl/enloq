@@ -1,5 +1,12 @@
 import type { Page } from "@playwright/test";
-import { expect, MAYA, openTestGroup, TEST_GROUP, test } from "./maya";
+import {
+  expect,
+  MAYA,
+  openAiMenu,
+  openTestGroup,
+  TEST_GROUP,
+  test,
+} from "./maya";
 
 // ADR 59 and ADR 60 in the test group of the Owner Account and Maya, on the
 // real routes, from Maya's side: an answer with a source that opens the group,
@@ -52,9 +59,9 @@ async function ensureMessages(page: Page) {
   }
 }
 
+// Ask this group, in the group's AI Menu (ADR 62 Q13).
 async function openAsk(page: Page) {
-  await page.getByRole("button", { name: "Conversation actions" }).tap();
-  const sheet = page.getByRole("dialog", { name: "Conversation actions" });
+  const sheet = await openAiMenu(page);
   const offered = sheet.getByRole("button", { name: "Ask this group" });
   if (!(await offered.isVisible({ timeout: 2000 }).catch(() => false))) {
     const processing = sheet.getByRole("switch", {

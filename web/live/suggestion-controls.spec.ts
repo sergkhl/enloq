@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   MAYA,
+  openAiMenu,
   openMayaChat,
   ORIGIN,
   OWNER_ACCOUNT,
@@ -11,8 +12,9 @@ import {
 // ADR 56 IS7 on the live service, in the Maya chat only (AGENTS.md, Live
 // Telegram sends). Maya asks a calm question that needs an answer: under either
 // signal the Owner Account gets suggestions though its emotion is neutral. A
-// fold holds across a reload; the profile's Suggestions choice turns them Off,
-// then Idioms, and Maya's good news then gets an idiom set (Q20 A). the Owner
+// fold holds across a reload; the AI Menu's Automatic suggestions turns them
+// Off, Style's page then chooses Idioms (ADR 62), and Maya's good news then
+// gets an idiom set (Q20 A). the Owner
 // Account's answer withdraws it. The chat's choice is read first and put back;
 // Remember this chat is only read.
 const CHAT = `/api/accounts/${OWNER_ACCOUNT}/chats/user:${MAYA}`;
@@ -90,24 +92,24 @@ test("a calm question gets suggestions; fold, choice and idioms hold", async ({
     await reopen.tap();
     await expect.poll(async () => (await suggestions(page)).folded).toBe(false);
 
-    // The profile: Off hides the set; Idioms shows it again, as written.
-    const profile = page.getByRole("button", { name: /open profile$/ });
+    // The AI Menu: Off hides the set; Idioms shows it again, as written.
     const radios = page.getByRole("radiogroup", { name: "Style" });
-    await profile.tap();
-    await expect(radios.getByRole("radio")).toHaveCount(3);
+    let menu = await openAiMenu(page);
     await expect(
-      page.getByRole("switch", { name: "Remember this chat" }),
+      menu.getByRole("switch", { name: "Remember this chat" }),
     ).toHaveAttribute("aria-checked", String(remembered));
-    const automatic = page.getByRole("switch", {
+    const automatic = menu.getByRole("switch", {
       name: "Automatic suggestions",
     });
     await automatic.tap();
     await expect(automatic).toHaveAttribute("aria-checked", "false");
-    await page.getByRole("button", { name: "Back", exact: true }).tap();
+    await page.keyboard.press("Escape");
     await expect(area).toHaveCount(0);
-    await profile.tap();
+    menu = await openAiMenu(page);
     await automatic.tap();
     await expect(automatic).toHaveAttribute("aria-checked", "true");
+    await menu.getByRole("button", { name: /^Style/ }).tap();
+    await expect(radios.getByRole("radio")).toHaveCount(3);
     await radios.getByRole("radio", { name: "Idioms" }).tap();
     await expect(radios.getByRole("radio", { name: "Idioms" })).toHaveAttribute(
       "aria-checked",

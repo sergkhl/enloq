@@ -1,5 +1,13 @@
 import type { Page } from "@playwright/test";
-import { expect, MAYA, openMayaChat, OWNER_ACCOUNT, test } from "./maya";
+import {
+  chooseView,
+  expect,
+  MAYA,
+  openMayaChat,
+  OWNER_ACCOUNT,
+  readView,
+  test,
+} from "./maya";
 
 // ADR 53 CA5 and ADR 54 on the live service, in the Maya chat only (AGENTS.md,
 // Live Telegram sends). Maya sends an angry authored message, a plain one and
@@ -203,11 +211,10 @@ test("the AI view shows them as the Owner Account reads them", async ({
   expect(calmed.calmed && combined.state === "original").toBe(true);
   expect(image.state).toBe("ready");
   await openMayaChat(page, "owner");
-  const toggle = page.getByRole("button", { name: "AI view" });
-  const remembered = await toggle.getAttribute("aria-pressed");
+  // AI view, in the AI Menu (ADR 62 Q1), as the owner left it.
+  const remembered = await readView(page);
   try {
-    if (remembered !== "true") await toggle.tap();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    if (remembered !== "ai") await chooseView(page, "ai");
     const head = (block: Block) =>
       bubble(page, block).locator(".bubble-ai-head");
     await expect(head(calmed)).toHaveText(/^AI · 1 message · .*Softened/);
@@ -222,9 +229,6 @@ test("the AI view shows them as the Owner Account reads them", async ({
     await bubble(page, calmed).scrollIntoViewIfNeeded();
     await page.screenshot({ path: "../.local/live-results/calming.png" });
   } finally {
-    if (remembered !== "true") {
-      await toggle.tap();
-      await expect(toggle).toHaveAttribute("aria-pressed", String(remembered));
-    }
+    if (remembered !== "ai") await chooseView(page, remembered);
   }
 });

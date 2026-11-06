@@ -1,127 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSettings } from "./SettingsScreen";
-import {
-  Explanation,
-  LinkRow,
-  Note,
-  ScreenFrame,
-  Section,
-  SmallButton,
-} from "./screenUi";
-import {
-  GUIDANCE_FIELDS,
-  GUIDANCE_GROUPS,
-  GUIDANCE_LIMIT,
-  PAUSED_ROLES,
-} from "../../shared/guidance";
-import { EXPLAIN } from "../../shared/settings";
+import { Explanation, Note, ScreenFrame, SmallButton } from "./screenUi";
+import { GUIDANCE_FIELDS, GUIDANCE_LIMIT } from "../../shared/guidance";
 
 const message = (problem: unknown) =>
   problem instanceof Error ? problem.message : String(problem);
 
-// Guidance, Processing Guidance under Settings → AI (ADR 45, ADR 44 MW4, ADR
-// 47 Q12), as the app's screen: its version,
-// a notice for each role paused after repeated format failures with Keep and
-// Reset guidance, and the 11 fields, each opening its editor.
-export function GuidanceScreen({
-  onBack,
-  onField,
-}: {
-  onBack: () => void;
-  onField: (name: string) => void;
-}) {
-  const { settings, error, write } = useSettings();
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState("");
-  const guidance = settings?.guidance;
-  async function act(path: string, body: unknown) {
-    setBusy(true);
-    setProblem("");
-    try {
-      await write(path, body);
-    } catch (failure) {
-      setProblem(message(failure));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <ScreenFrame title="Guidance" onBack={onBack}>
-      {!guidance ? (
-        <Explanation>
-          {error ? "Settings show once the server answers." : "Loading…"}
-        </Explanation>
-      ) : (
-        <>
-          <Explanation>{`Version ${guidance.version}. ${EXPLAIN.guidance}`}</Explanation>
-          {guidance.paused.map((role) => {
-            const paused = PAUSED_ROLES[role];
-            const label = paused?.label ?? role;
-            return (
-              <div
-                key={role}
-                className="paused-role"
-                role="group"
-                aria-label={`${label} paused`}
-              >
-                <p>
-                  {`${label} failed the output format three times since the last guidance change, so automatic processing waits. Deliberate Rewrite still works.`}
-                </p>
-                <div className="button-row">
-                  <SmallButton
-                    label="Keep"
-                    name={`Keep guidance for ${label}`}
-                    disabled={busy}
-                    onClick={() => void act("guidance/keep", { role })}
-                  />
-                  <SmallButton
-                    label="Reset guidance"
-                    name={`Reset guidance for ${label}`}
-                    primary
-                    disabled={busy}
-                    onClick={() =>
-                      void act("guidance", {
-                        fields: Object.fromEntries(
-                          (paused?.fields ?? []).map((field) => [field, null]),
-                        ),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
-          {problem && <Note>{problem}</Note>}
-          {GUIDANCE_GROUPS.map((group) => (
-            <Section key={group.title} title={group.title}>
-              {group.fields.map((field) => {
-                const current = guidance.fields[field.name] ?? "";
-                const edited =
-                  current !== (guidance.defaults[field.name] ?? "");
-                return (
-                  <div key={field.name}>
-                    <LinkRow
-                      label={field.label}
-                      detail={edited ? "Edited" : "Default"}
-                      onOpen={() => onField(field.name)}
-                    />
-                    <p className="guidance-preview">
-                      {current.split("\n")[0] || "Empty"}
-                    </p>
-                  </div>
-                );
-              })}
-            </Section>
-          ))}
-        </>
-      )}
-    </ScreenFrame>
-  );
-}
-
-// One field's editor: the text with its count, Save, Reset to default after a
-// confirmation, and the default text. Leaving with unsaved text asks first.
+// One Processing Guidance field's editor, opened from the AI Menu page of the
+// control it shapes (ADR 62 Q11, Q17): the text with its count, Save, Reset to
+// default after a confirmation, and the default text. It is one text for all
+// chats, with the guidance's version. Leaving with unsaved text asks first.
 export function GuidanceFieldScreen({
   name,
   onBack,
@@ -175,6 +64,9 @@ export function GuidanceFieldScreen({
       ) : (
         <>
           <Explanation>{field.explanation}</Explanation>
+          <Explanation>
+            {`For all chats · Version ${settings?.guidance?.version ?? 0}`}
+          </Explanation>
           {asking === "leave" && (
             <div className="ask">
               <p>{`Discard your changes to ${field.label}?`}</p>

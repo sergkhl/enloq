@@ -1,8 +1,9 @@
 # AI controls and the Correspondent Profile (ADR 46 CU3) on the fixture's
-# authored chats: the profile's Telegram details, Remember this chat Off by
-# default (ADR 56 Q9) and what the person cares about (ADR 55) on "Message
-# details", the not-analysed note on "Mixed block", and Rewrite earlier
-# messages on "Earlier". Retry is left to the web journey and the app's
+# authored chats: the profile's Telegram details on "Message details", then
+# its AI Menu (ADR 62): AI view and the chat's controls, Remember this chat Off
+# by default (ADR 56 Q9) and, on its page, what the person cares about (ADR
+# 55); the not-analysed note on "Mixed block", and Rewrite earlier messages
+# on "Earlier". Retry is left to the web journey and the app's
 # tests: a failing engine in the shared fixture would fail the other flows.
 # Selectors stay ASCII: without a UTF-8 locale Maestro misreads the rest.
 # A chat in the list may sit above where an earlier flow left it, so each
@@ -28,24 +29,45 @@ appId: ${APP_ID}
     timeout: 15000
 - assertVisible: "@authored_morgan"
 - assertVisible: "Authored bio for the journeys."
+# The chat's AI controls and panels left the profile (ADR 62 Q4, Q12).
+- assertNotVisible: "Remember this chat"
+- assertNotVisible: "Cares about"
+# Copy chat link left the header for the profile (ADR 47 Q8).
 - scrollUntilVisible:
-    element:
-      id: "remember-this-chat"
+    element: "Copy chat link"
+- tapOn: "Copy chat link"
+- scrollUntilVisible:
+    element: "Chat link copied"
+- tapOn: "Back"
+# The robot opens the AI Menu: AI view first, then the chat's controls.
+- tapOn:
+    id: "ai-menu"
 - assertVisible:
-    id: "remember-this-chat"
+    id: "ai-view-switch"
+    checked: true
+- assertVisible:
+    id: "ai-emotion"
+- assertVisible:
+    id: "ai-media"
+- assertVisible:
+    id: "ai-remember-switch"
     checked: false
+# Remember this chat's page holds what the person cares about (Q12).
+- tapOn:
+    id: "ai-remember"
+- extendedWaitUntil:
+    visible: "Cares about"
+    timeout: 15000
 - scrollUntilVisible:
     element:
       id: "takeaway-new"
 - tapOn:
     id: "takeaway-new"
 - inputText: "Prefers calls on Friday"
-# The profile's Suggestions choice (ADR 56) pushes the field low enough for
-# the keyboard to cover its counter, so the counter is read once it closes.
+# The keyboard can cover the counter, so it is read once it closes.
 - hideKeyboard
 - assertVisible: "23/300 bytes"
-# Traits have an Add of their own, named Add trait note. The longer profile
-# can leave the button below the screen once the keyboard closes.
+# Traits have an Add of their own, named Add trait note.
 - scrollUntilVisible:
     element: "Add note"
 - tapOn: "Add note"
@@ -61,13 +83,6 @@ appId: ${APP_ID}
     element: "Nothing noted yet."
     direction: UP
     timeout: 30000
-# Copy chat link left the header for the profile (ADR 47 Q8).
-- scrollUntilVisible:
-    element: "Copy chat link"
-- tapOn: "Copy chat link"
-# Its note shows below the button, which now ends the longer profile.
-- scrollUntilVisible:
-    element: "Chat link copied"
 - tapOn: "Back"
 - tapOn: "Back to conversations"
 - scrollUntilVisible:
