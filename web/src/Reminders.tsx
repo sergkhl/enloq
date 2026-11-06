@@ -520,9 +520,6 @@ export function ReminderEditorScreen({
       onBack={onBack}
     >
       <p className="reminder-person">{title}</p>
-      {saved?.status === "paused" && (
-        <Note tone="info">Paused: Automatic suggestions is Off.</Note>
-      )}
       {rule && (
         <>
           <Section title="Repeat">
@@ -782,7 +779,6 @@ export function ProfileReminders({
           <span>{ideaLine(item.schedule.idea) || "Check in"}</span>
           <small>
             {rowDate(item.occurrence, item.next_at, item.schedule.timezone)}
-            {item.status === "paused" ? " · Paused" : ""}
           </small>
         </button>
       ))}
@@ -984,9 +980,7 @@ export function RemindersList({
                     <span className="row-preview">
                       {unavailable
                         ? "Unavailable: sign in to this account."
-                        : item.status === "paused"
-                          ? "Paused: Automatic suggestions is Off."
-                          : line}
+                        : line}
                     </span>
                   </span>
                 </span>

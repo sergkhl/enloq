@@ -378,10 +378,13 @@ when it no longer fits. Its options answer messages that arrived after a
 reminder fell due. Nothing sends automatically. Without an idea, any message
 you send after the due time completes a reminder, from any Telegram app; with
 one, only a send whose draft took one of its options does, edited or not.
-Dismiss completes either, and a Once reminder then ends. Either Automatic
-suggestions switch pauses reminders, with future-only resumption; Account AI
-Off permits alerts but blocks suggestions. Offline, the app's last loaded list
-is read-only and actions wait for the service.
+Dismiss completes either, and a Once reminder then ends. A reminder alerts
+whatever the Automatic suggestions switches say; its set is prepared and
+refreshed only while both are On, and the Suggestions button asks for one
+either way
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q7).
+Account AI Off permits alerts but blocks suggestions. Offline, the app's last
+loaded list is read-only and actions wait for the service.
 
 ## Composing
 
@@ -496,20 +499,32 @@ from the latest message, Scroll to latest brings it back.
 A conversation's header ends with the robot, which opens the chat's **AI
 Menu**, a bottom sheet
 ([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)). The
-robot is filled while AI work can run in the chat and an outline otherwise,
-and its name says which ("AI Menu, AI on in this chat"); no "AI off" tag
-shows. The menu's first row is **AI view**, the Reading View for every chat:
-its switch flips it, so changing the view takes two taps. A private chat's
-rows follow, each with its line: **Automatic suggestions**, **Style** with its
-choice, **Emotion**, **Soften hostile messages**, **Voice and images** and
-**Remember this chat**. A tap on a switch flips it; a tap on a row opens the
-control's page, with its explanation, its switch or choice, its panels and,
-for the owner, its Processing Guidance fields. Emotion and Voice and images
-have pages and no switch yet. Under its switch, a server-wide switch that is
-Off says so ("Automatic suggestions is Off for all chats.", "Memory is Off
-for all chats."), and "AI processing is Off for this account." closes the
-menu while the account's AI is Off. Offline the switches wait for the server.
-Saved Messages has no robot.
+robot is filled while AI work can run in the chat, at least one of its
+switches On with its server-wide switch permitting it, and an outline
+otherwise; its name says which ("AI Menu, AI on in this chat"), and no "AI
+off" tag shows. The menu's first row is **AI view**, the Reading View for
+every chat: its switch flips it, so changing the view takes two taps. A
+private chat's rows follow, each with its line: **Automatic suggestions**,
+**Style** with its choice, **Emotion**, **Soften hostile messages**, **Voice
+and images** and **Remember this chat**. The five switches are Off in every
+chat without its own choice, the owner's and every member's; a choice belongs
+to the chat and holds across clients. A tap on a switch flips it; a tap on a
+row opens the control's page, with its explanation, its switch or choice, its
+panels and, for the owner, its Processing Guidance fields. Under its switch,
+a server-wide switch that is Off says so ("Automatic suggestions is Off for
+all chats.", "Memory is Off for all chats."), and "AI processing is Off for
+this account." closes the menu while the account's AI is Off. Offline the
+switches wait for the server. Saved Messages has no robot.
+
+A switch governs only what runs on its own: the Suggestions button, Show
+transcript, Retry and Rewrite earlier messages work whatever it says. Turned
+On, it also works on the chat's latest incoming block if that is under seven
+days old: Emotion estimates it, Soften hostile messages softens it if it is
+hostile, Voice and images rewrites its media, and Automatic suggestions
+prepares a set if it is unanswered and qualifies. Turned Off, it keeps what
+was made; automatic sets hide and the emoji goes. In a chat whose switches
+are Off, blocks show their combined originals with no status, and new
+messages become ready as originals after their 30 quiet seconds.
 
 In AI reading, a block that is text only shows its originals together in one
 bubble headed "N messages · time", without "AI ·" or a status
@@ -527,18 +542,19 @@ blocks with an image, a voice note or a video circle; a run shows "Analyzing
 earlier messages · n of m" with a bar and Stop, and afterwards how many
 remain and why.
 
-The pages: **Automatic suggestions**, On by default, with When to suggest;
-**Style**, Friendly by default, with Friendly, Professional and Idioms for
-both generation kinds and the Response suggestions, Friendly, Professional
-and Idioms fields
+The pages: **Automatic suggestions**, with When to suggest; **Style**,
+Friendly by default, with Friendly, Professional and Idioms for both
+generation kinds and the Response suggestions, Friendly, Professional and
+Idioms fields
 ([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md));
-**Emotion**, the latest estimate with its reason, source and time, and
-Emotion extraction; **Soften hostile messages**, On by default, for hostile
-wording independently of anger or frustration, with its own field and
-Faithfulness rules; **Voice and images**, with Incoming rewriting and
-Faithfulness rules; and **Remember this chat**, off by default, with **Cares
-about**, the chat's Person Memory, **Traits**, and the Person memory and
-Account memory fields
+**Emotion**, the latest estimate with its reason, source and time ("Emotion
+is Off for this chat." while Off), and Emotion extraction; **Soften hostile
+messages**, for hostile wording independently of anger or frustration, with
+its own field and Faithfulness rules; **Voice and images**, which while Off
+transcribes and reads nothing on its own, with Incoming rewriting and
+Faithfulness rules; and **Remember this chat**, with **Cares about**, the
+chat's Person Memory, **Traits**, and the Person memory and Account memory
+fields
 ([ADR 55](adr/0055-person-and-account-memory-and-traits.md)). Each field is
 one text for all chats, marked so, and opens its editor ([Settings](#settings)).
 Cares about lists the entries with their source and adds, edits, removes and

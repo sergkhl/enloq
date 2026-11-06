@@ -26,6 +26,19 @@ ROLE = "emotion_classification"
 _LOG = logging.getLogger("enloq.emotion")
 
 
+# ADR 62 Q5: the incoming decision's questions, in the order requests list
+# them; a record from before asked all.
+QUESTIONS = ("emotion", "suggestions_useful", "hostility", "sarcasm")
+
+
+def answered(record):
+    """The questions a decision record answered, its carried ones included."""
+    asks = record.get("asks")
+    own = set(QUESTIONS) if asks is None else set(asks)
+    carried = (record.get("carry") or {}).get("asks") or []
+    return own | set(carried)
+
+
 class Emotion:
     def __init__(self, app):
         self.app, self.store = app, app.store
@@ -129,14 +142,19 @@ class Emotion:
 
     # ---- Emotion Classification (ADR 30) -----------------------------------
 
-    def schedule(self, db, block, job, packet, image_context, record):
+    def schedule(self, db, block, job, packet, image_context, record, asks=None):
         """Called in the incoming ready transaction, after image derivatives:
         queue one classification in the followed work's class, only when this
-        block can become the current source. A failure here never undoes the
-        incoming publication."""
+        block can become the current source and its chat's switches ask
+        anything (ADR 62 Q5). A failure here never undoes the incoming
+        publication."""
+        if asks is not None and not asks:
+            return None
         db.execute("SAVEPOINT emotion_schedule")
         try:
-            attempt = self._schedule(db, block, job, packet, image_context, record)
+            attempt = self._schedule(
+                db, block, job, packet, image_context, record, asks
+            )
         except Exception:
             db.execute("ROLLBACK TO emotion_schedule")
             db.execute("RELEASE emotion_schedule")
@@ -145,14 +163,18 @@ class Emotion:
         db.execute("RELEASE emotion_schedule")
         return attempt
 
-    def _schedule(self, db, block, job, packet, image_context, record):
+    def _schedule(self, db, block, job, packet, image_context, record, asks):
         followed = json.loads(job["payload"] or "{}")
         payload = {"class": followed.get("class", "new"), "block": block["id"]}
         if followed.get("explicit_retry"):
             payload["explicit_retry"] = True
-        return self._queue(db, block, packet, image_context, record, payload, job["id"])
+        return self._queue(
+            db, block, packet, image_context, record, payload, job["id"], asks
+        )
 
-    def _queue(self, db, block, packet, image_context, record, payload, followed):
+    def _queue(
+        self, db, block, packet, image_context, record, payload, followed, asks=None
+    ):
         key = block["chat_key"]
         if not self.publishable(db, key, record) or self.expired(record):
             # Never a paid call whose result could not be shown.
@@ -168,6 +190,9 @@ class Emotion:
             "failure": None,
             "refusals": 0,
             "derived": {k: self.derived(k, db) for k in record["inputs"]},
+            # ADR 62 Q5: the questions its chat's On switches use; None, as
+            # before them, asks all.
+            "asks": asks,
             # Original wording, transcripts and image meanings only, never raw
             # images or Chat Memory. Suggestions reuse it after publication.
             "prepared": {
@@ -191,7 +216,7 @@ class Emotion:
 
     # ---- The decision before a calmed rewrite (ADR 53 Q7) ----------------
 
-    async def decide_first(self, block, packet, followed, *, gate=None):
+    async def decide_first(self, block, packet, followed, *, gate=None, asks=None):
         """In a chat with calming on, the block's decision from its prepared
         originals before its one rewrite: wording, local transcripts and cached
         image meanings, never the meanings that rewrite adds. Returns the
@@ -226,6 +251,8 @@ class Emotion:
                 [prepared(m, {}) for m in packet.get("context", [])],
             )
         }
+        if asks is not None:
+            request["asks"] = asks
 
         def valid():
             rows = self.store.rows(
@@ -257,7 +284,12 @@ class Emotion:
             # The rewrite's gate held the block before this dispatch.
             self._job(job, "superseded", "The block was held before dispatch")
             raise
-        return {"job": job, "result": result, "guidance": request["guidance"]}
+        return {
+            "job": job,
+            "result": result,
+            "guidance": request["guidance"],
+            "asks": asks,
+        }
 
     def publish_first(
         self, db, block, packet, image_context, record, first, *, suggestions
@@ -285,7 +317,12 @@ class Emotion:
     ):
         key = block["chat_key"]
         job, result, guidance = first["job"], first["result"], first["guidance"]
-        record = {**record, "attempt": job["id"], "followed": record["attempt"]}
+        record = {
+            **record,
+            "attempt": job["id"],
+            "followed": record["attempt"],
+            "asks": first.get("asks"),
+        }
         if self.expired(record) or not self.publish(
             db,
             key,
@@ -293,7 +330,7 @@ class Emotion:
             result.code,
             guidance["version"],
             defaults=guidance.get("defaults_revision"),
-            decision=result.decision.model_dump(),
+            decision=result.decision.model_dump() if result.decision else None,
             useful=result.suggestions_useful,
             usefulness=result.usefulness,
         ):
@@ -364,6 +401,7 @@ class Emotion:
     def _decide_held(self, waiting):
         # Read before the transaction, like the registry-backed switches.
         eligible = self.app.rewriting.chat_eligible(waiting["chat_key"])
+        switches = self.app.decision_asks(waiting["chat_key"])
         with self.store.transaction() as db:
             held = db.execute(
                 "SELECT * FROM incoming_deferred WHERE scope=? AND input_revision=?",
@@ -372,6 +410,9 @@ class Emotion:
             payload = json.loads(held["payload"]) if held else {}
             if not held or payload.get("decided"):
                 return None
+            # A switch turned On carries the answers its decision has (Q8).
+            carry = payload.get("carry")
+            asks = [q for q in switches if not carry or q not in carry["asks"]]
             db.execute(
                 "UPDATE incoming_deferred SET payload=? WHERE scope=?",
                 (json.dumps({**payload, "decided": True}), waiting["scope"]),
@@ -379,7 +420,14 @@ class Emotion:
             block = db.execute(
                 "SELECT * FROM blocks WHERE id=?", (waiting["scope"],)
             ).fetchone()
-            if not eligible or not block or block["revision"] != held["input_revision"]:
+            if (
+                not eligible
+                or not block
+                or block["revision"] != held["input_revision"]
+                # ADR 62 Q5, Q14: a chat whose switches call for no decision
+                # asks nothing; the block settles as its originals.
+                or not asks
+            ):
                 return None
             db.execute("SAVEPOINT held_decision")
             try:
@@ -394,9 +442,10 @@ class Emotion:
                     block,
                     packet,
                     (),
-                    self.capture(block, packet, None, db),
+                    {**self.capture(block, packet, None, db), "carry": carry},
                     held,
                     None,
+                    asks,
                 )
                 if (
                     packet
@@ -423,6 +472,175 @@ class Emotion:
                 return None
             db.execute("RELEASE held_decision")
             return attempt
+
+    def asked(self, block, names):
+        """Whether the chat's current decision is this block's and asked
+        every question in ``names``; one made before ADR 62 asked all."""
+        key = block["chat_key"]
+        record = self.record(key)
+        if (
+            not record
+            or record.get("block") != block["id"]
+            or record.get("state", "ready") not in ("ready", "pending")
+            or not self.current_source(key, record)
+        ):
+            return False
+        return set(names) <= answered(record)
+
+    def suggest(self, block):
+        """ADR 62 Q8: Automatic suggestions turned On after its decision of
+        ``block`` already answered usefulness, while Off had cancelled its
+        set before it was written: the set is scheduled again from that
+        decision, as its publication scheduled it, which resamples
+        nothing."""
+        key = block["chat_key"]
+        # Read before the transaction, like the registry-backed switches.
+        enabled = self.app.suggestions.enabled()
+        with self.store.transaction() as db:
+            record = self.owned_current(key, block, db)
+            packet = record and context.cached(self.store, db, block)
+            if not packet:
+                return None
+            source = {
+                "messages": [prepared(m, {}) for m in packet["messages"]],
+                "context": [prepared(m, {}) for m in packet.get("context", [])],
+                "direct_reply": packet.get("direct_reply"),
+            }
+            dependencies = {
+                k: record.get(k, default)
+                for k, default in (
+                    ("inputs", {}),
+                    ("transient", []),
+                    ("transient_inputs", {}),
+                    ("transcript_inputs", {}),
+                    ("image_inputs", {}),
+                    ("attribution_inputs", {}),
+                )
+            }
+            job = {
+                "id": record["attempt"],
+                "payload": json.dumps({"class": "new", "block": block["id"]}),
+            }
+            return self.app.suggestions.schedule(
+                db,
+                {"id": block["id"], "chat_key": key, "revision": block["revision"]},
+                job,
+                {**source, **dependencies},
+                enabled=enabled,
+            )
+
+    def owned_current(self, key, block, db=None):
+        """The chat's published decision of ``block`` while it is current."""
+        rows = self.read("SELECT body FROM emotion_state WHERE chat_key=?", (key,), db)
+        record = json.loads(rows[0]["body"]) if rows else None
+        if (
+            not record
+            or record.get("block") != block["id"]
+            or record.get("state", "ready") != "ready"
+            or not self.current_source(key, record, db)
+        ):
+            return None
+        return record
+
+    def decide_again(self, block, need):
+        """ADR 62 Q8: a switch turned On decides the chat's latest block again
+        when its current decision has not answered ``need``, the questions
+        that switch uses. Only the unanswered questions of the On switches
+        are asked; the answers already given are carried into the new
+        decision, so nothing is resampled and a set they qualified still
+        qualifies. A held block is decided once its quiet seconds have
+        passed, a rewritten one at once. Nothing is asked when ``need`` would
+        not be, such as usefulness while the server-wide switch is Off, nor
+        while a decision for the chat is being made."""
+        key = block["chat_key"]
+        asks = self.app.decision_asks(key)
+        if not set(need) <= set(asks):
+            return None
+        with self.store.transaction() as db:
+            if db.execute(
+                "SELECT 1 FROM jobs WHERE role=? AND scope=? "
+                "AND state IN ('claimed','running')",
+                (ROLE, key),
+            ).fetchone():
+                return None
+            previous = self.owned_current(key, block, db)
+            carry = (
+                {
+                    "asks": [q for q in QUESTIONS if q in answered(previous)],
+                    **{
+                        k: previous.get(k)
+                        for k in ("code", "decision", "useful", "usefulness")
+                    },
+                }
+                if previous
+                else None
+            )
+            held = db.execute(
+                "SELECT * FROM incoming_deferred WHERE scope=? AND input_revision=?",
+                (block["id"], block["revision"]),
+            ).fetchone()
+            if held:
+                # Decided again once its quiet seconds have passed, with the
+                # answers it already has.
+                payload = json.loads(held["payload"] or "{}")
+                payload.pop("decided", None)
+                payload["carry"] = carry
+                db.execute(
+                    "UPDATE incoming_deferred SET payload=? WHERE scope=?",
+                    (json.dumps(payload), block["id"]),
+                )
+                return block["id"]
+            current = db.execute(
+                "SELECT * FROM blocks WHERE id=?", (block["id"],)
+            ).fetchone()
+            if (
+                not current
+                or current["state"] != "ready"
+                or current["revision"] != block["revision"]
+            ):
+                return None
+            packet = context.cached(self.store, db, current)
+            if not packet:
+                return None
+            unanswered = [q for q in asks if not carry or q not in carry["asks"]]
+            return self._queue(
+                db,
+                current,
+                packet,
+                (),
+                {**self.capture(current, packet, None, db), "carry": carry},
+                # A rewritten block found hostile now is softened anew.
+                {"class": "new", "block": current["id"], "again": True},
+                None,
+                unanswered,
+            )
+
+    @staticmethod
+    def merged(record, asks, result):
+        """The published decision: this request's answers, and for what it
+        did not ask, the answers carried from the block's previous decision
+        (ADR 62 Q8). Its ``asks`` become every question answered."""
+        carry = record.get("carry") or {}
+        asked = set(QUESTIONS) if asks is None else set(asks)
+        decision = result.decision.model_dump() if result.decision else None
+        value = {
+            "code": result.code,
+            "decision": decision,
+            "useful": result.suggestions_useful,
+            "usefulness": result.usefulness,
+        }
+        if "emotion" not in asked and "emotion" in (carry.get("asks") or []):
+            value.update(code=carry.get("code"), decision=carry.get("decision"))
+        if "suggestions_useful" not in asked and "suggestions_useful" in (
+            carry.get("asks") or []
+        ):
+            value.update(useful=carry.get("useful"), usefulness=carry.get("usefulness"))
+        every = asked | set(carry.get("asks") or [])
+        value["record"] = {
+            **{k: v for k, v in record.items() if k != "carry"},
+            "asks": [q for q in QUESTIONS if q in every],
+        }
+        return value
 
     def expired(self, record):
         return self.store.clock() >= record["source_time"] + LIFETIME
@@ -485,6 +703,14 @@ class Emotion:
             request = {
                 "state": decision_state.incoming(source["messages"], source["context"])
             }
+            if record.get("asks") is not None:
+                # A queued decision asks only what the chat's switches still
+                # use (ADR 62 Q5): one they all turned Off sends nothing.
+                still = self.app.decision_asks(key)
+                request["asks"] = [q for q in record["asks"] if q in still]
+                if not request["asks"]:
+                    self.supersede(job, "No switch asks for this decision")
+                    return
 
             def valid():
                 owned = self.owned(key, job["id"])
@@ -499,9 +725,7 @@ class Emotion:
                 self.app.decider, job, request, valid
             )
             if json.loads(job["payload"] or "{}").get("held"):
-                # ADR 54: a held block isn't rewritten, so Chat Memory learns
-                # from what its decision read.
-                self.app.memory.record(key, record["inputs"])
+                # Memory reads the chat itself (ADR 62 Q6).
                 self.app.memory.schedule(key)
             # Read before the transaction: the registry must never be opened
             # while this store transaction holds its lock.
@@ -510,6 +734,7 @@ class Emotion:
             suggestions = self.app.suggestions.enabled()
             with self.store.transaction() as db:
                 owned = self.owned(key, job["id"], db)
+                merged = owned and self.merged(owned, request.get("asks"), result)
                 if not (
                     authorized
                     and eligible
@@ -518,13 +743,13 @@ class Emotion:
                     and self.publish(
                         db,
                         key,
-                        owned,
-                        result.code,
+                        merged["record"],
+                        merged["code"],
                         request["guidance"]["version"],
                         defaults=request["guidance"].get("defaults_revision"),
-                        decision=result.decision.model_dump(),
-                        useful=result.suggestions_useful,
-                        usefulness=result.usefulness,
+                        decision=merged["decision"],
+                        useful=merged["useful"],
+                        usefulness=merged["usefulness"],
                     )
                 ):
                     # Costs are receipted; late output never replaces newer
@@ -742,6 +967,19 @@ class Emotion:
         )
 
     def view(self, key):
+        """The chat's emotion as its header and Emotion page show it: none
+        while the chat's Emotion switch is Off (ADR 62 Q5)."""
+        if not self.app.emotion_switch.on(key):
+            return EmotionView(reason="off")
+        value = self.signal(key)
+        if value.reason == "available" and value.code is None:
+            # A decision that did not ask the emotion (Q5).
+            return value.model_copy(update={"reason": "unavailable"})
+        return value
+
+    def signal(self, key):
+        """The latest decision's state, whatever the switch says: suggestions
+        read their usefulness signal from it (ADR 56 Q19, ADR 62 Q5)."""
         kind, event = self.app.assessment.current(key)
         if kind == "reaction":
             return self.reaction_view(key, event)
@@ -778,12 +1016,14 @@ class Emotion:
         if state == "superseded":
             return value.model_copy(update={"reason": "unavailable"})
         code = record["code"]
+        asked = "emotion" in (record.get("asks") or ["emotion"])
         return value.model_copy(
             update={
                 "code": code,
-                # A failed classification keeps its fixed diagnostic.
+                # A failed classification keeps its fixed diagnostic; one that
+                # did not ask the emotion is current without one (ADR 62 Q5).
                 "reason": "invalid"
-                if state == "failed" or code is None
+                if state == "failed" or (code is None and asked)
                 else "uncertain"
                 if code == "unknown"
                 else "available",

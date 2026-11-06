@@ -81,13 +81,18 @@ async def run(
                 "id": f"gen-dec-authored-{len(decisions)}",
                 "model": DECIDER,
                 "provider": "Perplexity",
+                # The questions the request asks (ADR 62 Q5).
                 "answers": {
-                    "emotion": choice(code, 0.8),
-                    "suggestions_useful": {"type": "noul", "noul": 0.1},
-                    "hostility": {
-                        "type": "noul",
-                        "noul": float(case["calm"] or calm_everything),
-                    },
+                    name: answer
+                    for name, answer in {
+                        "emotion": choice(code, 0.8),
+                        "suggestions_useful": {"type": "noul", "noul": 0.1},
+                        "hostility": {
+                            "type": "noul",
+                            "noul": float(case["calm"] or calm_everything),
+                        },
+                    }.items()
+                    if name in payload["questions"]
                 },
                 "usage": {"input_tokens": 900, "output_tokens": 2, "cost": 0.000018},
             },

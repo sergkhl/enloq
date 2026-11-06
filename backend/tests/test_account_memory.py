@@ -44,12 +44,13 @@ async def test_the_start_learns_the_cached_month_once(tmp_path):
     assert app.memory.schedule(KEY)
     await fold(app)
     assert not app.memory.candidates(KEY)
-    # A message after the start enters only when sent to a model.
+    # A message after the start enters as memory reads it, on arrival (ADR
+    # 62 Q6), and folds after 30 quiet minutes.
     now[0] += 60
     app.sync.ingest(message(app, 101, text="Arrived after the start."))
-    now[0] += 1800
+    assert [r["message_id"] for r in app.memory.candidates(KEY)] == [101]
     assert not app.memory.schedule(KEY)
-    app.memory.record(KEY, [f"{KEY}/101"])
+    now[0] += 1800
     assert app.memory.schedule(KEY)
 
 

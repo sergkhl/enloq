@@ -187,6 +187,9 @@ so no incoming rewrite is requested. Each block with a usable non-neutral
 emotion, or a yes on usefulness at 0.7 or more
 ([ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)'s
 either signal and Q19), then runs the real Response Suggestions request.
+Its chats have Emotion and Automatic suggestions On and softening Off, so
+each decision asks the emotion and usefulness only
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5).
 Memory is off. It allows at most 40 decision and 16 suggestion requests, 1,800
 seconds and $0.02 counted, starting a request only while the flat unknown
 estimate still fits. Malformed answers or option sets, and route failures, are
@@ -249,7 +252,10 @@ each block with an image or a voice note stands in an authored rewrite and
 image meaning where the rewrite would publish them and then runs the real
 classification job. No MiMo request is made. Reactions run the real
 assessment path and ad cases the real group filter, which never judges bots
-here. Suggestion and memory calls are off. It allows at most 40 first
+here. Its chats have Emotion, Voice and images and Automatic suggestions On
+and softening Off, so decisions ask the emotion and usefulness
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5),
+while no set is prepared. Memory calls are off. It allows at most 40 first
 attempts within 1,200 seconds and $0.01
 counted across both budgets, and writes `.local/emotion-decider-check-*/report.json`.
 A request starts only when its worst-case cost (every request byte a token,
@@ -749,6 +755,32 @@ seconds), counts its authored sends in `ENLOQ_REMINDER_ACCEPTANCE_SENDS` and
 may name its zone in `ENLOQ_REMINDER_ACCEPTANCE_ZONE`; with a send already
 made it reuses that day's authored test message, and once that day has ended
 saving keeps its messages at once. No ceiling is reset.
+
+`live/switches.spec.ts` checks [ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)'s
+per-chat switches in the Owner Account's side of the Maya chat. It reads the
+chat's switches, Style, the Reading View and both drafts, which must be empty,
+then turns every switch Off there through their routes. Maya sends a plain
+text, the Owner Account answers so that each is its own block, and Maya sends
+a captioned photo: no model is asked on the Owner Account's side, both blocks
+show their combined originals with no status after 30 quiet seconds, and the
+list shows the unseen dot and the photo's original preview. Emotion turned On
+in the AI Menu then decides the latest block from its caption alone, asking
+`emotion` only (Docker reads the decision's questions and whether the photo
+has a meaning, never text), and Voice and images turned On rewrites it while
+the plain text stays as sent. It puts the switches, Style and view back,
+even when it fails. Its ceiling is three authored sends, 30 minutes, and 20
+model requests and $0.05 counted on both sides of the Maya chat since
+`ENLOQ_SWITCHES_SINCE` (Unix seconds), the start of the rollout below, whose
+switches turned On count against it. Route/rate verification precedes each
+run; private evidence is in `.local/live-evidence/`.
+
+The ADR 62 rollout, right after the Phase 3 deploy, ran once through the
+service's API: every own choice of Soften hostile messages, Automatic
+suggestions and Remember this chat in the Owner Account's other private chats
+turned Off, Style kept, and Automatic suggestions, Emotion, Soften hostile
+messages and Voice and images turned On on both sides of the Maya chat,
+Remember this chat left as it was. Every other private chat now starts with
+all five Off.
 
 ### Android push through FCM
 

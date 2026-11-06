@@ -129,6 +129,10 @@ class Decider:
             # ADR 49 Q2: the authored usefulness answer.
             "suggestions_useful": {"type": "noul", "noul": self.source.useful},
         }
+        # Only the questions the chat's On switches ask (ADR 62 Q5).
+        asks = packet.get("asks")
+        if asks is not None:
+            answers = {name: answers[name] for name in asks if name in answers}
         return EngineResponse(answers if code else {}, actual_nanos=0)
 
 

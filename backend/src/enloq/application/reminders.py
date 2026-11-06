@@ -92,8 +92,17 @@ class Reminders:
         self.app.suggestions.private(key)
 
     def control(self, key, epoch, enabled, db):
+        """ADR 62 Q7: a schedule alerts whatever the Automatic suggestions
+        switches say, so nothing pauses it; the stored control stays as the
+        switches stood, for diagnosis only."""
         automatic = self.app.suggestions.automatic(key, db)["automatic"]
-        return f"{epoch}:{int(enabled)}:{int(automatic)}", not (enabled and automatic)
+        return f"{epoch}:{int(enabled)}:{int(automatic)}", False
+
+    def sets(self, key, enabled, db=None):
+        """Whether the chat's reminder sets are prepared and refreshed: only
+        while both Automatic suggestions switches are On (Q7). The
+        Suggestions button asks for one either way."""
+        return bool(enabled and self.app.suggestions.automatic(key, db)["automatic"])
 
     # ---- timing ----------------------------------------------------------
 
@@ -120,27 +129,29 @@ class Reminders:
             if now - self.mirrored >= MIRROR_SECONDS:
                 self.mirrored = now
                 storage.mirror(db)
+        # ADR 62 Q7: alerts come whatever the switches say; their sets only
+        # while both Automatic suggestions switches are On.
         for key in sorted(prepare):
-            self.app.suggestions.reminder_set(key, "prepare")
+            if self.sets(key, enabled):
+                self.app.suggestions.reminder_set(key, "prepare")
         for key in sorted(refresh - prepare):
-            self.app.suggestions.reminder_set(key, "refresh")
+            if self.sets(key, enabled):
+                self.app.suggestions.reminder_set(key, "refresh")
 
     def advance(self, db, row, settings, epoch, enabled, now):
         """One schedule's tick; True when it created an occurrence."""
         key, schedule = row["chat_key"], row["id"]
         rule = ReminderRule.model_validate_json(row["body"])
-        control, paused = self.control(key, epoch, enabled, db)
-        if control != row["control"] or paused != bool(row["paused"]):
-            # Pausing keeps the schedule; On resumes at the next future
-            # delivery, without backfill (Q4).
+        control, _ = self.control(key, epoch, enabled, db)
+        if row["paused"]:
+            # Paused by Automatic suggestions Off before ADR 62 Q7: it resumes
+            # at the next future delivery, without backfill.
             upcoming = next_occurrence(rule, now, settings) or (None, None)
             db.execute("DELETE FROM reminder_occurrences WHERE schedule=?", (schedule,))
             db.execute(
-                "UPDATE reminder_schedules SET next_at=?,next_date=?,paused=?,control=?,digest_revision=? WHERE id=?",
-                (*upcoming, int(paused), control, settings.revision, schedule),
+                "UPDATE reminder_schedules SET next_at=?,next_date=?,paused=0,control=?,digest_revision=? WHERE id=?",
+                (*upcoming, control, settings.revision, schedule),
             )
-            return False
-        if paused:
             return False
         if row["digest_revision"] != settings.revision and rule.delivery == "digest":
             upcoming = next_occurrence(rule, now, settings) or (None, None)
@@ -345,7 +356,9 @@ class Reminders:
             next_at=occurrence["due_at"]
             if occurrence and occurrence["due_at"] > now
             else row["next_at"],
-            status="paused" if row["paused"] else "active",
+            # ADR 62 Q7: nothing pauses a schedule; one paused before
+            # resumes at the next tick.
+            status="active",
             occurrence=ReminderOccurrence(
                 id=occurrence["id"],
                 due_at=occurrence["due_at"],

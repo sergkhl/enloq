@@ -15,9 +15,12 @@ from .blocks import (
     cached_sources,
     defer,
     enqueue,
+    media_on,
     reconcile_admission,
+    release,
 )
 from .capacity import RANK, rank_sql
+from .media import UNREAD
 
 
 class CharacterDeferred(Exception):
@@ -219,7 +222,8 @@ class Rewriting:
     def character_gate(self, job):
         """Check before preparation and at the final provider dispatch boundary
         that the block is still admitted: only one with an image, a voice note
-        or a video circle is, and text waits as its originals (ADR 54).
+        or a video circle is, while its chat's Voice and images is On (ADR 62
+        Q20), and text waits as its originals (ADR 54).
 
         This gate intentionally never participates in publication validation:
         a valid attempt that has reached the provider may finish after a Save.
@@ -240,7 +244,8 @@ class Rewriting:
             if not block or block["revision"] != job["input_revision"]:
                 return
             sources = cached_sources(db, block)
-            if sources and not analysed(sources):
+            # ADR 62 Q20: Voice and images Off holds a media block too.
+            if sources and not (analysed(sources) and media_on(db, block["chat_key"])):
                 defer(
                     db,
                     job["scope"],
@@ -360,12 +365,17 @@ class Rewriting:
                 raise Refused("Source expired, changed or is ineligible")
             self.character_gate(job)
             self.stage(identity, "preparing", state="working", job=job)
+            # ADR 62 Q20: with Voice and images Off nothing reads the chat's
+            # images or transcribes it, so a softened rewrite leaves them
+            # unread; a deliberate click reads them whatever it says (Q3).
+            read = explicit or self.app.media_switch.on(block["chat_key"])
             packet = await context.incoming(
                 self.app,
                 block,
                 retry=json.loads(job["payload"]).get("explicit_retry", False),
                 on_stage=lambda stage: self.stage(identity, stage, job=job),
                 explicit=explicit,
+                read=read,
             )
             if not self.store.rows(
                 "SELECT id FROM jobs WHERE id=? AND state IN ('queued','claimed')",
@@ -448,9 +458,15 @@ class Rewriting:
             sarcastic = bool(calming.get("sarcastic"))
             released = type(code) is bool
             first = None
+            # ADR 62 Q5: the decision asks what the chat's On switches use.
+            asks = self.app.decision_asks(block["chat_key"])
             if not released and self.app.calming.on(block["chat_key"]):
                 first = await self.app.emotion.decide_first(
-                    block, packet, job, gate=lambda: self.character_gate(job)
+                    block,
+                    packet,
+                    job,
+                    gate=lambda: self.character_gate(job),
+                    asks=asks,
                 )
                 if not self.store.rows(
                     "SELECT id FROM jobs WHERE id=? AND state IN ('queued','claimed')",
@@ -475,23 +491,15 @@ class Rewriting:
                 if valid():
                     self.store.streams.publish(job["id"], text)
 
-            try:
-                result = await self.work.run(
-                    # ADR 53: a calmed block is written by its own route.
-                    self.app.calmer if calmed else self.app.engine,
-                    job,
-                    packet,
-                    valid,
-                    on_text=publish,
-                    on_dispatch=lambda: self.character_gate(job),
-                )
-            finally:
-                if context.current(self.store, packet) and self.store.rows(
-                    "SELECT id FROM reservations WHERE id=? AND status!='refused'",
-                    (job["id"],),
-                ):
-                    # Sent to the model: these may fold into memory later.
-                    self.app.memory.record(block["chat_key"], packet["inputs"])
+            result = await self.work.run(
+                # ADR 53: a calmed block is written by its own route.
+                self.app.calmer if calmed else self.app.engine,
+                job,
+                packet,
+                valid,
+                on_text=publish,
+                on_dispatch=lambda: self.character_gate(job),
+            )
             if not valid():
                 with self.store.transaction() as db:
                     db.execute(
@@ -500,8 +508,10 @@ class Rewriting:
                     )
                 return
             # Read before the transaction: the registry must never be opened
-            # while this store transaction holds its lock.
+            # while this store transaction holds its lock. The decision after
+            # the rewrite asks what the switches use now (ADR 62 Q5).
             suggestions = bool(first) and self.app.suggestions.enabled()
+            asks = self.app.decision_asks(block["chat_key"])
             written = set()
             with self.store.transaction() as db:
                 db.execute(
@@ -553,11 +563,11 @@ class Rewriting:
                     self.app.emotion.keep_current(db, block, written)
                 else:
                     self.app.emotion.schedule(
-                        db, block, job, packet, result.image_context, emotion
+                        db, block, job, packet, result.image_context, emotion, asks
                     )
-            # Include the freshly generated cached image interpretation in the
-            # exact processed source version, after publication.
-            self.app.memory.record(block["chat_key"], packet["inputs"])
+            # Memory reads the chat itself (ADR 62 Q6): what it read is read
+            # again with the transcripts and image meanings this rewrite made.
+            self.app.memory.refresh(block["chat_key"], packet["inputs"])
             self.app.memory.schedule(block["chat_key"])
         except CharacterDeferred:
             return
@@ -605,7 +615,7 @@ class Rewriting:
     def combined(self, job, block, packet, emotion, first):
         """A text block that isn't calmed ends without a rewrite (ADR 54): it
         shows as its combined originals. A decision made first publishes as
-        it would with the rewrite, and Chat Memory learns from what it read."""
+        it would with the rewrite."""
         suggestions = bool(first) and self.app.suggestions.enabled()
         with self.store.transaction() as db:
             db.execute(
@@ -622,8 +632,57 @@ class Rewriting:
                     db, block, packet, (), emotion, first, suggestions=suggestions
                 )
         if first:
-            self.app.memory.record(block["chat_key"], packet["inputs"])
             self.app.memory.schedule(block["chat_key"])
+
+    def release_media(self, block):
+        """ADR 62 Q8: Voice and images turned On rewrites the chat's latest
+        block if it holds media it has not read: a held block, or one softened
+        while the switch was Off, which is softened anew with its media read.
+        A block queued, otherwise rewritten or with nothing to read is left
+        as it is."""
+        with self.store.transaction() as db:
+            waiting = db.execute(
+                "SELECT * FROM incoming_deferred WHERE scope=? AND input_revision=?",
+                (block["id"], block["revision"]),
+            ).fetchone()
+            current = db.execute(
+                "SELECT * FROM blocks WHERE id=?", (block["id"],)
+            ).fetchone()
+            if (
+                current
+                and current["state"] == "ready"
+                and current["calmed"]
+                and current["revision"] == block["revision"]
+                and any(
+                    item.get("reason") == UNREAD
+                    for item in json.loads(current["unanalysed"] or "[]")
+                )
+                and not db.execute(
+                    "SELECT 1 FROM jobs WHERE scope=? "
+                    "AND state IN ('queued','claimed','running')",
+                    (current["id"],),
+                ).fetchone()
+            ):
+                enqueue(
+                    db,
+                    current["id"],
+                    current["revision"],
+                    self.store.clock(),
+                    klass="new",
+                    payload={"calm": True},
+                )
+                db.execute(
+                    "UPDATE blocks SET state='queued',error=NULL,stage=NULL WHERE id=?",
+                    (current["id"],),
+                )
+                return current["id"]
+            if not waiting or not current or current["state"] != "original":
+                return None
+            sources = cached_sources(db, current)
+            if not sources or not analysed(sources):
+                return None
+            release(db, waiting, current, self.store.clock())
+            return current["id"]
 
     def partial(self, block):
         rows = self.store.rows(

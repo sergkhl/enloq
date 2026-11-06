@@ -42,6 +42,7 @@ from pathlib import Path
 import httpx
 from enloq.application.conversations import Conversations
 from enloq.application.memory import ACCOUNT
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain import traits as starter
 from enloq.domain.models import Chat, Message, Refused
@@ -942,6 +943,10 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, route, decider)
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these chats decide and rewrite with Emotion and Voice and
+                    # images On.
+                    ChatSwitch.default = True
                     app.calming.default = False
                     app.suggestions.enabled = lambda: False
                     app.memory.enabled = lambda: True

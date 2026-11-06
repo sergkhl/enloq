@@ -10,7 +10,9 @@ export type ChatAi = {
   running: boolean;
   suggestions?: boolean | null;
   style?: SuggestionStyle | null;
+  emotion?: boolean | null;
   calming?: boolean | null;
+  media?: boolean | null;
   remember?: boolean | null;
   server_suggestions?: boolean | null;
   server_memory?: boolean | null;
@@ -28,8 +30,8 @@ export type AiControl =
   | "remember"
   | "group";
 
-// A private chat's rows after AI view (Q15). Emotion and Voice and images
-// have pages and no switch until their switches are delivered.
+// A private chat's rows after AI view (Q15): five switches, all Off by
+// default, and Style.
 export const PRIVATE_CONTROLS: AiControl[] = [
   "suggestions",
   "style",
@@ -66,7 +68,7 @@ export const AI_CONTROLS: Record<
     label: "Emotion",
     line: "Estimate how their latest messages feel, shown after their name.",
     explanation:
-      "Estimate how their latest messages feel, shown after their name in the header.",
+      "On, Enloq estimates how their latest messages feel and shows it after their name in the header. Off, nothing is estimated, and automatic suggestions follow usefulness alone.",
   },
   calming: {
     label: "Soften hostile messages",
@@ -78,7 +80,7 @@ export const AI_CONTROLS: Record<
     label: "Voice and images",
     line: "Transcribe voice and video messages, read images, and write them out as text.",
     explanation:
-      "Transcribe voice and video messages, read images, and write them out as text, with every original one tap away.",
+      "On, voice and video messages are transcribed and images read, and they're written out as text, with every original one tap away. Off, nothing is transcribed or read on its own; Show transcript still works.",
   },
   remember: {
     label: "Remember this chat",
@@ -152,8 +154,12 @@ export function switchState(
   switch (control) {
     case "suggestions":
       return ai.suggestions ?? null;
+    case "emotion":
+      return ai.emotion ?? null;
     case "calming":
       return ai.calming ?? null;
+    case "media":
+      return ai.media ?? null;
     case "remember":
       return ai.remember ?? null;
     default:
@@ -161,11 +167,9 @@ export function switchState(
   }
 }
 
-// The controls whose row holds a switch.
+// The controls whose row holds a switch: all but Style.
 export function hasSwitch(control: AiControl) {
-  return ["view", "suggestions", "calming", "remember", "group"].includes(
-    control,
-  );
+  return control !== "style";
 }
 
 // The route a private chat control's change writes, under the chat's own
@@ -186,8 +190,12 @@ export function chatWrite(
         suffix: "/suggestions/settings",
         body: { automatic: ai.suggestions ?? false, style: value },
       };
+    case "emotion":
+      return { suffix: "/emotion", body: { enabled: value } };
     case "calming":
       return { suffix: "/calming", body: { enabled: value } };
+    case "media":
+      return { suffix: "/voice-and-images", body: { enabled: value } };
     case "remember":
       return { suffix: "/remember", body: { enabled: value } };
     default:
@@ -209,8 +217,12 @@ export function answered(
         suggestions: answer.automatic ?? ai.suggestions,
         style: answer.style ?? ai.style,
       };
+    case "emotion":
+      return { ...ai, emotion: answer.enabled ?? ai.emotion };
     case "calming":
       return { ...ai, calming: answer.enabled ?? ai.calming };
+    case "media":
+      return { ...ai, media: answer.enabled ?? ai.media };
     case "remember":
       return { ...ai, remember: answer.enabled ?? ai.remember };
     default:

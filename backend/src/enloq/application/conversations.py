@@ -41,9 +41,17 @@ from .retained_groups import RetainedGroups
 from .rewriting import Rewriting
 from .selected_media import SelectedMedia
 from .suggestions import Suggestions
+from .switches import ChatSwitch
 from .sync import Sync, coverage, covered
 from .traits import Traits
 from .transcripts import Transcripts
+
+# ADR 62 Q8: the decision questions a switch turned On needs answered.
+SWITCH_QUESTIONS = {
+    "emotion": ["emotion"],
+    "suggestions": ["suggestions_useful"],
+    "calming": ["hostility"],
+}
 
 
 class Conversations:
@@ -68,6 +76,11 @@ class Conversations:
         self.traits = Traits(self)
         self.emotion = Emotion(self)
         self.calming = Calming(self)
+        # ADR 62 Q2: a private chat's Emotion and Voice and images switches.
+        self.emotion_switch = ChatSwitch(self, "emotion_switch", "emotion", "Emotion")
+        self.media_switch = ChatSwitch(
+            self, "media_switch", "media", "Voice and images"
+        )
         self.suggestions = Suggestions(self)
         self.reminders = Reminders(self)
         self.delivery = Delivery(store, transport)
@@ -98,6 +111,10 @@ class Conversations:
         self.sync.new_incoming = self.notifications.admit
         self.replies = Replies(self)
         self.transcripts = Transcripts(self)
+        # A transcript memory had read without it is read again (ADR 62 Q6).
+        self.media.on_derivative = lambda message: self.memory.refresh(
+            f"{message.account_id}/{message.peer}", [message.key]
+        )
         self.new_message = NewMessage(self)
         # Background reads owned by this runtime; draining cancels them.
         self.tasks = set()
@@ -133,12 +150,19 @@ class Conversations:
             target=target,
             klass="new" if arrival else "catchup",
         )
+        # ADR 62 Q6: while Remember this chat is On, memory reads the chat's
+        # new messages as they arrive, never a page of its history.
+        if target:
+            self.memory.observe(message)
 
     def arrived(self, message):
-        if self.store.chat(f"{message.account_id}/{message.peer}").kind != "private":
+        key = f"{message.account_id}/{message.peer}"
+        if self.store.chat(key).kind != "private":
             return
-        # The owner's own voice is transcribed too (ADR 51 Q8).
-        self.transcripts.own(message)
+        # The owner's own voice is transcribed too (ADR 51 Q8), while the
+        # chat's Voice and images is On (ADR 62 Q20).
+        if self.media_switch.on(key):
+            self.transcripts.own(message)
         if (
             not message.outgoing
             and not message.deleted
@@ -263,9 +287,9 @@ class Conversations:
     def ai_menu(self, key, *, group, retained=False):
         """A chat's AI Menu (ADR 62): the account's AI, the chat's switches
         under the owner's server-wide ones, and whether AI work can run there
-        (Q14). Emotion and Voice and images have no switch yet, so a private
-        chat's AI runs wherever its account's does; a group's runs while its
-        Group AI processing does, and a retained group's never."""
+        (Q14): in a private chat while a switch is On with its server-wide
+        switch permitting it, in a group while its Group AI processing runs,
+        in a retained group never."""
         account = bool(self.account_processing_enabled())
         if group:
             return ChatAi(
@@ -273,16 +297,89 @@ class Conversations:
                 running=not retained and self.group_processing(key).effective,
             )
         settings = self.suggestions.automatic(key)
-        return ChatAi(
+        value = ChatAi(
             account=account,
-            running=account,
+            running=False,
             suggestions=settings["automatic"],
             style=settings["style"],
+            emotion=self.emotion_switch.on(key),
             calming=self.calming.on(key),
+            media=self.media_switch.on(key),
             remember=self.memory.remembered(key),
             server_suggestions=bool(self.suggestions.enabled()),
             server_memory=bool(self.memory.enabled()),
         )
+        value.running = account and bool(
+            value.emotion
+            or value.calming
+            or value.media
+            or (value.suggestions and value.server_suggestions)
+            or (value.remember and value.server_memory)
+        )
+        return value
+
+    def decision_asks(self, key, db=None, *, suggestions=None):
+        """ADR 62 Q5: the questions a block's decision asks, by the chat's On
+        switches: its emotion for Emotion, usefulness for Automatic
+        suggestions while the server-wide switch is On too, hostility and
+        sarcasm for Soften hostile messages. None asks nothing. Inside a store
+        transaction the caller reads the server-wide switch first."""
+        if suggestions is None:
+            suggestions = self.suggestions.enabled()
+        asks = []
+        if self.emotion_switch.on(key, db):
+            asks.append("emotion")
+        if suggestions and self.suggestions.automatic(key, db)["automatic"]:
+            asks.append("suggestions_useful")
+        if self.calming.on(key, db):
+            asks += ["hostility", "sarcasm"]
+        return asks
+
+    def switched_on(self, key, name):
+        """ADR 62 Q8: a switch turned On does its work on the chat's latest
+        incoming block if it is under seven days old: its emotion, a softened
+        rewrite if it is hostile, automatic suggestions if it is unanswered
+        and qualifies, or its media rewrite. A decision that already answered
+        what the switch needs stands, and so does a set made before, so
+        switching Off and On again resamples nothing. Nothing older is
+        processed; older media stays with Rewrite earlier messages."""
+        try:
+            self.admit_ai()
+        except Refused:
+            return None
+        if not self.rewriting.chat_eligible(key):
+            return None
+        rows = self.store.rows(
+            "SELECT * FROM blocks WHERE chat_key=? ORDER BY date DESC,id DESC LIMIT 1",
+            (key,),
+        )
+        block = rows[0] if rows else None
+        if (
+            not block
+            or block["date"] < self.store.clock() - WINDOW
+            or not self.rewriting.eligible(block)
+        ):
+            return None
+        if name == "media":
+            return self.rewriting.release_media(block)
+        if name == "suggestions":
+            if self.store.rows(
+                "SELECT 1 FROM messages WHERE chat_key=? AND message_id>? "
+                "AND json_extract(body,'$.outgoing')=1 "
+                "AND json_extract(body,'$.service')=0 LIMIT 1",
+                (key, max(json.loads(block["sources"]))),
+            ):
+                return None  # Answered: no set would show.
+            standing = self.suggestions.standing(key)
+            if standing and standing["state"] != "cancelled":
+                return None  # A set made before shows again, or its outcome stands.
+            if self.emotion.asked(block, SWITCH_QUESTIONS[name]):
+                # Off cancelled its set before it was written: the decision
+                # that scheduled it schedules it again.
+                return self.emotion.suggest(block)
+        elif self.emotion.asked(block, SWITCH_QUESTIONS[name]):
+            return None  # Its decision already answered; nothing resamples.
+        return self.emotion.decide_again(block, SWITCH_QUESTIONS[name])
 
     def group_processing(self, key):
         state = self.store.groups.get(key)

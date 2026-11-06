@@ -30,6 +30,7 @@ import time
 from pathlib import Path
 
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, Message, Refused
 from enloq.domain.suggestions import ANSWERS, CALM_USEFULNESS, QUALIFYING
@@ -392,6 +393,10 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, route, decider)
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these chats ask emotion and usefulness with Emotion and
+                    # Automatic suggestions On.
+                    ChatSwitch.default = app.suggestions.default = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     work = app.rewriting.work

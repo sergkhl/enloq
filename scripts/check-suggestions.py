@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, Message, Refused
 from enloq.inference.base import EngineResponse
@@ -153,13 +154,16 @@ class AuthoredDecisions:
 
     async def generate(self, role, packet):
         if role == "emotion_classification":
+            answers = {
+                "emotion": choice(self.route.current["emotion"], 0.9),
+                "suggestions_useful": {"type": "noul", "noul": 0.9},
+                "hostility": {"type": "noul", "noul": 0.0},
+                "sarcasm": {"type": "noul", "noul": 0.0},
+            }
+            # Only what the chat's On switches ask (ADR 62 Q5).
+            asks = packet.get("asks")
             return EngineResponse(
-                {
-                    "emotion": choice(self.route.current["emotion"], 0.9),
-                    "suggestions_useful": {"type": "noul", "noul": 0.9},
-                    "hostility": {"type": "noul", "noul": 0.0},
-                    "sarcasm": {"type": "noul", "noul": 0.0},
-                },
+                {k: v for k, v in answers.items() if asks is None or k in asks},
                 actual_nanos=0,
             )
         if role != "suggestion_labels":
@@ -234,6 +238,9 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedRoute):
                     app = Conversations(
                         store, transport, engine, AuthoredDecisions(engine)
                     )
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these chats run with Emotion and Automatic suggestions On.
+                    ChatSwitch.default = app.suggestions.default = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.rewriting.work.guidance = registry.guidance

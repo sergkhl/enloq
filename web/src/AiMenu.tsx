@@ -507,10 +507,12 @@ function EmotionSection({
       <div className="screen-block profile-emotion">
         <strong>{details.label}</strong>
         <p>{details.reason}</p>
-        <small>
-          {details.source}
-          {details.time ? ` · ${details.time}` : ""}
-        </small>
+        {details.source && (
+          <small>
+            {details.source}
+            {details.time ? ` · ${details.time}` : ""}
+          </small>
+        )}
       </div>
     </Section>
   );

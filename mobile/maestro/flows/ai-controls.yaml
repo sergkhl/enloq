@@ -2,8 +2,9 @@
 # authored chats: the profile's Telegram details on "Message details", then
 # its AI Menu (ADR 62): AI view and the chat's controls, Remember this chat Off
 # by default (ADR 56 Q9) and, on its page, what the person cares about (ADR
-# 55); the not-analysed note on "Mixed block", and Rewrite earlier messages
-# on "Earlier". Retry is left to the web journey and the app's
+# 55); the not-analysed note on "Mixed block", Rewrite earlier messages on
+# "Earlier", and "Switches Off", whose five switches are Off (ADR 62 Q14)
+# until Emotion turns On (Q8). Retry is left to the web journey and the app's
 # tests: a failing engine in the shared fixture would fail the other flows.
 # Selectors stay ASCII: without a UTF-8 locale Maestro misreads the rest.
 # A chat in the list may sit above where an earlier flow left it, so each
@@ -45,10 +46,14 @@ appId: ${APP_ID}
 - assertVisible:
     id: "ai-view-switch"
     checked: true
+# The fixture's authored chats have their switches On but Remember this
+# chat, Off by default since ADR 56 (Q9).
 - assertVisible:
-    id: "ai-emotion"
+    id: "ai-emotion-switch"
+    checked: true
 - assertVisible:
-    id: "ai-media"
+    id: "ai-media-switch"
+    checked: true
 - assertVisible:
     id: "ai-remember-switch"
     checked: false
@@ -114,5 +119,51 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: "2 earlier blocks are not rewritten"
     timeout: 30000
+- tapOn: "Back to conversations"
+# A chat whose five switches are Off: the robot's outline, its blocks as
+# their originals, and Emotion turned On decides its latest block.
+- scrollUntilVisible:
+    element: "Switches Off.*"
+    direction: UP
+    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element: "Switches Off.*"
+    timeout: 30000
+- tapOn: "Switches Off.*"
+- extendedWaitUntil:
+    visible: "AI Menu, AI off in this chat"
+    timeout: 15000
+- assertVisible: "Switches Off, open profile"
+- tapOn:
+    id: "ai-menu"
+- assertVisible:
+    id: "ai-suggestions-switch"
+    checked: false
+- assertVisible:
+    id: "ai-emotion-switch"
+    checked: false
+- assertVisible:
+    id: "ai-calming-switch"
+    checked: false
+- assertVisible:
+    id: "ai-media-switch"
+    checked: false
+- assertVisible:
+    id: "ai-remember-switch"
+    checked: false
+- tapOn:
+    id: "ai-emotion-switch"
+- extendedWaitUntil:
+    visible:
+      id: "ai-emotion-switch"
+      checked: true
+    timeout: 15000
+- tapOn:
+    point: "50%,10%"
+- extendedWaitUntil:
+    visible: "Switches Off, Mixed or uncertain, open profile"
+    timeout: 30000
+- assertVisible: "AI Menu, AI on in this chat"
 - tapOn: "Back to conversations"
 - assertVisible: "Account: Demo account. Switch account"

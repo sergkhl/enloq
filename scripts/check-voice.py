@@ -68,6 +68,9 @@ async def main():
         transport = FakeTransport()
         transport.media["user:42", 1] = wav.read_bytes()
         app = Conversations(store, transport)
+        # ADR 62 Q2: every switch is Off without a chat's own choice; this
+        # chat transcribes with Voice and images On.
+        app.media_switch.set("1/user:42", True)
         app.sync.ingest(
             Message(
                 account_id=1,

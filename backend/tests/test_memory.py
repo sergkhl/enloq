@@ -1,5 +1,8 @@
-"""E7 and ADR 55: cited Person and Account Memory folded from messages
-already sent to a model, or started once from the cache."""
+"""E7 and ADR 55: cited Person and Account Memory folded from the messages it
+read, or started once from the cache. Since ADR 62 Q6 memory reads a
+remembered chat's arriving messages itself; these cases name their sources
+with `record`, the same intake, over messages that came as history pages,
+which memory never reads."""
 
 import asyncio
 
@@ -37,9 +40,9 @@ def no_start(a):
 
 def conversation(a, now, count=4, age=10, start=False, photos=False):
     """Alternating incoming/outgoing messages ``age`` days old, then a recent
-    own message so the chat stays recent. With ``photos`` the incoming ones
-    are photos with captions, which a rewrite reads: text alone stays
-    combined (ADR 54)."""
+    own message so the chat stays recent, all as history pages. With
+    ``photos`` the incoming ones are photos with captions, which a rewrite
+    reads: text alone stays combined (ADR 54)."""
     if not start:
         no_start(a)
     for identity in range(1, count + 1):
@@ -55,7 +58,8 @@ def conversation(a, now, count=4, age=10, start=False, photos=False):
             target=False,
         )
     a.sync.ingest(
-        message(a, 100, date=now[0] - 1800, text="Latest own message.", outgoing=True)
+        message(a, 100, date=now[0] - 1800, text="Latest own message.", outgoing=True),
+        target=False,
     )
 
 
@@ -93,7 +97,8 @@ async def test_folds_take_only_analysed_departed_messages_without_history(tmp_pa
 
 
 async def test_recent_messages_learn_after_30_quiet_minutes(tmp_path):
-    # ADR 55 Q19 B: the latest 20 count too, once sent to a model.
+    # ADR 55 Q19 B: the latest 20 count too; since ADR 62 Q6 memory reads
+    # them as they arrive, both sides', with no other stage involved.
     now = [2_000_000_000.0]
     a = fixture(tmp_path, clock=lambda: now[0])
     no_start(a)
@@ -101,9 +106,8 @@ async def test_recent_messages_learn_after_30_quiet_minutes(tmp_path):
         a.sync.ingest(
             message(a, identity, text=f"Recent {identity}.", outgoing=identity % 2 == 0)
         )
-    assert not a.memory.candidates(KEY)  # Merely cached is not disclosed.
-    a.memory.record(KEY, [f"{KEY}/{i}" for i in range(1, 5)])
-    assert len(a.memory.candidates(KEY)) == 4
+    assert [r["origin"] for r in a.memory.candidates(KEY)] == ["read"] * 4
+    assert not a.engine.calls
     assert not a.memory.due(KEY)
     now[0] += 1800
     assert a.memory.due(KEY)

@@ -568,11 +568,6 @@ export function ReminderEditor({
         keyboardShouldPersistTaps="handled"
       >
         <Body>{title}</Body>
-        {saved?.status === "paused" ? (
-          <RowNote tone="warning">
-            Paused: Automatic suggestions is Off.
-          </RowNote>
-        ) : null}
         {rule ? (
           <>
             <Section title="Repeat">
@@ -975,7 +970,6 @@ export function ProfileReminders({
           </Text>
           <Text style={[styles.small, { color: palette.muted }]}>
             {rowDate(item.occurrence, item.next_at, item.schedule.timezone)}
-            {item.status === "paused" ? " · Paused" : ""}
           </Text>
         </Pressable>
       ))}
@@ -1373,11 +1367,7 @@ function ReminderRow({
             {repeatLine(item.schedule, digestTime)}
           </Text>
           <Text numberOfLines={1} style={{ color: palette.muted }}>
-            {unavailable
-              ? "Unavailable: sign in to this account."
-              : item.status === "paused"
-                ? "Paused: Automatic suggestions is Off."
-                : line}
+            {unavailable ? "Unavailable: sign in to this account." : line}
           </Text>
         </View>
       </Pressable>

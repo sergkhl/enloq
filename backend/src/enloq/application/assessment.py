@@ -128,11 +128,14 @@ class Assessment:
 
     def schedule(self, key):
         """A confirmed qualifying change: (re)start this chat's 30 quiet
-        seconds. Coalesced, so a burst makes at most one call."""
+        seconds. Coalesced, so a burst makes at most one call. A reaction is
+        assessed only while the chat's Emotion is On (ADR 62 Q5)."""
         try:
             if not self.app.rewriting.chat_eligible(key):
                 return
         except Refused:
+            return
+        if not self.app.emotion_switch.on(key):
             return
         due = self.store.clock() + QUIET
         with self.store.transaction() as db:
@@ -231,6 +234,9 @@ class Assessment:
             if not self.app.rewriting.chat_eligible(key):
                 self._job(job, "superseded", "This chat is no longer eligible")
                 return
+            if not self.app.emotion_switch.on(key):
+                self._job(job, "superseded", "Emotion is Off for this chat")
+                return
             kind, event = self.current(key)
             if kind != "reaction" or self.withdrawn(key, event):
                 # Newer communication, a removal or expiry: nothing to assess.
@@ -299,9 +305,13 @@ class Assessment:
                     and self.sources_current(owned)
                 )
 
-            # One decision request (ADR 30): the emotion code and whether
-            # optional reply wording is useful now.
-            request = {"state": decision_state.reaction(packet)}
+            # One decision request (ADR 30): the emotion code and, while the
+            # chat's Automatic suggestions are On, whether optional reply
+            # wording is useful now (ADR 62 Q5).
+            asks = ["emotion"]
+            if "suggestions_useful" in self.app.decision_asks(key):
+                asks.append("suggestions_useful")
+            request = {"state": decision_state.reaction(packet), "asks": asks}
             result = await self.app.rewriting.work.run(
                 self.app.decider, job, request, valid, klass="reaction"
             )

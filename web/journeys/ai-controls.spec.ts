@@ -269,3 +269,74 @@ test("earlier messages rewrite, a skipped file shows its note, and an account's 
     page.getByRole("heading", { name: "Manage accounts" }),
   ).toBeVisible();
 });
+
+// ADR 62 Q2, Q5, Q8, Q14: a chat whose five switches are Off settles as its
+// originals with no model request and the robot's outline. Emotion turned On
+// decides its latest block asking emotion only, and Voice and images turned
+// On rewrites it.
+test("a chat with its switches Off shows its originals until a switch turns On", async ({
+  page,
+}) => {
+  const seeded = await post(page, "/api/test/switches-off");
+  expect(seeded.states).toEqual(["original", "original"]);
+  expect(seeded.asks).toEqual([]);
+  await page.reload();
+  await page.getByRole("button", { name: /^Switches Off/ }).tap();
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI off in this chat" }),
+  ).toBeVisible();
+  const photo = page
+    .locator("article.app-bubble")
+    .filter({ hasText: "the view from the lake" });
+  // Combined originals with no AI label and no status line (Q14).
+  await expect(photo.locator(".bubble-ai-head")).toHaveText(/^1 message · /);
+  await expect(page.locator(".bubble-ai-head").first()).toHaveText(
+    /^1 message · /,
+  );
+  await expect(
+    page.locator("article.app-bubble.incoming .bubble-status"),
+  ).toHaveCount(0);
+  const menu = await openAiMenu(page);
+  for (const name of [
+    "Automatic suggestions",
+    "Emotion",
+    "Soften hostile messages",
+    "Voice and images",
+    "Remember this chat",
+  ])
+    await expect(menu.getByRole("switch", { name })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  await menu.getByRole("switch", { name: "Emotion" }).tap();
+  await expect(menu.getByRole("switch", { name: "Emotion" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  // Its latest block is decided from its caption alone (Q8, Q20).
+  await expect
+    .poll(async () => (await page.request.get("/api/test/switches-off")).json())
+    .toEqual({ asks: [["emotion"]] });
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", {
+      name: "Switches Off, Mixed or uncertain, open profile",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "AI Menu, AI on in this chat" }),
+  ).toBeVisible();
+  const again = await openAiMenu(page);
+  await again.getByRole("switch", { name: "Voice and images" }).tap();
+  await expect(
+    again.getByRole("switch", { name: "Voice and images" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await expect(photo.locator(".bubble-ai-head")).toHaveText(/^AI · 1 message/, {
+    timeout: 20000,
+  });
+  // The earlier block stays as its originals: nothing older is processed.
+  await expect(page.locator(".bubble-ai-head").first()).toHaveText(
+    /^1 message · /,
+  );
+});

@@ -12,7 +12,8 @@ skips the quiet. A block with an image or a voice note is decided after its
 rewrite (ADR 30): an authored rewrite and image meaning stand in where the
 rewrite would publish them, then the real classification job runs. Each ad
 case is one authored group chat whose posts form one real classifier request;
-bots are never judged. Suggestions and memory are off.
+bots are never judged. Memory is off, and no set is prepared: each decision
+asks usefulness as a chat with Automatic suggestions On does (ADR 62 Q5).
 
 The service must be stopped; its exclusive owner lock is held throughout.
 At most 40 requests, 1,200 seconds and $0.01 counted test spending across the
@@ -42,6 +43,7 @@ from zoneinfo import ZoneInfo
 from enloq.application.context import incoming
 from enloq.application.conversations import Conversations
 from enloq.application.group_context import calendar_day, day_bounds
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.group_filtering import AD_ROLE
 from enloq.domain.group_filtering import FLOOR as AD_FLOOR
@@ -548,13 +550,22 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                             raise Refused("No rewrite requests in this check")
 
                     app = Conversations(store, transport, NoRewrites(), engine)
+                    # ADR 62 Q2: every switch is Off without a chat's own
+                    # choice; these authored chats run with Emotion, Voice and
+                    # images and Automatic suggestions On.
+                    ChatSwitch.default = app.suggestions.default = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()
                     work = app.rewriting.work
                     work.guidance = registry.guidance
                     work.admit = engine.admit
-                    app.suggestions.enabled = lambda: False
+                    # The decisions ask usefulness as in a chat with both
+                    # Automatic suggestions switches On (ADR 62 Q5), but no
+                    # set is prepared here.
+                    app.suggestions.enabled = lambda: True
+                    app.suggestions.schedule = lambda *args, **kwargs: None
+                    app.suggestions.schedule_reaction = lambda *args, **kwargs: None
                     app.memory.enabled = lambda: False
                     chats = []
 

@@ -210,7 +210,9 @@ class ReminderView(Model):
     revision: int
     schedule: ReminderRule
     next_at: float | None = None
-    status: Literal["active", "paused", "unavailable"] = "active"
+    # Never paused since ADR 62 Q7: a schedule alerts whatever the Automatic
+    # suggestions switches say.
+    status: Literal["active", "unavailable"] = "active"
     # Only once due: an occurrence being prepared is not yet pending.
     occurrence: ReminderOccurrence | None = None
     kept: KeptStatus | None = None

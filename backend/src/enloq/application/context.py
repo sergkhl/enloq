@@ -42,9 +42,13 @@ def projection(message):
     return value
 
 
-async def incoming(app, block, *, retry=False, on_stage=None, explicit=False):
+async def incoming(
+    app, block, *, retry=False, on_stage=None, explicit=False, read=True
+):
     """``explicit`` work (a click) may target any cached block up to 30 days
-    old; everything else keeps the seven-day processing window."""
+    old; everything else keeps the seven-day processing window. Without
+    ``read`` (Voice and images Off, ADR 62 Q20) images and speech keep only
+    the meanings and transcripts that already exist."""
     import json
 
     store = app.store
@@ -109,7 +113,11 @@ async def incoming(app, block, *, retry=False, on_stage=None, explicit=False):
     )
 
     packet = await app.media.enrich(
-        packet, block["chat_key"], retry=retry, on_stage=on_stage or (lambda _: None)
+        packet,
+        block["chat_key"],
+        retry=retry,
+        on_stage=on_stage or (lambda _: None),
+        read=read,
     )
     packet["image_inputs"] = {
         f"{block['chat_key']}/{m['id']}": m["image_context"]

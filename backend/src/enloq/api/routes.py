@@ -80,6 +80,13 @@ class CalmingEdit(Model):
     enabled: StrictBool
 
 
+class ChatSwitchState(Model):
+    """A private chat's Emotion or Voice and images switch (ADR 62 Q2): Off
+    unless the chat chose otherwise."""
+
+    enabled: bool
+
+
 class VideoPreparation(Revision):
     version: int | None = Field(default=None, gt=0)
 
@@ -329,6 +336,27 @@ def routes(manager, settings):
     @router.post("/chats/{peer}/calming", response_model=Calming)
     def set_calming(account_id: int, peer: str, body: CalmingEdit):
         return manager.get(account_id).calming.set(key(account_id, peer), body.enabled)
+
+    # ADR 62 Q2: a private chat's Emotion and Voice and images switches.
+    @router.get("/chats/{peer}/emotion", response_model=ChatSwitchState)
+    def emotion_switch(account_id: int, peer: str):
+        return manager.get(account_id).emotion_switch.view(key(account_id, peer))
+
+    @router.post("/chats/{peer}/emotion", response_model=ChatSwitchState)
+    def set_emotion_switch(account_id: int, peer: str, body: CalmingEdit):
+        return manager.get(account_id).emotion_switch.set(
+            key(account_id, peer), body.enabled
+        )
+
+    @router.get("/chats/{peer}/voice-and-images", response_model=ChatSwitchState)
+    def media_switch(account_id: int, peer: str):
+        return manager.get(account_id).media_switch.view(key(account_id, peer))
+
+    @router.post("/chats/{peer}/voice-and-images", response_model=ChatSwitchState)
+    def set_media_switch(account_id: int, peer: str, body: CalmingEdit):
+        return manager.get(account_id).media_switch.set(
+            key(account_id, peer), body.enabled
+        )
 
     @router.get("/chats/{peer}/window")
     def cached_window(account_id: int, peer: str, around: int = Query(gt=0, lt=2**63)):

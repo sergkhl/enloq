@@ -83,6 +83,8 @@ def main() -> int:
                 ("/api/test/details", {}),
                 # Rewrite earlier messages (ADR 46 CU3).
                 ("/api/test/older", {}),
+                # A chat whose five switches are Off (ADR 62 Q14).
+                ("/api/test/switches-off", {}),
                 # Message Selection and deletion (ADR 46 CU4).
                 ("/api/test/deletion", {}),
                 # GIF and sticker sending (ADR 46 CU5).
@@ -106,8 +108,8 @@ def main() -> int:
                 client.post(path, json=data, headers=device).raise_for_status()
             print(
                 "Authored media chats: Voice player, Video player, Media kinds,"
-                " Message details, Earlier, Deletion fixture, GIF and sticker"
-                " fixture, Retained authored discussion"
+                " Message details, Earlier, Switches Off, Deletion fixture, GIF"
+                " and sticker fixture, Retained authored discussion"
             )
         finally:
             trusted = client.get("/api/auth/browsers", headers=device).json()

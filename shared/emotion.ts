@@ -35,6 +35,8 @@ const REASONS: Record<string, string> = {
   changed: "Source material changed; no current estimate.",
   invalid: "The latest incoming messages could not be assessed.",
   unavailable: "No current emotion estimate.",
+  // ADR 62 Q5: nothing is estimated while the chat's Emotion is Off.
+  off: "Emotion is Off for this chat.",
 };
 
 // A reaction source reads the same reasons against its own evidence.
@@ -70,7 +72,8 @@ export function emotionReason(emotion: EmotionView | null | undefined) {
   );
 }
 
-// The profile's lines: the estimate, why, its source and its time.
+// The Emotion page's lines: the estimate, why, its source and its time. With
+// Emotion Off there is no source (ADR 62 Q5).
 export function emotionDetails(
   emotion: EmotionView | null | undefined,
   timezone: string,
@@ -81,9 +84,11 @@ export function emotionDetails(
     label: face ? `${face[0]} ${face[1]}` : "No current estimate",
     reason: emotionReason(current),
     source:
-      current?.source === "reaction" && current.reaction
-        ? `A reaction ${current.reaction}${current.target_id ? ` on message #${current.target_id}` : ""}`
-        : "The latest incoming messages",
+      current?.reason === "off"
+        ? null
+        : current?.source === "reaction" && current.reaction
+          ? `A reaction ${current.reaction}${current.target_id ? ` on message #${current.target_id}` : ""}`
+          : "The latest incoming messages",
     time: current?.source_time
       ? `${messageDate(current.source_time, timezone)} · ${messageTime(current.source_time, timezone)}`
       : null,

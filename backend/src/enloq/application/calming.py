@@ -19,8 +19,8 @@ _LOG = logging.getLogger("enloq.calming")
 
 
 class Calming:
-    # On unless a chat chooses otherwise (Q4).
-    default = True
+    # Off for every chat without its own choice since ADR 62 (Q2).
+    default = False
 
     def __init__(self, app):
         self.app, self.store = app, app.store
@@ -48,9 +48,10 @@ class Calming:
         return {"enabled": self.on(key)}
 
     def set(self, key, enabled):
-        """Applies to blocks rewritten from now on: switching on redoes
-        nothing already shown, and switching off leaves calmed text (Q9)."""
+        """Applies to blocks decided from now on, and turned On to the chat's
+        latest block too (ADR 62 Q8); switching off leaves calmed text (Q9)."""
         self.private(key)
+        was = self.on(key)
         with self.store.transaction() as db:
             db.execute(
                 "INSERT INTO calming VALUES (?,?,?) ON CONFLICT(chat_key) DO UPDATE "
@@ -58,6 +59,8 @@ class Calming:
                 "WHERE enabled!=excluded.enabled",
                 (key, int(enabled), self.store.clock()),
             )
+        if enabled and not was:
+            self.app.switched_on(key, "calming")
         return {"enabled": self.on(key)}
 
     def private(self, key):
@@ -86,6 +89,23 @@ class Calming:
             return None
         return block
 
+    def rewritten(self, decision, db=None):
+        """The decision's block while it stays rewritten, unchanged and not
+        softened yet."""
+        payload = json.loads(decision["payload"] or "{}")
+        blocks = self.read(
+            "SELECT * FROM blocks WHERE id=?", (payload.get("block"),), db
+        )
+        block = blocks[0] if blocks else None
+        if (
+            not block
+            or block["state"] != "ready"
+            or block["calmed"]
+            or block["revision"] != decision["input_revision"]
+        ):
+            return None
+        return block
+
     def release(self, db, decision, code, *, sarcastic=False):
         """After a held block's explicit hostile-wording decision, soften it
         when the chat's switch is on, whatever its length (Q6).
@@ -105,11 +125,14 @@ class Calming:
 
     def _release(self, db, decision, code, sarcastic):
         payload = json.loads(decision["payload"] or "{}")
-        if not payload.get("held") or not code:
+        # A held block, or a rewritten one decided again when Soften hostile
+        # messages turned On (ADR 62 Q8), which is softened anew.
+        again = bool(payload.get("again"))
+        if not (payload.get("held") or again) or not code:
             return None
         if not self.on(decision["scope"], db):
             return None
-        block = self.held(decision, db)
+        block = self.rewritten(decision, db) if again else self.held(decision, db)
         if not block:
             return None
         waiting = db.execute(
@@ -120,7 +143,9 @@ class Calming:
             block["id"],
             block["revision"],
             self.store.clock(),
-            klass=json.loads(waiting["payload"] or "{}").get("class", "new"),
+            klass=json.loads(waiting["payload"] or "{}").get("class", "new")
+            if waiting
+            else payload.get("class", "new"),
             # The decision's sarcasm answer goes with it to the rewrite.
             payload={"calm": code, **({"sarcastic": True} if sarcastic else {})},
         )
@@ -156,7 +181,9 @@ class Calming:
                 "state": decision_state.incoming(
                     [prepared(m, {}) for m in packet["messages"]],
                     [prepared(m, {}) for m in packet.get("context", [])],
-                )
+                ),
+                # ADR 62 Q5: its calming is all this decision settles.
+                "asks": ["hostility", "sarcasm"],
             }
 
             def valid():
@@ -170,9 +197,6 @@ class Calming:
             result = await self.app.rewriting.work.run(
                 self.app.decider, job, request, valid
             )
-            # ADR 54: Chat Memory learns from what this decision read.
-            self.app.memory.record(key, packet["inputs"])
-            self.app.memory.schedule(key)
             with self.store.transaction() as db:
                 self.release(db, job, result.hostile, sarcastic=result.sarcastic)
         except asyncio.CancelledError:

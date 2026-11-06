@@ -13,7 +13,8 @@ def initialize(db):
             "UPDATE analyzed SET revision=(SELECT revision FROM messages WHERE key=analyzed.key)"
         )
     if "origin" not in columns:
-        # ADR 55 Q20: "sent" to a model, or admitted by the cache "start".
+        # ADR 55 Q20: "sent" to a model before ADR 62 Q6, "read" from the
+        # chat since, or admitted by the cache "start".
         db.execute("ALTER TABLE analyzed ADD COLUMN origin TEXT")
     db.execute(
         "CREATE INDEX IF NOT EXISTS analyzed_chat ON analyzed(chat_key,message_id)"

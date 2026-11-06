@@ -96,14 +96,17 @@ async def test_each_private_chat_chooses_off_or_on(tmp_path, monkeypatch):
     # ...and a set prepared before shows again on switching back.
     app.suggestions.set_settings(KEY, True, "friendly")
     assert app.suggestions.view(KEY).attempt == shown.attempt
-    # Off, a new block gets no request; On again regenerates nothing.
+    # Off, a new block gets no request; On again answers the chat's latest
+    # block, unanswered and under seven days old (ADR 62 Q8).
     app.suggestions.set_settings(KEY, False, "friendly")
     app.sync.ingest(message(app, 2, text="It keeps getting worse."))
     await drain(app)
+    assert app.engine.count() == 1 and len(jobs(app)) == 1
     app.suggestions.set_settings(KEY, True, "friendly")
     await drain(app)
-    assert app.engine.count() == 1 and len(jobs(app)) == 1
-    assert app.suggestions.view(KEY).state == "none"
+    assert app.engine.count() == 2 and len(jobs(app)) == 2
+    latest = app.suggestions.view(KEY)
+    assert latest.state == "ready" and latest.attempt != shown.attempt
     # The choice is the chat's own, kept once made.
     restarted, _ = rig(tmp_path)
     assert restarted.suggestions.settings(KEY) == {
@@ -124,9 +127,11 @@ async def test_off_cancels_the_chats_queued_work(tmp_path):
     app.suggestions.set_settings(KEY, False, "friendly")
     assert [j["state"] for j in jobs(app)] == ["cancelled"]
     assert app.suggestions.record(KEY)["state"] == "cancelled"
+    # On again decides the latest block anew for a fresh set (ADR 62 Q8);
+    # the cancelled attempt never reaches the provider.
     app.suggestions.set_settings(KEY, True, "friendly")
     await drain(app)
-    assert app.engine.count() == 0
+    assert app.engine.count() == 1
     assert not app.store.rows("SELECT * FROM reservations WHERE id=?", (queued["id"],))
 
 

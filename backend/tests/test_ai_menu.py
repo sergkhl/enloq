@@ -12,12 +12,16 @@ KEY = "1/user:42"
 
 def test_a_private_chat_carries_its_switches_and_style(tmp_path):
     app = fixture(tmp_path)
+    # The switches as the cases before ADR 62 had them (conftest's
+    # switches_on); test_ai_switches checks the shipped Off.
     assert app.conversation(KEY)["ai"] == {
         "account": True,
         "running": True,
         "suggestions": True,
         "style": "friendly",
+        "emotion": True,
         "calming": True,
+        "media": True,
         "remember": False,
         "server_suggestions": True,
         "server_memory": True,
@@ -56,7 +60,9 @@ def test_a_group_runs_while_its_processing_does_and_a_retained_one_never(
         "running": False,
         "suggestions": None,
         "style": None,
+        "emotion": None,
         "calming": None,
+        "media": None,
         "remember": None,
         "server_suggestions": None,
         "server_memory": None,

@@ -1558,6 +1558,18 @@
             "default": null,
             "title": "Style"
           },
+          "emotion": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emotion"
+          },
           "calming": {
             "anyOf": [
               {
@@ -1569,6 +1581,18 @@
             ],
             "default": null,
             "title": "Calming"
+          },
+          "media": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Media"
           },
           "remember": {
             "anyOf": [
@@ -1641,6 +1665,21 @@
           "items"
         ],
         "title": "ChatReminders",
+        "type": "object"
+      },
+      "ChatSwitchState": {
+        "additionalProperties": false,
+        "description": "A private chat's Emotion or Voice and images switch (ADR 62 Q2): Off\nunless the chat chose otherwise.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "ChatSwitchState",
         "type": "object"
       },
       "ClientDecision": {
@@ -2393,7 +2432,8 @@
               "expired",
               "changed",
               "invalid",
-              "unavailable"
+              "unavailable",
+              "off"
             ],
             "title": "Reason",
             "type": "string"
@@ -4870,7 +4910,6 @@
             "default": "active",
             "enum": [
               "active",
-              "paused",
               "unavailable"
             ],
             "title": "Status",
@@ -5153,7 +5192,6 @@
             "default": "active",
             "enum": [
               "active",
-              "paused",
               "unavailable"
             ],
             "title": "Status",

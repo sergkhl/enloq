@@ -279,10 +279,12 @@ function EmotionSection({
           {details.label}
         </Text>
         <Text style={{ color: palette.text }}>{details.reason}</Text>
-        <Text style={[styles.small, { color: palette.muted }]}>
-          {details.source}
-          {details.time ? ` · ${details.time}` : ""}
-        </Text>
+        {details.source ? (
+          <Text style={[styles.small, { color: palette.muted }]}>
+            {details.source}
+            {details.time ? ` · ${details.time}` : ""}
+          </Text>
+        ) : null}
       </View>
     </Section>
   );

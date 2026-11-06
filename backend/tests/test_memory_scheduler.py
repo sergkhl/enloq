@@ -157,17 +157,18 @@ async def test_no_change_consumes_exact_versions_across_restart_and_old_reproces
     assert [r["message_id"] for r in restarted.memory.candidates(KEY)] == [1]
 
 
-def test_every_disclosed_message_is_a_source_whatever_the_window(tmp_path):
-    # ADR 55 Q19 B: no wait for the latest 20 or seven days.
+def test_every_read_message_is_a_source_whatever_the_window(tmp_path):
+    # ADR 55 Q19 B: no wait for the latest 20 or seven days; memory reads
+    # each arriving message (ADR 62 Q6).
     now = [2_000_000_000.0]
     app = fixture(tmp_path, clock=lambda: now[0])
     no_start(app)
     for identity in range(1, 22):
         app.sync.ingest(message(app, identity, text="x" * 5000, outgoing=True))
-    app.memory.record(KEY, [f"{KEY}/1", f"{KEY}/2", f"{KEY}/21"])
-    assert [r["message_id"] for r in app.memory.candidates(KEY)] == [1, 2, 21]
+    every = list(range(1, 22))
+    assert [r["message_id"] for r in app.memory.candidates(KEY)] == every
     now[0] += 7 * DAY + 1
-    assert [r["message_id"] for r in app.memory.candidates(KEY)] == [1, 2, 21]
+    assert [r["message_id"] for r in app.memory.candidates(KEY)] == every
 
 
 async def test_budget_wait_retains_attempt_and_unknown_recovery_needs_retry(tmp_path):

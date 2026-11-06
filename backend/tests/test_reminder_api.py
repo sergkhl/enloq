@@ -236,19 +236,24 @@ def test_member_settings_list_and_claims_do_not_cross_accounts(rig):
     assert manager.reminders.items(OWNER) == []
 
 
-def test_global_off_on_between_ticks_resets_future_without_backfill(rig):
+def test_global_off_keeps_the_schedule_alerting(rig):
+    """ADR 62 Q7 replaced ADR 58 Q4's pause: a schedule alerts whatever the
+    Automatic suggestions switches say."""
     server, client, app, now = rig
     saved = create(client)
     now[0] = saved["next_at"]
     app.reminders.tick()
-    assert app.reminders.get(KEY, saved["id"]).occurrence
+    first = app.reminders.get(KEY, saved["id"]).occurrence
+    assert first
     registry = server.state.accounts.registry
     registry.set_suggestions_enabled(False)
     now[0] += 21 * 86400
-    registry.set_suggestions_enabled(True)
     app.reminders.tick()
-    assert app.reminders.get(KEY, saved["id"]).occurrence is None
-    assert app.reminders.get(KEY, saved["id"]).next_at > now[0]
+    view = app.reminders.get(KEY, saved["id"])
+    # Weeks later it still alerts, its latest occurrence pending.
+    assert view.status == "active" and view.occurrence
+    assert view.occurrence.id != first.id and view.next_at > now[0]
+    assert client.get(PATH).status_code == 200
 
 
 def test_combined_digest_across_two_member_accounts(rig):

@@ -262,7 +262,10 @@ async def test_classification_follows_publication_and_readiness_never_waits(
     view = app.emotion.view(KEY)
     assert (view.code, view.reason) == ("worried", "available")
     [(role, packet)] = app.decider.calls
-    assert role == "emotion_classification" and set(packet) == {"state", "guidance"}
+    assert role == "emotion_classification"
+    assert set(packet) == {"state", "guidance", "asks"}
+    # What the chat's On switches use (ADR 62 Q5); calming is off here.
+    assert packet["asks"] == ["emotion", "suggestions_useful"]
     assert packet["state"] == {
         "conversation": [
             {"id": 1, "from": "owner", "text": "Owner earlier words"},

@@ -647,10 +647,20 @@ export interface components {
        */
       style: ("friendly" | "professional" | "idioms") | null;
       /**
+       * Emotion
+       * @default null
+       */
+      emotion: boolean | null;
+      /**
        * Calming
        * @default null
        */
       calming: boolean | null;
+      /**
+       * Media
+       * @default null
+       */
+      media: boolean | null;
       /**
        * Remember
        * @default null
@@ -676,6 +686,15 @@ export interface components {
        * @default null
        */
       language: string | null;
+    };
+    /**
+     * ChatSwitchState
+     * @description A private chat's Emotion or Voice and images switch (ADR 62 Q2): Off
+     *     unless the chat chose otherwise.
+     */
+    ChatSwitchState: {
+      /** Enabled */
+      enabled: boolean;
     };
     /** ClientDecision */
     ClientDecision: {
@@ -1061,7 +1080,8 @@ export interface components {
         | "expired"
         | "changed"
         | "invalid"
-        | "unavailable";
+        | "unavailable"
+        | "off";
       /**
        * Source Time
        * @default null
@@ -2098,7 +2118,7 @@ export interface components {
        * @default active
        * @enum {string}
        */
-      status: "active" | "paused" | "unavailable";
+      status: "active" | "unavailable";
       /** @default null */
       occurrence: components["schemas"]["ReminderOccurrence"] | null;
       /** @default null */
@@ -2218,7 +2238,7 @@ export interface components {
        * @default active
        * @enum {string}
        */
-      status: "active" | "paused" | "unavailable";
+      status: "active" | "unavailable";
       /** @default null */
       occurrence: components["schemas"]["ReminderOccurrence"] | null;
       /** @default null */

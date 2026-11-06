@@ -284,16 +284,19 @@ def test_downtime_keeps_only_the_latest_missed_and_digest_waits(tmp_path):
     ] == stamp("2027-02-11T09:00:00+00:00")
 
 
-def test_pause_resume_no_backfill_and_revision_guards(tmp_path):
+def test_automatic_suggestions_off_keeps_alerting_and_revision_guards(tmp_path):
     app, now, schedule = scheduled(tmp_path)
-    due(app, now, schedule)
+    identity = due(app, now, schedule)
+    # ADR 62 Q7 replaced ADR 58 Q4's pause: the schedule keeps alerting.
     app.suggestions.set_settings(KEY, False, "professional")
-    assert app.reminders.get(KEY, schedule).status == "paused"
-    assert app.reminders.pending(KEY) == [] and not app.reminders.owns(KEY)
+    view = app.reminders.get(KEY, schedule)
+    assert view.status == "active" and view.occurrence.id == identity
+    assert [p.occurrence for p in app.reminders.pending(KEY)] == [identity]
+    assert app.reminders.owns(KEY)
     now[0] += 60 * 86400
-    app.suggestions.set_settings(KEY, True, "professional")
-    assert app.reminders.get(KEY, schedule).occurrence is None
-    assert app.reminders.get(KEY, schedule).next_at > now[0]
+    app.reminders.tick()
+    later = app.reminders.get(KEY, schedule)
+    assert later.status == "active" and later.next_at > now[0]
     before = app.store.draft(KEY)
     edited = app.reminders.edit(KEY, schedule, 1, rule(repeat="monthly", month_day=31))
     assert edited.revision == 2

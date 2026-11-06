@@ -150,8 +150,13 @@ Private incoming text is combined, not rewritten
 ([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md),
 [ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q21).
 `blocks.analysed` admits a block with an analysable image, voice note or
-Video Circle, and no text at any length. Every text block is held, decided and
-shown as its originals together, and [Soften hostile messages](#soften-hostile-messages) is its one rewrite.
+Video Circle, while its chat's Voice and images is On (`blocks.media_on`, Q20),
+and no text at any length. Every text block is held, decided and shown as its
+originals together, and [Soften hostile messages](#soften-hostile-messages) is
+its one rewrite. A media block in a chat with Voice and images Off is held the
+same way, decided from its caption and the transcripts and meanings that
+exist; turning the switch On releases the chat's latest such block for its
+rewrite (Q8), and nothing else releases a held block.
 
 - **A text block in the rewrite path.** If a text block without analysed media
   still reaches `Rewriting.incoming` (a Retry) and its decision first doesn't
@@ -159,8 +164,8 @@ shown as its originals together, and [Soften hostile messages](#soften-hostile-m
   publishing a decision made first as the rewrite would have.
 - **Older runs.** Rewrite earlier messages (`Rewriting.older`) lists only blocks
   with analysed media.
-- **Memory.** Memory records what a held or calm-only decision read, since text
-  no longer reaches the rewrite that used to record it.
+- **Memory.** Memory reads a remembered chat's arriving messages itself
+  (Q6), so it needs neither a rewrite nor a decision to learn.
 - **Tests and fixtures.** Cases that exercise the rewrite path use authored
   media blocks, or hostile text that softens; nothing turns text rewriting
   back on.
@@ -592,7 +597,16 @@ Nothing about a question or an answer is stored beyond content-free receipts.
 ## Private processing and media
 
 Automatic private rewriting, emotion, suggestions and memory targets belong to
-eligible human private chats active in the last seven days; a chat opened or
+eligible human private chats active in the last seven days whose switches
+call for them
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2):
+Voice and images for media rewrites, transcription and image meanings,
+Emotion, Automatic suggestions and Soften hostile messages for the decision's
+questions, and Remember this chat for memory. Each is Off without the chat's
+own choice, kept in its own table (`emotion_switch` and `media_switch` beside
+`suggestion_settings`, `calming` and `remembering`) behind
+`/chats/{peer}/emotion` and `/chats/{peer}/voice-and-images`, and the
+conversation snapshot's `ai` object carries all five. A chat opened or
 written to outside that list starts no background AI until a message makes it
 recent. Manual suggestions can instead use an authored draft alone, under
 their ordinary account, target and budget guards. Background work and initial
@@ -704,8 +718,9 @@ member's Daily Budget, receipts, unknown-cost accounting, concurrency, Account
 AI switch and enabled memory. MiMo writes Friendly and Professional; Muse
 writes Idioms. There is no provider fallback.
 
-Each private chat has independent **Automatic suggestions** (On by default)
-and **Style** (Friendly by default; Friendly, Professional or Idioms).
+Each private chat has independent **Automatic suggestions** (Off by default
+since [ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+Q2) and **Style** (Friendly by default; Friendly, Professional or Idioms).
 `GET` and `POST /chats/{peer}/suggestions/settings` share the controls across
 the member's clients. `suggestion_settings` replaces `suggestion_choice`:
 Off becomes false/Friendly, On true/Friendly and Idioms true/Idioms. The
@@ -716,10 +731,17 @@ cancels queued automatic generation only; manual sets stay usable.
 
 **Automatic generation.** New or changed incoming work, after 30 quiet
 seconds, qualifies through a current usable non-neutral emotion or usefulness
-at least 0.7. A correspondent's reaction still needs both a non-neutral emotion
-and usefulness at least 0.5. An unchanged source reuses its pending, ready,
-empty or failed outcome. Reading, restarting, changing guidance or style and
-switching automation On never backfill or resample. Later own messages or
+at least 0.7; with the chat's Emotion Off its decision asks no emotion, so
+usefulness alone qualifies (ADR 62 Q5). A correspondent's reaction still
+needs both a non-neutral emotion and usefulness at least 0.5, so a chat with
+Emotion Off prepares none. An unchanged source reuses its pending, ready,
+empty or failed outcome. Reading, restarting and changing guidance or style
+never backfill or resample. Turning the chat's switch On works on the chat's
+latest incoming block if it is under seven days old and unanswered (Q8): a set
+made for it before shows again, one that Off cancelled before it was written
+is scheduled from its decision, and otherwise the block is decided again with
+usefulness asked, its set following if it qualifies. A decision that already
+answered usefulness is never resampled, and nothing older is prepared. Later own messages or
 reactions answer incoming sets; source changes, replacement and the 12-hour
 source-time lifetime withdraw them. The shared projection checks validity for
 reading, dispatch and insertion.
@@ -823,7 +845,12 @@ of its identity, and an unchanged identity is never prepared again, even
 after a failure. Only a press asks afresh on unchanged input; duplicate
 presses share the active attempt. Account AI Off, a signed-out account, a
 busy composer or a draft over the input bound prepare nothing in the
-background.
+background. A schedule alerts whatever the Automatic suggestions switches say;
+the first three prepare only while both the server-wide and the chat's
+switches are On, and the press asks either way
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q7,
+replacing ADR 58 Q4's pause). A schedule paused before resumes at its next
+delivery without backfill.
 
 The writer packet's `reminders` list carries each occurrence's Message Idea,
 or a `check_in` intent without one, and its fallback language. `draft` is
@@ -872,9 +899,12 @@ preparation, memory or history. An unchanged reaction and context reuse their
 outcome, including a failure; nothing is resampled. An edit of a message the
 assessment used schedules a new pass.
 
-The request asks the nine-code `emotion` choice and a `suggestions_useful`
-yes/no question; usefulness is yes at a probability of 0.5 or more, a fixed
-implementation default. The owner's When to suggest field follows that
+A reaction is assessed only while the chat's Emotion is On
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5).
+The request asks the nine-code `emotion` choice and, while both Automatic
+suggestions switches are On, a `suggestions_useful` yes/no question;
+usefulness is yes at a probability of 0.5 or more, a fixed implementation
+default. The owner's When to suggest field follows that
 question's fixed core. Only the emotion question carries each emoji's
 conventional meaning toward its target (👍 approval, 🤝 agreement or a settled
 deal, 👌 fine, 👎 disapproval; positive unless the context shows reluctance);
@@ -982,6 +1012,30 @@ The incoming request also asks three yes/no questions, each read at 0.5 or more:
   answer only gates Response Suggestions: it is never displayed or used to
   mark, count, sort or notify.
 
+**Only what the chat's switches use**
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q5).
+`Conversations.decision_asks` lists a block's questions from its chat's On
+switches: `emotion` for Emotion; `suggestions_useful` for Automatic
+suggestions while the server-wide switch is On too; `hostility` and `sarcasm`
+for Soften hostile messages. The request carries the list as `asks`, which
+selects the questions sent and the answers validation expects, and the
+emotion record keeps it. With none of the three On nothing is sent: a held
+block is marked decided and settles as its originals, and a rewrite queues no
+decision after it; a queued decision asks only what the switches still use
+when it is sent, and nothing once they are all Off. A decision that asked no
+emotion stores no code; the view reads Emotion's own switch, so while it is
+Off the header and the Emotion page show none (`reason` `off`), and no
+emotion, an earlier one included, qualifies or words a set: suggestions read
+usefulness alone. A switch turned On decides the chat's latest incoming block
+again if it is under seven days old (Q8), unless its current decision already
+answered what the switch needs or the switch's question cannot be asked (such
+as usefulness under the server-wide switch Off): a held block once its quiet
+seconds have passed, a rewritten one at once, asking only what is unanswered
+and carrying the earlier answers into the record, so nothing is resampled.
+Soften hostile messages turned On softens a rewritten block it finds hostile
+anew, and Voice and images turned On softens anew a block softened while it
+was Off, reading the media it left unread.
+
 In a chat with calming off, the rewrite's ready transaction queues one
 `emotion_classification` job, inside a savepoint
 (`emotion_schedule_unavailable`), only when the block can become the current
@@ -1048,11 +1102,15 @@ sarcasm toward anyone qualify in context. Anger, frustration, emphatic
 profanity, friendly teasing and neutral reporting of an insult do not qualify
 alone. A missing or malformed answer authorizes no softening.
 
-The chat's AI Menu switch is **Soften hostile messages**, On by default. Its existing
-internal `calming` table, endpoint and snapshot key preserve per-chat choices;
-`blocks.calmed` preserves the flag belonging to each validated rendering.
-Both clients display **Softened**. Off starts no arrival screen and no new
-softening; existing renderings stay. Groups and Saved Messages have neither.
+The chat's AI Menu switch is **Soften hostile messages**, Off by default since
+[ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q2. Its
+existing internal `calming` table and endpoint preserve per-chat choices, and
+the snapshot's `ai.calming` shows it; `blocks.calmed` preserves the flag
+belonging to each validated rendering. Both clients display **Softened**. Off
+starts no arrival screen and no new softening; existing renderings stay.
+Turned On, it decides the chat's latest incoming block under seven days old
+again and softens it if it is hostile (Q8). Groups and Saved Messages have
+neither.
 
 Combined-block decisions retain 30 quiet seconds. Text is held and decided
 from originals; a hostile decision releases one Muse rewrite at any length.
@@ -1126,13 +1184,19 @@ traits; what memory already holds stays visible, editable and clearable.
   message) pairs; one that cites none of the holder's own messages is dropped.
   A fold sees the whole Account Memory but not other chats' originals
   (`cited_elsewhere`).
-- **Sources.** Every message sent to a model while Memory and Remember this
-  chat are on (`analyzed`, origin `sent`), the latest 20 included, and once,
-  the cached messages dated before the store's `memory_start` (origin
-  `start`). A chat that was Off only by default learns once from its 30-day
-  cache when switched on; in a chat its holder switched Off, what arrives
-  meanwhile is never learned. Remember this chat Off cancels the chat's
-  waiting work, drops its unlearned sources and closes its start.
+- **Sources.** While Memory and Remember this chat are On, memory reads the
+  chat itself ([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
+  Q6): each new or changed message that arrives dated since the chat's switch
+  turned On, never a page of history (`analyzed`, origin `read`; `sent` marks
+  what a model had been sent before), its text and caption with whatever
+  transcript and image meaning exist, whatever the chat's other switches say.
+  A message that later gains a transcript or an image meaning, from a rewrite
+  or a transcription, is read again with it (`Memory.refresh`). It starts no
+  transcription or image reading. Once, it also reads the cached messages dated before the store's
+  `memory_start` (origin `start`). A chat that was Off only by default learns
+  once from its 30-day cache when switched on; in a chat its holder switched
+  Off, what arrives meanwhile is never learned. Remember this chat Off cancels
+  the chat's waiting work, drops its unlearned sources and closes its start.
 - **Timing.** An update waits for 30 quiet minutes in the chat, measured by
   the durable native activity timestamp (unchanged sync, reads and edits do
   not move it), and for idle communication: no queued or running rewrite,
@@ -1253,10 +1317,15 @@ members taking turns, at most ten minutes or 25 MB per audio source and a
 the model that produced it, its language and machine-generated provenance.
 
 Ordinary processing transcribes a current incoming voice note or Video Circle
-once. The owner's own voice notes and circles are transcribed too, once
-Telegram confirms them, under the same rules; their transcript stays raw and is
-never rewritten ([ADR 51](adr/0051-telegram-phone-look-and-new-messages.md)
-Q8). Show transcript reads a stored transcript or starts a missing one with
+once, while its chat's Voice and images is On
+([ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md) Q20).
+The owner's own voice notes and circles are transcribed too, once Telegram
+confirms them, under the same rules; their transcript stays raw and is never
+rewritten ([ADR 51](adr/0051-telegram-phone-look-and-new-messages.md) Q8).
+While the switch is Off nothing in the chat is transcribed or has its images
+read on its own: a softened rewrite of its media leaves them unread (listed
+as not analysed), and the decision and memory read only transcripts and
+meanings that already exist, such as one a Show transcript tap made. Show transcript reads a stored transcript or starts a missing one with
 progress (Q9); with the account's AI off it says so. There is no Re-transcribe:
 no control, route or service action replaces a completed transcript
 ([ADR 26](adr/0026-mobile-message-actions-and-send-status.md)). A failed or

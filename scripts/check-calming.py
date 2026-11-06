@@ -45,6 +45,7 @@ from pathlib import Path
 
 import httpx
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, MediaInfo, Message, Refused
 from enloq.inference.decider import DeciderEngine
@@ -965,6 +966,10 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, route, decider, calmer)
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these chats soften with Soften hostile messages, Emotion
+                    # and Voice and images On.
+                    ChatSwitch.default = app.calming.default = True
                     app.media.transcriber = AuthoredSpeech()
                     app.memory.enabled = lambda: False
                     app.suggestions.enabled = lambda: False

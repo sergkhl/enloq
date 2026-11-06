@@ -215,19 +215,57 @@ class Memory:
 
     # ---- intake ----------------------------------------------------------
 
+    def since(self, chat_key, db=None):
+        """When Remember this chat began reading the chat: its own choice's
+        time while On, the beginning for a chat On by default, None while
+        Off."""
+        sql = "SELECT enabled,changed FROM remembering WHERE chat_key=?"
+        rows = (
+            [dict(r) for r in db.execute(sql, (chat_key,))]
+            if db is not None
+            else self.store.rows(sql, (chat_key,))
+        )
+        if rows:
+            return rows[0]["changed"] if rows[0]["enabled"] else None
+        return 0.0 if self.default else None
+
     def record(self, chat_key, inputs):
-        """Messages just sent to the model (targets and context) may fold later.
-        Messages received while AI processing is Off are never sent, and those
-        sent while Memory or Remember this chat is Off never enter (Q20)."""
-        if not self.enabled() or not self.remembered(chat_key):
+        """ADR 62 Q6: while Remember this chat is On, memory reads the chat
+        itself: its messages may fold later, with their text, captions and
+        whatever transcripts and image meanings exist, whatever its other
+        switches say. Nothing that arrived while Memory or Remember this chat
+        was Off ever enters (ADR 55 Q20); the one start from the cache is
+        separate."""
+        # The chat's own switch first: most chats have none On, and the
+        # server-wide one lives in the registry.
+        start = self.since(chat_key)
+        if start is None or not self.enabled():
             return
         for key in inputs:
             rows = self.store.rows(
                 "SELECT * FROM messages WHERE key=? AND chat_key=? AND deleted=0",
                 (key, chat_key),
             )
+            if rows and rows[0]["date"] >= start:
+                self._admit(rows[0], "read")
+
+    def refresh(self, chat_key, keys):
+        """Messages memory read that gained a transcript or an image meaning:
+        each source version is read again with it, so a fold sees what a
+        rewrite or a transcription added (ADR 62 Q6)."""
+        for key in keys:
+            rows = self.store.rows(
+                "SELECT m.*,a.origin FROM messages m JOIN analyzed a ON a.key=m.key "
+                "WHERE m.key=? AND m.chat_key=? AND m.deleted=0",
+                (key, chat_key),
+            )
             if rows:
-                self._admit(rows[0], "sent")
+                self._admit(rows[0], rows[0]["origin"])
+
+    def observe(self, message):
+        """A private chat's new or changed message, as it arrives."""
+        if not message.deleted and not message.service:
+            self.record(f"{message.account_id}/{message.peer}", [message.key])
 
     def _admit(self, row, origin):
         digest = self.source_snapshot(row)
@@ -248,8 +286,8 @@ class Memory:
     def start(self, chat_key):
         """ADR 55 Q20: each memory starts once from the local cache. Cached
         messages dated before the store's start become sources; anything later
-        enters only when it is sent to a model. No Telegram history is read,
-        and a chat switched off never starts again."""
+        enters as memory reads the chat (ADR 62 Q6). No Telegram history is
+        read, and a chat switched off never starts again."""
         cutoff = self.store.rows("SELECT value FROM metadata WHERE key='memory_start'")
         if not cutoff or self.store.rows(
             "SELECT 1 FROM memory_starts WHERE chat_key=? AND closed IS NOT NULL",

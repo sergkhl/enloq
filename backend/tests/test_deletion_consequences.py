@@ -236,11 +236,13 @@ async def test_deleted_input_rejects_late_emotion_classification_and_suggestions
     async def held(role, packet):
         entered.set()
         await release.wait()
-        return {
+        answers = {
             "emotion": choice("worried", 0.9),
             "hostility": {"type": "noul", "noul": 0.0},
             "suggestions_useful": {"type": "noul", "noul": 0.9},
         }
+        # The questions the chat's On switches ask (ADR 62 Q5).
+        return {name: answers[name] for name in packet["asks"] if name in answers}
 
     app.decider.generate = held
     running = asyncio.create_task(app.process_due())

@@ -35,6 +35,7 @@ import time
 from pathlib import Path
 
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import (
     Chat,
@@ -414,6 +415,10 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, engine)
+                    # ADR 62 Q2: every switch is Off without a chat's own
+                    # choice; these authored chats run with Voice and images, Emotion and
+                    # Automatic suggestions On.
+                    ChatSwitch.default = app.suggestions.default = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()
@@ -639,6 +644,10 @@ async def observe(
                                 "(SELECT id FROM blocks WHERE chat_key=?)",
                                 (key,),
                             )
+                        # The owner's global switch still decides (ADR 25),
+                        # and the decision asks usefulness only while it is
+                        # On (ADR 62 Q5).
+                        app.suggestions.enabled = registry.suggestions_enabled
                         app.emotion.decide_held()
                         decision = store.rows(
                             "SELECT * FROM jobs WHERE scope=? AND role='emotion_classification' AND state='queued'",
@@ -652,8 +661,6 @@ async def observe(
                         # only the suggestion request is made.
                         app.decider.emotion = case["emotion"]
                         app.decider.useful = 0.9
-                        # The owner's global switch still decides (ADR 25).
-                        app.suggestions.enabled = registry.suggestions_enabled
                         try:
                             assert app.rewriting.claim(decision[0])
                             await app.emotion.classify(decision[0])

@@ -101,6 +101,10 @@ def splice(text, option, cursor):
 
 
 class Suggestions:
+    # A chat's Automatic suggestions without its own choice: Off since ADR 62
+    # (Q2); its Style is Friendly.
+    default = False
+
     def __init__(self, app):
         self.app, self.store = app, app.store
         # The account manager installs the global Suggestions switch.
@@ -124,7 +128,7 @@ class Suggestions:
         return (
             {"automatic": bool(rows[0]["automatic"]), "style": rows[0]["style"]}
             if rows
-            else {"automatic": True, "style": "friendly"}
+            else {"automatic": self.default, "style": "friendly"}
         )
 
     def settings(self, key):
@@ -135,6 +139,7 @@ class Suggestions:
         self.private(key)
         if style not in ("friendly", "professional", "idioms"):
             raise Refused("Unknown suggestion style")
+        was = self.automatic(key)["automatic"]
         with self.store.transaction() as db:
             db.execute(
                 "INSERT INTO suggestion_settings VALUES (?,?,?,?) ON CONFLICT(chat_key) DO UPDATE SET automatic=excluded.automatic,style=excluded.style,changed=excluded.changed WHERE automatic!=excluded.automatic OR style!=excluded.style",
@@ -142,6 +147,9 @@ class Suggestions:
             )
         if not automatic:
             self.cancel_queued(key)
+        elif not was:
+            # ADR 62 Q8: turned On, the chat's latest block may get its set.
+            self.app.switched_on(key, "suggestions")
         self.app.reminders.tick()
         return self.settings(key)
 
@@ -453,9 +461,12 @@ class Suggestions:
 
     def open_reminders(self, key):
         """Opening a chat with pending reminders prepares their set when the
-        current one no longer fits (ADR 58 Q5)."""
+        current one no longer fits (ADR 58 Q5), while both Automatic
+        suggestions switches are On (ADR 62 Q7)."""
         self.private(key)
-        if self.app.reminders.owns(key):
+        if self.app.reminders.owns(key) and self.app.reminders.sets(
+            key, self.enabled()
+        ):
             return self.reminder_set(key, "open")
         return self.view(key)
 
@@ -553,8 +564,15 @@ class Suggestions:
         after a yes and keep needing a non-neutral emotion too (Q13 A)."""
         if record.get("kind") == "manual":
             return True
-        signal = signal or self.app.emotion.view(key)
-        emotional = signal.reason == "available" and signal.code in QUALIFYING
+        # The decision's own signal. With Emotion Off no emotion is used, a
+        # code from before included, so usefulness alone qualifies (ADR 62
+        # Q5) and a reaction's options, which need the emotion, none.
+        signal = signal or self.app.emotion.signal(key)
+        emotional = (
+            self.app.emotion_switch.on(key, db)
+            and signal.reason == "available"
+            and signal.code in QUALIFYING
+        )
         if emotional or record.get("kind") == "reaction":
             return emotional
         return (
@@ -813,7 +831,8 @@ class Suggestions:
             or emotion["attempt"] != job["id"]
             or emotion.get("state", "ready") != "ready"
             or not (
-                emotion["code"] in QUALIFYING
+                self.app.emotion_switch.on(key, db)
+                and emotion["code"] in QUALIFYING
                 or (emotion.get("usefulness") or 0) >= CALM_USEFULNESS
             )
         ):
@@ -824,8 +843,15 @@ class Suggestions:
             self.diagnose(decision, reason="chat_automatic_off")
             return None
         attempt = uuid.uuid4().hex
+        # The writer is told the emotion only while Emotion is On (Q5).
         record = self.capture(
-            db, block, packet, image_context, emotion["code"], attempt
+            db,
+            block,
+            packet,
+            image_context,
+            (emotion["code"] if self.app.emotion_switch.on(key, db) else None)
+            or "unknown",
+            attempt,
         )
         if record["barrier"] != emotion["barrier"]:
             self.diagnose(record, reason="source_replaced")
@@ -949,6 +975,14 @@ class Suggestions:
                 json.dumps({"class": "suggestions", "refusals": refusals}),
             ),
         )
+
+    def standing(self, key):
+        """The chat's current automatic set, if it still belongs to the
+        conversation: shown, pending, empty, failed or cancelled by Off."""
+        record = self.record(key)
+        if not record or record.get("kind") == "manual" or self.withdrawn(key, record):
+            return None
+        return record
 
     def cancel_queued(self, key=None):
         """Suggestions Off stops new work; started calls may finish into cache."""
@@ -1250,7 +1284,7 @@ class Suggestions:
         if not self.permitted(key, self.record(key)):
             raise Conflict("Automatic suggestions are Off; reload the conversation")
         # Read before the transaction, as the view reads it.
-        signal = self.app.emotion.view(key)
+        signal = self.app.emotion.signal(key)
         with self.store.transaction() as db:
             record = self.record(key, db)
             if (

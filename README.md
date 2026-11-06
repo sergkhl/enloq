@@ -49,9 +49,10 @@ Telegram delivery or native-device acceptance.*
 ## What it does
 
 - **Read with less friction.** Show incoming text together as it was sent, and
-  rewrite voice notes, video circles and images into clear text. A block with
-  hostile wording is softened, keeping every fact, request, deadline and
-  threat, and marked Softened; frustration or anger alone does not trigger it.
+  in chats with Voice and images On, rewrite voice notes, video circles and
+  images into clear text. With softening On, a block with hostile wording is
+  softened, keeping every fact, request, deadline and threat, and marked
+  Softened; frustration or anger alone does not trigger it.
   Switch between AI text and originals; retain original media, observed edits,
   replies and source navigation.
 - **Write with control.** Press Suggestions for up to three complete messages.
@@ -61,8 +62,9 @@ Telegram delivery or native-device acceptance.*
   until you press Send, which asks first while bracketed text remains. When
   the latest block shows a clear emotion or calls for a reply, suggestions
   also appear on their own and can offer Accept, Decline and Later stances.
-  Each chat's AI Menu, opened by the robot in its header, switches softening,
-  automatic suggestions and memory and sets the suggestions' style: Friendly,
+  Each chat's AI Menu, opened by the robot in its header, switches automatic
+  suggestions, emotion, softening, voice and images and memory, all Off until
+  you turn them On for that chat, and sets the suggestions' style: Friendly,
   Professional or Idioms.
 - **Remember what matters.** In chats with memory on, note what each person and
   the owner care about for the suggestions to read, and collect the owner's

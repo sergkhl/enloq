@@ -94,6 +94,8 @@ async def run(tmp_path, *, mode="receipted", threshold=None):
             "suggestions_useful": {"type": "noul", "noul": 0.1 if quiet else 0.9},
             "hostility": {"type": "noul", "noul": 0.0},
         }
+        # The questions the request asks (ADR 62 Q5).
+        answers = {k: v for k, v in answers.items() if k in payload["questions"]}
         return httpx.Response(
             200,
             json={
@@ -198,12 +200,9 @@ async def test_each_case_decides_once_and_emotional_or_useful_blocks_get_one_set
     # (ADR 54).
     assert [r["path"] for r in report["results"]] == ["held"] * CASES
     for payload in incoming:
-        assert set(payload["questions"]) == {
-            "emotion",
-            "suggestions_useful",
-            "hostility",
-            "sarcasm",
-        }
+        # Only what the chat's On switches use: Emotion and Automatic
+        # suggestions, with softening Off (ADR 62 Q5).
+        assert set(payload["questions"]) == {"emotion", "suggestions_useful"}
         assert "data:" not in json.dumps(payload)
     for payload in labels:
         assert set(payload["questions"]) == {"purpose_1", "purpose_2"}

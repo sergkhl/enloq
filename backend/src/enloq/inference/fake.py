@@ -263,21 +263,35 @@ class FakeDecider:
                 f"purpose_{index}": label_choice(label)
                 for index, label in enumerate(labels[: packet["replies"]], 1)
             }
+        # ADR 62 Q5: only the questions the request asks are answered.
+        asks = packet.get("asks")
+
+        def asked(answers):
+            return (
+                answers
+                if asks is None
+                else {name: answer for name, answer in answers.items() if name in asks}
+            )
+
         if role == "reaction_assessment":
             code = self.assessment["emotion"]
             useful = 0.9 if self.assessment["suggestions_useful"] else 0.1
-            return {
-                "emotion": choice(code, self.probability),
-                "suggestions_useful": {"type": "noul", "noul": useful},
-            }
+            return asked(
+                {
+                    "emotion": choice(code, self.probability),
+                    "suggestions_useful": {"type": "noul", "noul": useful},
+                }
+            )
         if self.emotion is None:
             return {}
-        return {
-            "emotion": choice(self.emotion, self.probability),
-            "suggestions_useful": {"type": "noul", "noul": self.useful},
-            "sarcasm": {"type": "noul", "noul": self.sarcasm},
-            "hostility": {"type": "noul", "noul": self.hostility},
-        }
+        return asked(
+            {
+                "emotion": choice(self.emotion, self.probability),
+                "suggestions_useful": {"type": "noul", "noul": self.useful},
+                "sarcasm": {"type": "noul", "noul": self.sarcasm},
+                "hostility": {"type": "noul", "noul": self.hostility},
+            }
+        )
 
 
 def choice(code, probability):

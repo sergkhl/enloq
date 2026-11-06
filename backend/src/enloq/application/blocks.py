@@ -10,6 +10,7 @@ from ..domain.source_revision import fingerprint, proves
 from ..storage.accounts import DEFAULT_PROCESSING_THRESHOLD
 from ..storage.store import WINDOW
 from .capacity import RANK, rank_sql
+from .switches import ChatSwitch
 
 # Blocks that failed before dispatch only because they held non-AI media (Q21).
 UNSUPPORTED_FAILURE = "This media needs supported local preparation"
@@ -23,6 +24,15 @@ def processing_threshold(store, db):
         f"SELECT value FROM {metadata} WHERE key='processing_threshold'"
     ).fetchone()
     return int(row[0]) if row else DEFAULT_PROCESSING_THRESHOLD
+
+
+def media_on(db, chat_key):
+    """Whether the chat's Voice and images switch is On (ADR 62 Q2): its own
+    choice, or the default."""
+    row = db.execute(
+        "SELECT enabled FROM media_switch WHERE chat_key=?", (chat_key,)
+    ).fetchone()
+    return bool(row["enabled"]) if row else ChatSwitch.default
 
 
 def analysed(messages):
@@ -105,6 +115,8 @@ def reconcile_admission(store):
     Successful caches and unchanged failed attempts are absent from this pass.
     Running calls retain their publication guards and may finish after a Save.
     Held eligibility has no runnable job, worker claim or memory-idle footprint.
+    A held block is admitted again only by Voice and images turned On for the
+    chat's latest block (``release``, ADR 62 Q8).
     """
     with store.transaction() as db:
         for job in db.execute(
@@ -119,7 +131,8 @@ def reconcile_admission(store):
             if not block or block["revision"] != job["input_revision"]:
                 continue
             sources = cached_sources(db, block)
-            if sources and not analysed(sources):
+            # ADR 62 Q20: Voice and images Off holds a media block's rewrite.
+            if sources and not (analysed(sources) and media_on(db, block["chat_key"])):
                 defer(
                     db, job["scope"], job["input_revision"], job["due"], job["payload"]
                 )
@@ -153,30 +166,34 @@ def reconcile_admission(store):
                     "DELETE FROM incoming_deferred WHERE scope=?", (waiting["scope"],)
                 )
                 continue
-            if analysed(sources):
-                payload = json.loads(waiting["payload"])
-                # A held decision is not this rewrite's (ADR 49 Q3); once
-                # released, the block is classified after its rewrite instead.
-                payload.pop("decided", None)
-                db.execute(
-                    "UPDATE jobs SET state='superseded',error='The held block was admitted for rewriting' "
-                    "WHERE role='emotion_classification' AND scope=? AND state='queued' "
-                    "AND json_extract(payload,'$.held')=1 "
-                    "AND json_extract(payload,'$.block')=?",
-                    (block["chat_key"], block["id"]),
-                )
-                enqueue(
-                    db,
-                    waiting["scope"],
-                    waiting["input_revision"],
-                    waiting["due"],
-                    klass=payload.get("class", "new"),
-                    payload=payload,
-                )
-                db.execute(
-                    "UPDATE blocks SET state='queued',error=NULL,stage=NULL WHERE id=?",
-                    (waiting["scope"],),
-                )
+
+
+def release(db, waiting, block, due):
+    """A held media block admitted for its rewrite: Voice and images turned On
+    for the chat's latest block (ADR 62 Q8). A held decision is not this
+    rewrite's (ADR 49 Q3); the block is classified after its rewrite
+    instead."""
+    payload = json.loads(waiting["payload"])
+    payload.pop("decided", None)
+    db.execute(
+        "UPDATE jobs SET state='superseded',error='The held block was admitted for rewriting' "
+        "WHERE role='emotion_classification' AND scope=? AND state='queued' "
+        "AND json_extract(payload,'$.held')=1 "
+        "AND json_extract(payload,'$.block')=?",
+        (block["chat_key"], block["id"]),
+    )
+    enqueue(
+        db,
+        waiting["scope"],
+        waiting["input_revision"],
+        due,
+        klass=payload.get("class", "new"),
+        payload=payload,
+    )
+    db.execute(
+        "UPDATE blocks SET state='queued',error=NULL,stage=NULL WHERE id=?",
+        (waiting["scope"],),
+    )
 
 
 def rewritable(messages):
@@ -330,7 +347,8 @@ def rebuild(store, chat_key, changed=None, *, target=True, klass=None):
                     )
                 )
             )
-            should_queue = automatic_work and analysed(group)
+            # ADR 62 Q20: only while the chat's Voice and images is On.
+            should_queue = automatic_work and analysed(group) and media_on(db, chat_key)
             # A changed block that is not re-queued (e.g. an explicitly processed
             # block older than seven days) withdraws its stale rendering.
             keep = (

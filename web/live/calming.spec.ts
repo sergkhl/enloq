@@ -37,7 +37,8 @@ type Block = {
 };
 
 type Snapshot = {
-  calming: boolean;
+  // The chat's AI Menu switches (ADR 62).
+  ai: { calming: boolean };
   blocks: Block[];
   messages: { message_id: number; text: string; outgoing: boolean }[];
 };
@@ -144,7 +145,7 @@ test("angry text is calmed, plain text shows as sent, images are rewritten", asy
   const angry = `WHERE IS MY REFUND OF 240?? You're useless. Answer me by Friday or I complain to the bank. (${MARKS.angry()})`;
   const plain = `The plumber can come on Thursday at ten, the key is with the neighbour. (${MARKS.plain()})`;
   const caption = `This is the shelf I meant for the hallway. (${MARKS.image()})`;
-  expect((await snapshot(page)).calming).toBe(true);
+  expect((await snapshot(page)).ai.calming).toBe(true);
 
   await openMayaChat(page, "maya");
   await send(page, angry);

@@ -37,6 +37,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, MediaInfo, Message, Refused
 from enloq.inference.guidance import DEFAULTS_REVISION, instructions
@@ -410,6 +411,9 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, engine)
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these media blocks are rewritten with Voice and images On.
+                    ChatSwitch.default = True
                     # Calming decides first (ADR 53); scripts/check-calming.py checks it.
                     app.calming.default = False
                     app.media.transcriber = AuthoredSpeech()

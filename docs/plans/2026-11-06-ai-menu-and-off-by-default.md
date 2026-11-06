@@ -1,8 +1,8 @@
 # The AI Menu and private-chat AI Off by default
 
 Last meaningful update: 2026-11-06
-Status: active since the owner's go-ahead on 2026-11-06; Phase 1 is
-delivered, Phase 2 is being delivered and Phase 3 is being built.
+Status: active since the owner's go-ahead on 2026-11-06; Phases 1 and 2
+are delivered, Phase 3 is being delivered.
 
 Deliver the adopted
 [ADR 62](../adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md), with
@@ -210,6 +210,50 @@ quality in [inference](../inference.md#retained-acceptance-limits).
   one app Jest case timed out under the parallel phone run and passed alone
   and in a full rerun (361). The Android journeys passed on the S9+ in 38
   minutes with Enloq Dev against the fixture.
+- 2026-11-06, Phase 2 delivered: `fc2840c` deployed from clean main as
+  `enloq:fc2840cbca62`, healthy, its health route ready and no errors logged
+  since the start; no live check, as nothing live changed.
+- 2026-11-06, Phase 3 built: `emotion_switch` and `media_switch` keep a
+  chat's own Emotion and Voice and images choices beside the other three,
+  behind `/chats/{peer}/emotion` and `/chats/{peer}/voice-and-images`, and
+  every default is Off. `Conversations.decision_asks` lists the questions a
+  block's decision asks from its On switches; with none of Emotion, Automatic
+  suggestions and Soften hostile messages On nothing is sent, a held block is
+  marked decided and the chat settles as its originals. Emotion Off shows no
+  estimate (`reason` `off`) and assesses no reaction, and usefulness alone then
+  qualifies a set. Voice and images gates media admission (`blocks.media_on`,
+  in rebuild, the character gate and admission's reconcile, which no longer
+  releases a held block), the owner's own transcription and image reading; a
+  softened rewrite reads only existing meanings and transcripts while it is
+  Off. Memory reads a remembered chat's arriving messages itself (origin
+  `read`), never a history page. Reminders always alert; their sets need both
+  Automatic suggestions switches. `Conversations.switched_on` does a switch's
+  work on the latest incoming block under seven days old: the decision again
+  (a held block once its quiet seconds pass, a rewritten one at once, an
+  answered one not for suggestions) or the media rewrite. A decision that
+  already answered what the switch needs stands, a new one asks only what is
+  unanswered and carries the earlier answers, and a set made before shows
+  again or, cancelled by Off, is scheduled from its decision, so Off and On
+  again resample nothing. Soften turned On softens a rewritten hostile block
+  anew, and Voice and images turned On softens anew a block whose media it
+  had left unread. A queued decision asks only what the switches still use
+  when it is sent; with Emotion Off no earlier emotion qualifies or words a
+  set; and memory reads a message again once a rewrite or a transcription
+  adds its meaning or transcript; an independent review of the backend diff
+  found the gaps these rules close before delivery. Tests predating
+  ADR 62 run with the switches On (`conftest.switches_on`);
+  `test_ai_switches.py` covers the shipped defaults, members' chats, routes,
+  subsets and validation, memory's intake and the never-learned rule,
+  reminders, switching On, Off chats' readiness and Voice and images Off. The
+  fixture server's authored chats run with the switches On; its Switches Off
+  chat backs a web journey and the Android flow. The finite checks turn on
+  what each exercises. Checks in the task checkout: `./scripts/check` passed
+  ruff, backend 4,064, the 67 web journeys, the app's typecheck, Prettier
+  and 364 Jest tests. The Android journeys passed on the S9+ in three parts:
+  the full run through Message details (25 minutes), which then found the
+  Switches Off chat on the reminder fixture's peer (it has its own now);
+  pairing and every flow from AI controls on (19 minutes); and pairing with
+  AI controls again after the review's fixes (5 minutes).
 
 ## Open findings
 

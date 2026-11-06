@@ -262,6 +262,10 @@ CHANGES = [
 ]
 
 
+# A private chat's own Emotion and Voice and images choices (ADR 62 Q2).
+SWITCH_TABLES = ("emotion_switch", "media_switch")
+
+
 class Store:
     def __init__(
         self,
@@ -486,6 +490,15 @@ class Store:
             )
             for trigger in change_triggers("calming", "chat_key"):
                 db.execute(trigger)
+            # ADR 62 Q2: a private chat's own Emotion and Voice and images
+            # choices, kept as the other switches' are.
+            for table in SWITCH_TABLES:
+                db.execute(
+                    f"CREATE TABLE IF NOT EXISTS {table} (chat_key TEXT PRIMARY KEY, "
+                    "enabled INTEGER NOT NULL, changed REAL NOT NULL)"
+                )
+                for trigger in change_triggers(table, "chat_key"):
+                    db.execute(trigger)
             # Mood-based releases from the previous design are not hostility
             # decisions. Reconsider undispatched work under the new contract;
             # completed renderings and all spending evidence stay intact.

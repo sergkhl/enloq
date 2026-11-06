@@ -222,27 +222,35 @@ def validate(role, answers, packet=None):
         if not isinstance(answers, dict) or set(answers) != set(names):
             raise InvalidOutput("invalid_answer")
         return [purpose(answers, name) for name in names]
-    expected = set(decision_questions(role))
+    # ADR 62 Q5: a request asks only what its chat's On switches use; each
+    # asked answer is required but sarcasm, and nothing else may come.
+    expected = set(decision_questions(role, packet=packet))
     if not isinstance(answers, dict):
         raise InvalidOutput("missing_answer")
     if set(answers) - expected:
         raise InvalidOutput("invalid_answer")
-    decision = choice(answers, "emotion")
-    useful = noul(answers, "suggestions_useful")
+    decision = choice(answers, "emotion") if "emotion" in expected else None
+    useful = (
+        noul(answers, "suggestions_useful")
+        if "suggestions_useful" in expected
+        else None
+    )
     if role == "emotion_classification":
         # ADR 49 Q2: the incoming request answers usefulness too, and ADR 53
         # whether it is sarcastic: only a calmed rewrite is told, so a missing
         # answer means no hint.
         return Classification(
             decision=decision,
-            suggestions_useful=useful >= USEFUL,
+            suggestions_useful=useful is not None and useful >= USEFUL,
             usefulness=useful,
             sarcasm=noul(answers, "sarcasm") if "sarcasm" in answers else None,
-            hostility=noul(answers, "hostility"),
+            hostility=noul(answers, "hostility") if "hostility" in expected else None,
         )
+    if decision is None:
+        raise InvalidOutput("missing_answer")
     return AssessmentResult(
         emotion=decision.code,
-        suggestions_useful=useful >= USEFUL,
+        suggestions_useful=useful is not None and useful >= USEFUL,
         decision=decision,
         usefulness=useful,
     )

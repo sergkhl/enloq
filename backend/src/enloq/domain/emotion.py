@@ -40,11 +40,12 @@ class EmotionDecision(Model):
 class Classification(Model):
     """One validated incoming decision request (ADR 49 Q2): the emotion and
     whether optional reply suggestions are useful now. The answer only gates
-    suggestions; it is never displayed."""
+    suggestions; it is never displayed. Since ADR 62 Q5 a request asks only
+    what the chat's On switches use, so an unasked answer is None."""
 
-    decision: EmotionDecision
-    suggestions_useful: bool
-    usefulness: float = Field(ge=0, le=1)
+    decision: EmotionDecision | None = None
+    suggestions_useful: bool = False
+    usefulness: float | None = Field(default=None, ge=0, le=1)
     # ADR 53: the probability that the latest block is sarcastic, told to its
     # calmed rewrite; None when the answer was not given.
     sarcasm: float | None = Field(default=None, ge=0, le=1)
@@ -56,7 +57,7 @@ class Classification(Model):
 
     @property
     def code(self):
-        return self.decision.code
+        return self.decision.code if self.decision else None
 
     @property
     def sarcastic(self):
@@ -73,6 +74,8 @@ class EmotionView(Model):
         "changed",
         "invalid",
         "unavailable",
+        # ADR 62 Q5: the chat's Emotion switch is Off.
+        "off",
     ] = "unavailable"
     source_time: float | None = None
     expires_at: float | None = None

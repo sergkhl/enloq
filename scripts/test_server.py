@@ -19,6 +19,9 @@ from fastapi import Request
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from enloq.api.server import create_app
+from enloq.application.calming import Calming
+from enloq.application.suggestions import Suggestions
+from enloq.application.switches import ChatSwitch
 from enloq.config import (
     ROOT,
     Settings,
@@ -45,6 +48,7 @@ from scripts.people_fixture import register as people_fixture
 from scripts.reminder_fixture import register as reminder_fixture
 from scripts.saved_fixture import register as saved_fixture
 from scripts.suggestion_fixture import register as suggestion_fixture
+from scripts.switches_fixture import register as switches_fixture
 from scripts.threshold_fixture import register as threshold_fixture
 from scripts.unseen_fixture import register as unseen_fixture
 from scripts.video_fixture import register as video_fixture
@@ -91,6 +95,13 @@ def remove_abandoned_fixture():
     ):
         shutil.rmtree(previous)
 
+
+# ADR 62 Q2 ships every private chat's switches Off. The authored chats
+# exercise Automatic suggestions, Emotion, Soften hostile messages and Voice
+# and images On; journeys that check Off turn a chat's switches Off for
+# themselves. Remember this chat keeps its shipped Off default.
+for owner in (Calming, Suggestions, ChatSwitch):
+    owner.default = True
 
 os.umask(0o077)
 configure_logging()
@@ -139,6 +150,7 @@ with tempfile.TemporaryDirectory(prefix="browser-", dir=ROOT / ".local") as dire
     album_fixture(app)
     people_fixture(app)
     calming_fixture(app)
+    switches_fixture(app)
 
     @app.post("/api/test/notification-target")
     async def notification_target(request: Request):

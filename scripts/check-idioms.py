@@ -51,6 +51,7 @@ from pathlib import Path
 import httpx
 from enloq.application.context import incoming
 from enloq.application.conversations import Conversations
+from enloq.application.switches import ChatSwitch
 from enloq.config import ROOT, Settings, private_write
 from enloq.domain import suggestions as domain
 from enloq.domain.models import Chat, Message, Refused
@@ -604,6 +605,10 @@ async def observe(
                     )
                     transport = FakeTransport()
                     app = Conversations(store, transport, route, decider, muse)
+                    # ADR 62 Q2: every switch is Off without a chat's own choice;
+                    # these chats decide with Emotion On and choose Idioms with
+                    # Automatic suggestions On below.
+                    ChatSwitch.default = True
                     # This process alone: Idioms can be chosen here, and each
                     # writer in turn writes the idiom sets (Q16 A).
                     app.calming.default = False

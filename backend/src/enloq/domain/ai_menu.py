@@ -18,7 +18,9 @@ class ChatAi(Model):
     # A private chat's own choices; None in a group.
     suggestions: bool | None = None
     style: Style | None = None
+    emotion: bool | None = None
     calming: bool | None = None
+    media: bool | None = None
     remember: bool | None = None
     # The owner's server-wide Automatic suggestions and Memory switches,
     # which an Off overrides the chat's (Q2); None in a group.

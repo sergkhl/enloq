@@ -29,7 +29,9 @@ const AI: Ai = {
   running: true,
   suggestions: true,
   style: "friendly",
+  emotion: true,
   calming: true,
+  media: true,
   remember: false,
   server_suggestions: true,
   server_memory: true,
@@ -98,6 +100,8 @@ beforeEach(() => {
       posts.push({ url, body });
       if (refused) return { status: 400, body: { detail: refused } } as never;
       if (url.endsWith("/calming")) ai.calming = body.enabled;
+      if (url.endsWith("/emotion")) ai.emotion = body.enabled;
+      if (url.endsWith("/voice-and-images")) ai.media = body.enabled;
       if (url.endsWith("/remember")) ai.remember = body.enabled;
       if (url.endsWith("/suggestions/settings")) {
         ai.suggestions = body.automatic;
@@ -195,15 +199,78 @@ describe("the AI Menu in a private chat", () => {
     expect(
       menu.getByText("Warm, natural wording without forced slang or emojis."),
     ).toBeTruthy();
-    // Emotion and Voice and images have pages and no switch yet.
+    // Five switches and Style, which has a page and no switch (Q2).
     expect(
       menu.getAllByRole("switch").map((row) => row.props.accessibilityLabel),
     ).toEqual([
       "AI view",
       "Automatic suggestions",
+      "Emotion",
       "Soften hostile messages",
+      "Voice and images",
       "Remember this chat",
     ]);
+  });
+
+  test("Emotion and Voice and images switch through their own routes", async () => {
+    await mount();
+    const menu = await open();
+    await fireEvent(
+      menu.getByRole("switch", { name: "Emotion" }),
+      "valueChange",
+      false,
+    );
+    await waitFor(() =>
+      expect(posts).toEqual([
+        { url: `${CHAT}/emotion`, body: { enabled: false } },
+      ]),
+    );
+    await fireEvent(
+      screen.getByRole("switch", { name: "Voice and images" }),
+      "valueChange",
+      false,
+    );
+    await waitFor(() =>
+      expect(posts.at(-1)).toEqual({
+        url: `${CHAT}/voice-and-images`,
+        body: { enabled: false },
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Voice and images" }).props.value,
+      ).toBe(false),
+    );
+    expect(screen.getByRole("switch", { name: "Emotion" }).props.value).toBe(
+      false,
+    );
+  });
+
+  test("a chat with every switch Off shows the robot's outline (Q14)", async () => {
+    ai = {
+      ...AI,
+      running: false,
+      suggestions: false,
+      emotion: false,
+      calming: false,
+      media: false,
+      remember: false,
+    };
+    await mount();
+    await fireEvent.press(
+      await screen.findByLabelText("AI Menu, AI off in this chat"),
+    );
+    const menu = within(screen.getByLabelText("AI Menu"));
+    expect(
+      menu
+        .getAllByRole("switch")
+        .filter((row) => row.props.accessibilityLabel !== "AI view")
+        .map((row) => row.props.value),
+    ).toEqual([false, false, false, false, false]);
+    // The account's AI is On, so no account note shows.
+    expect(
+      menu.queryByText("AI processing is Off for this account."),
+    ).toBeNull();
   });
 
   test("a tap on a switch flips it in place, AI view the Reading View", async () => {
@@ -336,14 +403,37 @@ describe("an AI Menu page", () => {
     );
   };
 
-  test("Emotion's page holds the emotion's details (Q12)", async () => {
+  test("Emotion's page holds its switch and the emotion's details (Q12)", async () => {
     await mount("emotion");
     expect(await screen.findByText("😟 Worried")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Estimate how their latest messages feel, shown after their name in the header.",
-      ),
+      screen.getByText(/^On, Enloq estimates how their latest messages feel/),
     ).toBeTruthy();
+    const emotion = screen.getByLabelText("Emotion");
+    await waitFor(() => expect(emotion.props.disabled).toBe(false));
+    expect(emotion.props.value).toBe(true);
+  });
+
+  test("with Emotion Off its page says so and shows no estimate (Q5)", async () => {
+    ai = { ...AI, emotion: false };
+    const off = snapshot();
+    showChat("1/user:101", {
+      snapshot: { ...off, emotion: { code: null, reason: "off" } } as Snapshot,
+      readAt: Date.now(),
+      live: true,
+      reload: async () => undefined,
+    });
+    mockParams.control = "emotion";
+    await render(
+      <ConnectionProvider>
+        <AiPageRoute />
+      </ConnectionProvider>,
+    );
+    expect(
+      await screen.findByText("Emotion is Off for this chat."),
+    ).toBeTruthy();
+    expect(screen.queryByText("😟 Worried")).toBeNull();
+    expect(screen.getByLabelText("Emotion").props.value).toBe(false);
   });
 
   test("a switch's page flips it, with its explanation", async () => {

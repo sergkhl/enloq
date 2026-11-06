@@ -70,8 +70,10 @@ async def test_a_correspondent_trigger_is_assessed_after_quiet_and_becomes_curre
     [packet] = calls(app)
     # One decision state: the conversation as it stood, the photo by its
     # cached meaning, and the reaction on the owner's exact message; no
-    # memory, images or other fields.
-    assert set(packet) == {"state", "guidance"}
+    # memory, images or other fields. It asks the emotion and, with both
+    # Automatic suggestions switches On, usefulness (ADR 62 Q5).
+    assert set(packet) == {"state", "guidance", "asks"}
+    assert packet["asks"] == ["emotion", "suggestions_useful"]
     assert packet["state"] == {
         "conversation": [
             {

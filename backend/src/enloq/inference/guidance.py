@@ -551,6 +551,10 @@ def decision_questions(role, guidance=None, packet=None):
             "type": "noul",
             "instructions": DECISION_CORE + SARCASM_QUESTION,
         }
+    # ADR 62 Q5: only what the chat's On switches use, named by the request.
+    asks = (packet or {}).get("asks")
+    if asks is not None:
+        questions = {name: questions[name] for name in questions if name in asks}
     return questions
 
 

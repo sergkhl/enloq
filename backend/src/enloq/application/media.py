@@ -4,6 +4,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import time
 import uuid
 
@@ -96,6 +97,12 @@ def sniff(data, message):
     return None
 
 
+_LOG = logging.getLogger("enloq.media")
+# ADR 62 Q20: why a private chat's media went unread, while its Voice and
+# images was Off.
+UNREAD = "Voice and images is Off"
+
+
 class Media:
     def __init__(self, store, transport, *, transcriber=None):
         self.store, self.transport = store, transport
@@ -103,6 +110,9 @@ class Media:
         self.workspace.prepare()
         self.workspace.cleanup_orphans(older_than_seconds=900)
         self.cache = MediaCache(store, transport)
+        # Told of a message's new transcript once it is stored (memory reads
+        # the message again with it, ADR 62 Q6).
+        self.on_derivative = lambda message: None
         self.missing = {}
         # Old cache MIME labels may have come from a header sniff. A process
         # restart verifies retained ordinary-video bytes before any inline read.
@@ -917,6 +927,11 @@ class Media:
                         )
         if error:
             raise Refused(error)
+        if transcript:
+            try:
+                self.on_derivative(message)
+            except Exception:
+                _LOG.warning("derivative_notice_unavailable", exc_info=True)
         return transcript
 
     async def enrich(
@@ -929,7 +944,11 @@ class Media:
         guard=None,
         valid=None,
         on_speech_start=None,
+        read=True,
     ):
+        """``read`` False keeps a private chat's images and speech to what
+        is already cached (Voice and images Off, ADR 62 Q20): no image is
+        loaded and nothing is transcribed."""
         group = self.store.chat(key).kind == "group"
         if valid is not None and not valid():
             raise Refused("Media source snapshot changed before preparation")
@@ -964,7 +983,9 @@ class Media:
                 if cached:
                     source["image_context"] = cached
                     continue
-                if len(images) >= 4:
+                if not read:
+                    reason = UNREAD
+                elif len(images) >= 4:
                     reason = "more than four images"
                 else:
                     if group or guard is not None or valid is not None:
@@ -1006,6 +1027,12 @@ class Media:
                                 )
                             )
                             continue
+            elif source["media"] in SPOKEN_MEDIA and not read:
+                cached = self.cached(message).get("transcript")
+                if cached:
+                    source["transcript"] = cached
+                    continue
+                reason = UNREAD
             elif source["media"] in SPOKEN_MEDIA:
                 info = message.media_info
                 cached = self.cached(message).get("transcript")
