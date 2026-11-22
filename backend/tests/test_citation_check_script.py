@@ -103,7 +103,8 @@ def engines(supports):
 
     def route(settings, registry, bounds):
         engine = FakeEngine()
-        engine.rates = {"prompt": "0.00000014", "completion": "0.00000028"}
+        # ADR 29's route: the subscription records $0.
+        engine.rates = {"prompt": "0", "completion": "0"}
         engine.calls = []
         engine.client = SimpleNamespace(aclose=_closed)
 

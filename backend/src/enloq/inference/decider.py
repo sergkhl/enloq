@@ -261,7 +261,7 @@ class DeciderEngine:
 
     def __init__(self, settings, *, user, client=None, rates=None):
         key = proxy_key(settings)
-        # The same private app-level pseudonym as MiMo requests (ADR 30 Q4).
+        # The same private app-level pseudonym as generation requests (ADR 30 Q4).
         if not isinstance(user, str) or not 16 <= len(user) <= 128:
             raise Refused("A private provider user pseudonym is required")
         self.endpoint = proxy_endpoint(settings)
@@ -308,7 +308,7 @@ class DeciderEngine:
                 raise ProviderRefused(
                     "Group classifier repeated input exceeds route context"
                 )
-        # Informational, like MiMo's: ADR 15 counts receipts plus a flat estimate.
+        # Informational: ADR 15 counts receipts plus a flat estimate.
         return math.ceil(Decimal(self.rates["prompt"]) * context * 1_000_000_000)
 
     async def generate(self, role, packet):

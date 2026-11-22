@@ -152,7 +152,7 @@ async def test_an_idiom_chat_writes_idiom_sets_from_its_next_block(
     tmp_path, monkeypatch
 ):
     # The writer is the next test's; here both sets go to the rig's engine.
-    monkeypatch.setattr(domain, "IDIOMS_WRITER", "mimo")
+    monkeypatch.setattr(domain, "IDIOMS_WRITER", "terra")
     app, _ = rig(tmp_path)
     app.sync.ingest(message(app, text="I had an awful day."))
     await drain(app)
@@ -186,8 +186,8 @@ async def test_a_choice_changed_while_a_set_waits_applies_to_the_next_block(
     assert len(written) == 1 and "idioms" not in written[0]
 
 
-@pytest.mark.parametrize("writer", ["mimo", "muse"])
-async def test_the_gates_winner_writes_idiom_sets_and_plain_sets_stay_on_mimo(
+@pytest.mark.parametrize("writer", ["terra", "muse"])
+async def test_the_chosen_writer_writes_idiom_sets_and_plain_sets_stay_on_terra(
     tmp_path, monkeypatch, writer
 ):
     monkeypatch.setattr(domain, "IDIOMS_WRITER", writer)

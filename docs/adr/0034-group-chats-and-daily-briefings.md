@@ -479,11 +479,12 @@ history, enables no group AI and merges or retargets no peer.
 
 ### Model roles
 
-The daily-briefing role uses MiMo through the owner's LiteLLM proxy, as the
-proxy's `xiaomi_mimo/mimo-v2.6-flash` route
+The daily-briefing role uses gpt-6.1-terra on the owner's ChatGPT
+subscription, through the owner's LiteLLM proxy as its
+`chatgpt/gpt-6.1-terra` route
 ([ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md), ADR 39), with
-no model or provider fallback, the global Concurrency Limit and the Group
-Briefing Budget. Ad and bot filtering and the citation check use the decision
+no model or provider fallback, the global Concurrency Limit and receipts in
+the Group Briefing Budget, which record $0. Ad and bot filtering and the citation check use the decision
 model, `perplexity/pplx-decider-v1.2` at checkpoint `-20261016`
 ([ADR 49](0049-useful-response-suggestions.md) Q1, citation check Q1). Speech
 follows ADR 39.
@@ -540,8 +541,8 @@ Four interviews settled this ADR, each numbered from Q1. The rollout code's
 - Q10: ordinary sending and exact replies in groups.
 - Q11: no group emotion, suggestions, softening or memory.
 - Q12: unseen dots without group sound or push.
-- Q13: MiMo through the proxy, no fallback, shared concurrency; money from
-  the Group Briefing Budget (Q54).
+- Q13: ADR 29's route through the proxy, no fallback, shared concurrency;
+  receipts in the Group Briefing Budget (Q54).
 - Q14: a rolling four-hour clock per account and group from the last
   automatic start, kept across restarts and midnight.
 - Q15: first opt-in covers today; catch-up within seven days since opt-in,

@@ -28,7 +28,9 @@ OPTIONS = 3
 EXPIRY = LIFETIME  # The existing 12-hour source-time lifetime.
 # ADR 56: independent per-chat automation and a style shared by both paths.
 Style = Literal["friendly", "professional", "idioms"]
-IDIOMS_WRITER: Literal["mimo", "muse"] = "muse"
+# ADR 56 Q20: Terra, ADR 29's route, writes idiom sets as it writes the others;
+# "muse" would give them to Muse Spark 1.3.
+IDIOMS_WRITER: Literal["terra", "muse"] = "terra"
 # ADR 56 Q19 A: a block without a usable non-neutral emotion suggests on
 # usefulness alone only from 0.7, so a borderline answer that closes the
 # owner's own question (0.545 in every check) gets no set.

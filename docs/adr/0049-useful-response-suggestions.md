@@ -28,7 +28,7 @@ listing verified before dispatch. It costs $0.02 per million input tokens,
 with free output. The switch was gated by `scripts/check-emotion.py`, a
 finite in-app check of authored emotion, reaction and ad-filter cases (at
 most 40 requests, 20 minutes and $0.01). Not adopted: Decider Flash V1.2,
-and letting MiMo decide by returning no options.
+and letting the writer decide by returning no options.
 
 **The usefulness question (Q2).** The incoming Emotion Classification
 request asks a `suggestions_useful` yes/no question beside its emotion
@@ -129,7 +129,7 @@ runs authored cases through the real paths:
   questions, requests and invitations with and without emotion, emotional
   news, thanks, ok, goodbyes and forwards;
 - suggestion requests on answer cases;
-- at most 40 decision and 16 MiMo requests, 30 minutes and $0.02.
+- at most 40 decision and 16 writer requests, 30 minutes and $0.02.
 
 Malformed output or a route failure blocks; weak results are Low quality. If
 clear cases miss, the numbers go to the owner instead of a change.
@@ -164,13 +164,13 @@ with a `purpose_N` choice per reply over the seven purposes and fixed
 criteria.
 
 - **What it reads:** the conversation, or the reaction, and the replies'
-  text; never MiMo's labels.
+  text; never the writer's labels.
 - **Labels:** its answers replace the writer's labels. A set with just one
   answer stance passes if otherwise valid; it is neither failed nor hidden.
 - **Failures:** a failed label request fails the set without resampling the
   writer.
 
-Not adopted: keeping MiMo's labels, with or without a later check, and
+Not adopted: keeping the writer's labels, with or without a later check, and
 dropping the labels.
 
 **Every answer stance may stand alone (Q20).** A set may contain only
@@ -190,15 +190,16 @@ uses it.
 - Automatic sets keep the latest unanswered source and its twelve-hour
   lifetime. Manual sets use their request time and captured draft/context;
   new content, sends or changed inputs withdraw them (ADR 25).
-- Insertion at the cursor never sends or replaces the draft. MiMo writes
-  Friendly and Professional sets; Muse writes Idioms (ADR 56 Q20).
+- Insertion at the cursor never sends or replaces the draft.
+  [ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s route
+  writes every Style's sets, Idioms included (ADR 56 Q20).
 - Members' suggestion calls count in their own budgets
   ([ADR 48](0048-members-on-the-shared-service.md)).
 
 ## Consequences
 
-- A held block's decision costs about $0.00003, plus about $0.0002 for MiMo
-  when suggestions follow. Its text goes to Perplexity, which publishes no
+- A held block's decision costs about $0.00003; the suggestions that may
+  follow are receipted at $0 on the owner's subscription (ADR 29). Its text goes to Perplexity, which publishes no
   retention or training terms for this API, and to the proxy's 30-day spend
   log.
 - Short blocks show an emotion and can get suggestions without a rewrite.

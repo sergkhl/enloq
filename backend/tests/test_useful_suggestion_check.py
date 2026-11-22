@@ -9,7 +9,7 @@ import pytest
 from enloq.config import Settings, private_write
 from enloq.inference.decider import MODEL as DECIDER
 from enloq.inference.fake import choice, label_choice
-from enloq.inference.openrouter import MODEL as MIMO
+from enloq.inference.openrouter import MODEL as TERRA
 from enloq.storage.accounts import AccountRegistry
 
 from backend.tests.proxy_helpers import DECISIONS, ENDPOINT
@@ -110,8 +110,7 @@ async def run(tmp_path, *, mode="receipted", threshold=None):
     def suggest(request):
         if request.method == "GET":
             assert str(request.url) == f"{ENDPOINT}/model/info"
-            exact = exact_route(input_cost_per_token=1e-07, output_cost_per_token=2e-07)
-            return httpx.Response(200, json=model_info(exact))
+            return httpx.Response(200, json=model_info(exact_route()))
         payload = json.loads(request.content)
         suggestions.append(payload)
         options = [
@@ -122,19 +121,21 @@ async def run(tmp_path, *, mode="receipted", threshold=None):
             options = options[:1]
         if mode == "invalid_options":
             options[0]["text"] = ""
+        if mode == "unknown":
+            # A call that fails unanswered has an unknown outcome.
+            return httpx.Response(500)
         return httpx.Response(
             200,
             json={
                 "id": "synthetic-receipt",
-                "model": MIMO,
-                "provider": "xiaomi",
+                "model": TERRA,
                 "choices": [
                     {
                         "message": {"content": json.dumps({"options": options})},
                         "finish_reason": "stop",
                     }
                 ],
-                "usage": {} if mode == "unknown" else {"cost": 0.0002},
+                "usage": {"cost": 0.0002},
             },
         )
 
@@ -193,7 +194,8 @@ async def test_each_case_decides_once_and_emotional_or_useful_blocks_get_one_set
     assert len(decisions) == len(incoming) + len(labels)
     assert (
         report["counted_test_nanos"]
-        == len(decisions) * 18_000 + len(suggestions) * 200_000
+        # The subscription's receipts are $0 whatever a reply reports (ADR 29).
+        == len(decisions) * 18_000
     )
     assert after == before and report["telegram_calls"] == 0 and report["within_bounds"]
     # Every text block is held and decided from its originals, long ones too

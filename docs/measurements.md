@@ -10,13 +10,13 @@ writing-model steps it replaced or made unnecessary, and the
 [ranges](#miss-rate-ranges) around two gates' published check results.
 
 **These figures are indicative, not a benchmark.** They come from small finite
-checks on 7, 9, 27 and 29 October 2026, each with its own authored test
-messages, some on routes and roles that have since changed. They are not a
-controlled comparison. Savings
-on real traffic are not measured: they depend on how many blocks are hostile
-or call for suggestions, and receipts do not record latency. The checks'
-private reports hold the authored messages and are not published; only their
-numbers and methods are copied here.
+checks on 7, 9, 27 and 29 October and 22 November 2026, each with its own
+authored test messages, some on routes and roles that have since changed.
+They are not a controlled comparison. Savings on real traffic are not
+measured: they depend on how many blocks are hostile or call for suggestions,
+and receipts do not record latency. The checks' private reports hold the
+authored messages and are not published; only their numbers and methods are
+copied here.
 
 ## Summary
 
@@ -27,10 +27,12 @@ numbers and methods are copied here.
 | Reaction Assessment on a writing model, before the Decider took it over | Muse Spark 1.3 | 7 Oct 2026 | 6 | 30.2 (12.4–41.0) | $0.00028 |
 | Reaction Assessment on the Decider (8 of the 24 in-app decisions) | Decider V1.1 | 9 Oct 2026 | 8 | 0.71 (0.64–0.88) | $0.000017 |
 | Rewriting an incoming text-only block, which ADR 54 stopped for non-hostile text | MiMo V2.6 Flash | 9 Oct 2026 | 18 | 8.8 (2.8–41.5) to the end; 6.7 to first text | $0.00019 |
+| Rewriting an incoming block with a voice note or an image | gpt-6.1-terra | 22 Nov 2026 | 5 | 2.7 (2.6–6.0) to the end; 1.8 to first text | $0 (subscription) |
 
 On these samples a decision took about a second and cost $0.00001 to
-$0.00002. The writing-model steps took 9 to 30 seconds at the median and cost
-$0.0002 to $0.0003.
+$0.00002. The paid writing-model steps took 9 to 30 seconds at the median and
+cost $0.0002 to $0.0003; Terra's media rewrites took under 3 seconds at the
+median and cost nothing.
 
 ## How each figure was measured
 
@@ -75,7 +77,9 @@ Reaction Assessment on MiMo, which took 13.9 seconds.
 ([`scripts/check-route.py`](../scripts/check-route.py) checks 1, 2 and 3 as it
 then stood; check 2 ran twice). The route was
 `openrouter/xiaomi/mimo-v2.6-flash` through Xiaomi, listed at $0.14 and $0.28
-per million input and output tokens; Enloq now calls Xiaomi's own API. Every
+per million input and output tokens; Enloq later called Xiaomi's own API and
+now uses gpt-6.1-terra
+([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)). Every
 case was authored, Telegram was a fake transport and each case had one first
 attempt. Time is a monotonic clock from the start of each streamed model call
 to its first nonblank text and to its end. Cost is the upstream inference cost
@@ -95,6 +99,23 @@ output validation; its time and cost are included. ADR 54 stopped rewriting
 non-hostile text because the rewrites added little beside their originals, and
 says "Cost was not the reason"; the table shows what each of those rewrites
 took.
+
+### Media rewrites on Terra
+
+**22 November 2026, 13:43 UTC**
+([`scripts/check-route.py`](../scripts/check-route.py) check 1, run from a
+scratch folder with a fresh registry). The route was `chatgpt/gpt-6.1-terra`
+on the owner's ChatGPT subscription at the proxy's default medium effort,
+whose receipts record $0. Each of the five authored blocks held a voice note
+or an image and had one first attempt, streamed; time is measured as above.
+All five came back well formed, in 2.6 to 6.0 seconds to the end (median 2.7)
+and 1.5 to 5.4 seconds to first text (median 1.8). The memory update took 4.2
+seconds and the suggestion set 2.3. Every reply reported 1,100 to 1,900 input
+tokens, 48 to 125 output tokens and no reasoning tokens. Checks 2 and 3 ran
+the same day: their 8 and 13 rewrites were all well formed, at a median of 2.5
+and 2.7 seconds to the end (1.9 to 4.5 in all) and 1.7 to first text. The
+check's cases have changed since 9 October, so the runs are not a controlled
+comparison.
 
 ## Miss-rate ranges
 

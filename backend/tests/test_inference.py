@@ -10,6 +10,8 @@ from enloq.inference.decider import MODEL as DECIDER
 from enloq.inference.decider import DeciderEngine
 from enloq.inference.openrouter import (
     MODEL,
+    MUSE,
+    MuseEngine,
     OpenRouterEngine,
     checked_endpoint,
     proxy_endpoint,
@@ -17,7 +19,7 @@ from enloq.inference.openrouter import (
 )
 from enloq.inference.runner import bounded_process
 
-from backend.tests.proxy_helpers import ELSEWHERE, ENDPOINT
+from backend.tests.proxy_helpers import ELSEWHERE, ENDPOINT, request_schema
 from backend.tests.test_route_refusals import exact_route, model_info
 
 USER = "authored-provider-pseudonym"
@@ -97,9 +99,9 @@ async def test_requests_go_to_the_configured_endpoint_on_another_host(tmp_path):
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    mimo = OpenRouterEngine(settings, user=USER, client=client)
-    assert (await mimo.verify())["endpoint"] == ELSEWHERE
-    await mimo.generate(
+    terra = OpenRouterEngine(settings, user=USER, client=client)
+    assert (await terra.verify())["endpoint"] == ELSEWHERE
+    await terra.generate(
         "response_suggestions", {"messages": [{"id": 91}], "text": "authored"}
     )
     decider = DeciderEngine(settings, user=USER, client=client)
@@ -132,9 +134,8 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
             200,
             json={
                 "model": MODEL,
-                "provider": "Xiaomi",
                 "id": "synthetic-receipt",
-                "usage": {"cost": 0.0000012, "prompt_tokens": 5},
+                "usage": {"prompt_tokens": 5},
                 "choices": [
                     {
                         "finish_reason": "stop",
@@ -153,13 +154,14 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
         user="authored-provider-pseudonym",
         client=client,
         rates={
-            "prompt": "0.00000014",
-            "completion": "0.00000028",
+            "prompt": "0",
+            "completion": "0",
             "verified_at": time.time(),
-            "context_length": 1048576,
+            "context_length": 922000,
         },
     )
-    assert await engine.prepare({}) == 151_388_160
+    # The subscription's receipts record $0 (ADR 29 Q5).
+    assert await engine.prepare({}) == 0
     result = await engine.generate(
         "response_suggestions",
         {
@@ -172,14 +174,17 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
             ],
         },
     )
-    assert result.actual_nanos == 1200 and "reasoning" not in str(result)
-    assert result.usage["finish_reason"] == "stop"
-    assert seen[0]["max_tokens"] == 16384
+    assert result.actual_nanos == 0 and "reasoning" not in str(result)
+    assert result.usage["finish_reason"] == "stop" and result.usage["cost"] == 0
     assert seen[0]["model"] == MODEL
-    # The proxy route names the provider; OpenRouter routing fields are gone.
+    # The proxy route names the provider and keeps its own reasoning effort;
+    # OpenRouter routing fields are gone, and no extra_body replaces the
+    # route's own.
     assert "provider" not in seen[0] and "reasoning" not in seen[0]
-    assert "tool_choice" not in seen[0]
-    assert seen[0]["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert "tool_choice" not in seen[0] and "extra_body" not in seen[0]
+    # The route drops both, so the schema ends the instructions (ADR 29 Q15).
+    assert "max_tokens" not in seen[0] and "response_format" not in seen[0]
+    assert set(request_schema(seen[0])["properties"]) == {"options"}
     assert seen[0]["user"] == "authored-provider-pseudonym"
     parts = seen[0]["messages"][1]["content"]
     assert json.loads(parts[1]["text"])["native_message_id"] == 91
@@ -201,7 +206,7 @@ async def test_exact_route_endpoint_binding_and_receipt(tmp_path):
     await client.aclose()
 
 
-async def test_reply_without_usage_cost_takes_the_proxy_header_cost(tmp_path):
+async def test_muse_reply_without_usage_cost_takes_the_proxy_header_cost(tmp_path):
     private_write(tmp_path / "endpoint", ENDPOINT)
     private_write(tmp_path / "key", "sk-synthetic-placeholder")
     settings = Settings(
@@ -218,7 +223,7 @@ async def test_reply_without_usage_cost_takes_the_proxy_header_cost(tmp_path):
             200,
             headers={"x-litellm-response-cost": "0.0000021"},
             json={
-                "model": MODEL,
+                "model": MUSE,
                 "id": "synthetic-receipt",
                 "usage": {"prompt_tokens": 5, "completion_tokens": 7},
                 "choices": [
@@ -231,13 +236,12 @@ async def test_reply_without_usage_cost_takes_the_proxy_header_cost(tmp_path):
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    engine = OpenRouterEngine(
-        settings, user="authored-provider-pseudonym", client=client
-    )
+    engine = MuseEngine(settings, user="authored-provider-pseudonym", client=client)
     result = await engine.generate(
         "response_suggestions", {"messages": [{"id": 91}], "text": "authored"}
     )
     assert result.usage["cost"] == 0.0000021 and result.actual_nanos == 2100
+    assert result.usage["output_token_limit"] == 16384
     await client.aclose()
 
 

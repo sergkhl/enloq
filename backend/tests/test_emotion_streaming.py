@@ -142,8 +142,10 @@ async def test_real_adapter_streams_then_emotion_is_classified_after_publication
         assert app.conversation(KEY)["blocks"][0]["state"] == "failed"
         assert registry.format_failures()["incoming_rewrite"] == 1
     assert len(requests) == 1 and requests[0]["stream"] is True
+    # An answered subscription call is $0 (ADR 29 Q5); an interrupted one's
+    # outcome stays unknown.
     assert app.store.rows("SELECT actual FROM reservations")[0]["actual"] == (
-        None if outcome == "interrupt" else 10000
+        None if outcome == "interrupt" else 0
     )
     await app.engine.client.aclose()
 

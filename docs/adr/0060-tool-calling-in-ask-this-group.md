@@ -55,7 +55,7 @@ answered 78 of the 80 answerable questions correctly against the fixed pass's
 the 100 questions, all 20 unanswerable ones among them. Tools alone, with no
 messages to start with, answered 74, short of the rule, in twice the time:
 the application does not use them, and the check still measures them. A
-writer whose route calls no tools, MiMo where no subscription writer is
+writer offered no tools, ADR 29's route where no subscription writer is
 attached, reads the fixed pass alone.
 
 **Measurement (Q4).** Tool calling is decided by measurement on ADR 59 Q11's

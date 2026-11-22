@@ -1,4 +1,4 @@
-"""ADR 29 T1: the exact MiMo/Xiaomi Model Route, offline with mocked transport."""
+"""ADR 29 T1: the exact Terra Model Route, offline with mocked transport."""
 
 import asyncio
 import json
@@ -20,6 +20,7 @@ from enloq.inference.openrouter import (
     MuseEngine,
     muse_rates,
     route_rates,
+    within_adopted_rates,
 )
 from enloq.inference.streaming import read_stream
 from enloq.inference.work import FLAT_UNKNOWN
@@ -48,9 +49,10 @@ async def test_route_accepts_only_the_single_exact_proxy_route():
         rates = await route_rates(client, ENDPOINT, KEY)
     assert rates["model"] == LOGICAL_MODEL and rates["provider"] == PROVIDER
     assert rates["endpoint"] == ENDPOINT
-    assert Decimal(rates["prompt"]) == Decimal("0.00000014")
-    assert Decimal(rates["completion"]) == Decimal("0.00000028")
-    assert rates["context_length"] == 1048576
+    # The subscription's receipts record $0 (ADR 29 Q5).
+    assert rates["prompt"] == rates["completion"] == "0"
+    assert within_adopted_rates(rates)
+    assert rates["context_length"] == 922000
 
 
 @pytest.mark.parametrize(
@@ -63,9 +65,9 @@ async def test_route_accepts_only_the_single_exact_proxy_route():
     ],
     ids=["missing", "other-provider-only", "ambiguous", "prefix-lookalike"],
 )
-async def test_missing_or_ambiguous_xiaomi_endpoint_is_a_no_work_refusal(routes):
+async def test_missing_or_ambiguous_terra_route_is_a_no_work_refusal(routes):
     async with listing(*routes) as client:
-        with pytest.raises(ProviderRefused, match="MiMo / Xiaomi"):
+        with pytest.raises(ProviderRefused, match="Terra / ChatGPT"):
             await route_rates(client, ENDPOINT, KEY)
 
 
@@ -76,9 +78,19 @@ async def test_proxy_refusal_is_a_no_work_refusal_with_its_retry_after():
     assert raised.value.retry_after == 7.5
 
 
-async def test_missing_structured_outputs_is_a_changed_route_contract():
-    route = exact_route(supports_response_schema=False)
-    async with listing(route) as client:
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"supports_vision": False},
+        {"input_cost_per_token": 1.4e-07},
+        {"output_cost_per_token": 2.8e-07},
+    ],
+    ids=["no-images", "charged-input", "charged-output"],
+)
+async def test_a_route_without_images_or_with_a_rate_is_a_changed_contract(changes):
+    # Images reach the route, and a listed rate means it is no longer the
+    # subscription whose receipts record $0.
+    async with listing(exact_route(**changes)) as client:
         with pytest.raises(Unavailable) as raised:
             await route_rates(client, ENDPOINT, KEY)
     assert not isinstance(raised.value, ProviderRefused)
@@ -274,37 +286,15 @@ def test_receipts_count_the_larger_of_charged_and_upstream_cost(usage, expected)
     assert cost_nanos(usage) == expected
 
 
-async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
-    seen = []
+def receipt_engine(tmp_path, kind, reply):
+    from enloq.config import private_write
 
     async def handler(request):
-        seen.append(json.loads(request.content))
-        return httpx.Response(
-            200,
-            json={
-                "id": "authored-receipt",
-                "model": MODEL,
-                "provider": "Xiaomi",
-                "usage": {
-                    "cost": 0,
-                    "is_byok": False,
-                    "cost_details": {"upstream_inference_cost": 0.00008036},
-                },
-                "choices": [
-                    {
-                        "finish_reason": "stop",
-                        "message": {"content": '{"text":"Authored."}'},
-                    }
-                ],
-            },
-        )
-
-    from enloq.config import private_write
-    from enloq.inference.openrouter import OpenRouterEngine
+        return httpx.Response(200, json=reply)
 
     private_write(tmp_path / "endpoint", ENDPOINT)
     private_write(tmp_path / "key", "sk-authored-placeholder")
-    engine = OpenRouterEngine(
+    return kind(
         Settings(
             mode="personal",
             data=tmp_path,
@@ -316,6 +306,26 @@ async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
         user="authored-provider-pseudonym",
         client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
+
+
+def reply(model, content, usage):
+    return {
+        "id": "authored-receipt",
+        "model": model,
+        "usage": usage,
+        "choices": [{"finish_reason": "stop", "message": {"content": content}}],
+    }
+
+
+async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
+    usage = {
+        "cost": 0,
+        "is_byok": False,
+        "cost_details": {"upstream_inference_cost": 0.00008036},
+    }
+    engine = receipt_engine(
+        tmp_path, MuseEngine, reply(MUSE, '{"text":"Authored."}', usage)
+    )
     response = await engine.structured(
         "Authored instructions.",
         {"draft": {"text": "Own words."}},
@@ -324,6 +334,29 @@ async def test_zero_charge_receipt_still_counts_its_upstream_cost(tmp_path):
     )
     assert response.actual_nanos == 80360
     assert response.usage["is_byok"] is False
+    await engine.client.aclose()
+
+
+async def test_a_subscription_receipt_is_zero_and_keeps_only_the_json_object(
+    tmp_path,
+):
+    from enloq.inference.openrouter import OpenRouterEngine
+
+    # Whatever a reply reports, the subscription charges nothing (ADR 29 Q5),
+    # and a reply keeps only its outermost JSON object (Q15).
+    usage = {"prompt_tokens": 9, "completion_tokens": 4, "cost": 0.5}
+    content = 'Here it is:\n```json\n{"text":"Authored."}\n```'
+    engine = receipt_engine(tmp_path, OpenRouterEngine, reply(MODEL, content, usage))
+    response = await engine.structured(
+        "Authored instructions.",
+        {"draft": {"text": "Own words."}},
+        {"type": "object"},
+        role="incoming_rewrite",
+    )
+    assert response.actual_nanos == 0 and response.usage["cost"] == 0
+    assert response.content == '{"text":"Authored."}'
+    assert response.usage["prompt_tokens"] == 9
+    assert "output_token_limit" not in response.usage
     await engine.client.aclose()
 
 

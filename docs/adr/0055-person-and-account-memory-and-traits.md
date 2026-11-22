@@ -53,8 +53,9 @@ neither memory.
 - **Size:** at most 40 entries and about 3,000 bytes per memory, 150
   characters per generated entry, in the language it was said in.
 - **Retention:** kept until cleared or the account's local data is removed.
-- **Writing:** MiMo writes them, one memory call at a time across the server,
-  charged to the member's Daily Budget. A failed update keeps the previous
+- **Writing:** [ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s
+  route writes them, one memory call at a time across the server, receipted
+  in the member's Daily Budget. A failed update keeps the previous
   memory, with Retry.
 
 **Switches (Q7).** One **Memory** switch in Settings covers both memories; it
@@ -77,7 +78,7 @@ improve them is decided later.
 **Anything the evidence supports (Q11).** Notes may record sensitive guesses;
 the starter list of scales holds none.
 
-**Notes (Q12).** MiMo writes them freely: each a pattern across at least three
+**Notes (Q12).** ADR 29's route writes them freely: each a pattern across at least three
 of the person's own messages on at least two days, cited and worded as a
 tendency, at most 10, each with a confidence. A deleted or edited cited
 message drops only its citation; the note goes when fewer than three remain.
@@ -216,8 +217,8 @@ memory switches it Off for its run and back On.
 
 ## Known limits
 
-- **Figurative Russian.** MiMo sometimes reads a Russian idiom of worry
-  literally in a memory update.
+- **Figurative Russian.** MiMo, the earlier route, sometimes read a Russian
+  idiom of worry literally in a memory update; Terra is unchecked for it.
 - **Stale events.** One gate suggestion asked how an event "is going" days
   after it, against Q16.
 - **Account notes' chats.** An Account Memory note's sources name their chats,

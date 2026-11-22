@@ -13,7 +13,7 @@ from enloq.inference.guidance import DEFAULTS_REVISION
 from enloq.inference.openrouter import MODEL
 from enloq.storage.accounts import AccountRegistry
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_route_refusals import exact_route, model_info, priced
 
 spec = importlib.util.spec_from_file_location(
@@ -79,12 +79,11 @@ async def run(tmp_path, check, *, rates=None, budget=None, unknown=False):
             return httpx.Response(200, json=model_info(route))
         payload = json.loads(request.content)
         calls.append(payload)
-        schema = payload["response_format"]["json_schema"]["schema"]
+        schema = request_schema(payload)
         content = json.dumps(output(schema), ensure_ascii=False)
         body = {
             "id": f"authored-receipt-{len(calls)}",
             "model": MODEL,
-            "provider": "Xiaomi",
             "usage": {} if unknown else {"cost": 0.00001},
             "choices": [{"finish_reason": "stop"}],
         }
@@ -100,7 +99,9 @@ async def run(tmp_path, check, *, rates=None, budget=None, unknown=False):
             }
             events.append("data: " + json.dumps(event) + "\n\n")
             await asyncio.sleep(0)
-        return httpx.Response(200, content="".join(events) + "data: [DONE]\n\n")
+        # An unknown outcome: the stream breaks off before its terminator.
+        done = "" if unknown else "data: [DONE]\n\n"
+        return httpx.Response(200, content="".join(events) + done)
 
     def engine_factory(settings, registry, initial, bounds):
         engine = runner.ObservedRoute.__new__(runner.ObservedRoute)
@@ -149,7 +150,8 @@ async def test_each_check_makes_one_first_attempt_per_case_within_bounds(
     assert report["requests"] == len(calls) == len(roles)
     assert len(calls) <= report["bounds"]["requests"]
     assert [call["role"] for r in report["results"] for call in r["calls"]] == roles
-    assert report["counted_test_nanos"] == len(roles) * 10_000
+    # The subscription's receipts are $0 whatever a reply reports (ADR 29 Q5).
+    assert report["counted_test_nanos"] == 0
     assert report["telegram_calls"] == 0
     assert report["defaults_revision"] == DEFAULTS_REVISION
     assert {
@@ -167,7 +169,7 @@ async def test_each_check_makes_one_first_attempt_per_case_within_bounds(
         assert payload["user"] == user and "tool_choice" not in payload
         assert payload["model"] == MODEL
         assert "provider" not in payload and "reasoning" not in payload
-        assert payload["extra_body"]["thinking"] == {"type": "enabled"}
+        assert "extra_body" not in payload
     streamed = [c for r in report["results"] for c in r["calls"] if "stream" in c]
     assert not streamed  # Packets and timings only; no raw request bodies.
     timed = [
@@ -208,11 +210,12 @@ async def test_unknown_outcomes_stop_at_the_counted_spending_bound(tmp_path):
     assert report["stopped"].startswith("Finite check")
 
 
-async def test_rate_increase_refuses_before_any_request(tmp_path):
+async def test_a_listed_rate_refuses_before_any_request(tmp_path):
+    # A rate means the route is no longer the $0 subscription.
     rates = {"prompt": "0.00000015", "completion": "0.00000028"}
     report, calls, *_ = await run(tmp_path, 1, rates=rates)
     assert not calls and report["requests"] == 0
-    assert "Rate increase" in report["stopped"]
+    assert "charges per token" in report["stopped"]
 
 
 async def test_reached_shared_budget_makes_no_request(tmp_path):

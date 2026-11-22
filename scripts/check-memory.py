@@ -6,16 +6,16 @@ Wholly authored chats, half Russian, arrive in a temporary store with a fake
 Telegram transport that reads, sends and reacts nothing, and go through the
 application's own stages on the real routes. Three groups:
 
-- Cares about: each chat folds once (MiMo). A judge model reads every note
+- Cares about: each chat folds once (Terra). A judge model reads every note
   against its chat: a Person Memory note must concern the other person and an
   Account Memory note the owner, each supported by the messages. An authored
   date or amount stays with its note, Russian chats keep Russian notes, and a
   chat of small talk notes nothing.
-- Suggestions: authored memories reach real suggestion requests (MiMo). The
+- Suggestions: authored memories reach real suggestion requests (Terra). The
   judge decides whether an option reveals an owner note from another chat
   (Q15) or claims a remembered thing is still true or still ahead (Q16).
 - Traits: authored chats through the real trait roles (the decision model's
-  scales with their evidence questions, MiMo's notes). Nothing may show for
+  scales with their evidence questions, Terra's notes). Nothing may show for
   the three-message chat, and the scales shown must land within one level of
   their authored level on at least 9 in 10. The judge reads every note: it
   must describe its subject, keep the subject's script and carry no message
@@ -492,7 +492,7 @@ ROLES = {
 
 
 class ObservedRoute(OpenRouterEngine):
-    """MiMo, counting each request the gate makes."""
+    """ADR 29's route, counting each request the gate makes."""
 
     def __init__(self, settings, registry, bounds, *, client=None):
         super().__init__(settings, user=registry.provider_user(), client=client)

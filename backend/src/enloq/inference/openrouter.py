@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import time
 from decimal import Decimal
 from typing import Literal
@@ -31,26 +32,32 @@ from .streaming import (
     render,
 )
 
-# ADR 29: one exact Model Route for every role, with no selector or fallback.
-# ADR 39 moved it to the owner's LiteLLM proxy, whose route of this name calls
-# Xiaomi's own API; the module keeps its earlier name. The route name is also
-# what the proxy sends back as `model`.
-LOGICAL_MODEL = MODEL = "xiaomi_mimo/mimo-v2.6-flash"
-PROVIDER = "xiaomi"
+# ADR 29: one exact Model Route for every generation role, with no selector or
+# fallback: gpt-6.1-terra on the owner's ChatGPT subscription, through the
+# proxy's ChatGPT route at its default medium effort (ADR 39). The module keeps
+# its earlier name. The route name is also what the proxy sends back as `model`.
+LOGICAL_MODEL = MODEL = "chatgpt/gpt-6.1-terra"
+PROVIDER = "openai"
 # The proxy keeps request and response bodies in its spend log unless a request
 # asks it not to. Every adapter sends this; the proxy's pass-through routes do
 # not honour it.
 PRIVATE = {"x-litellm-enable-message-redaction": "true"}
-# Text generation roles use hidden reasoning.
+# Muse's output cap. The ChatGPT route drops token caps, so Terra has none.
 BACKGROUND_OUTPUT_TOKENS = 16384
-# Attempt deadlines fit a cap-length response: 4,096 tokens take 105 seconds at
-# the listed 39 tokens per second; 16,384 take 512 seconds at a 32-per-second
-# floor, plus first-token latency.
+# Attempt deadlines fit a long response after hidden reasoning: 16,384 tokens
+# take 512 seconds at a 32-per-second floor, plus first-token latency.
 BACKGROUND_SECONDS = 540
-# The per-token rates listed when the owner adopted the route (2026-10-09), the
-# same as Xiaomi's own. Finite checks refuse higher rates, so their recorded
-# cost bounds stay valid.
-ADOPTED_RATES = {"prompt": "0.00000014", "completion": "0.00000028"}
+# The subscription's receipts record $0. Finite checks refuse any listed rate,
+# so their recorded cost bounds stay valid.
+ADOPTED_RATES = {"prompt": "0", "completion": "0"}
+# What the proxy's ChatGPT routes answer when a request has no work for them to
+# do: an expired login (401), a model the caller key may not call (403) or the
+# backend's own rate limit (429). 402 is a spend refusal.
+SUBSCRIPTION_REFUSALS = (401, 402, 403, 429)
+# The ChatGPT route drops `response_format`, so the required JSON is asked for
+# in the instructions and validated strictly afterwards (ADR 29 Q15). A reply
+# keeps only its outermost object.
+OBJECT = re.compile(r"\{.*\}", re.S)
 # ADR 53: calmed rewrites only, on Meta's Muse Spark
 # 1.3, which read sarcasm by its meaning where MiMo did not. The proxy's route
 # of this name pins Meta, with low reasoning hidden. Its rates come from
@@ -421,8 +428,8 @@ def proxy_key(settings):
     return key
 
 
-async def proxy_route(client, endpoint, key, model, name):
-    """The proxy's own record of one route, with its required parameters."""
+async def listed_route(client, endpoint, key, model, name):
+    """The proxy's own record of one route: exactly one entry of that name."""
     response = await client.get(
         f"{endpoint}/model/info", headers={"Authorization": f"Bearer {key}"}
     )
@@ -434,7 +441,13 @@ async def proxy_route(client, endpoint, key, model, name):
     routes = [r for r in response.json()["data"] if r.get("model_name") == model]
     if len(routes) != 1:
         raise ProviderRefused(f"Exact {name} route unavailable")
-    route = routes[0]["model_info"]
+    return routes[0].get("model_info") or {}
+
+
+async def proxy_route(client, endpoint, key, model, name):
+    """A chat route with the structured-output and image parameters that
+    Muse's requests need."""
+    route = await listed_route(client, endpoint, key, model, name)
     if route.get("mode") != "chat" or not (
         route.get("supports_response_schema") and route.get("supports_vision")
     ):
@@ -442,23 +455,28 @@ async def proxy_route(client, endpoint, key, model, name):
     return route
 
 
-async def route_rates(client, endpoint, key):
-    """The proxy's own record of the route: what it calls and charges per token."""
-    route = await proxy_route(client, endpoint, key, MODEL, "MiMo / Xiaomi")
-    rates = {
-        k: str(Decimal(str(route[f"{side}_cost_per_token"])))
-        for k, side in (("prompt", "input"), ("completion", "output"))
-    }
-    if any(not Decimal(v).is_finite() or Decimal(v) < 0 for v in rates.values()):
-        raise Unavailable("Provider rates cannot be bounded")
+def subscription_rates(route, model, endpoint):
+    """A ChatGPT-subscription route's record: its receipts are $0 (ADR 59 Q5)."""
     return {
-        **rates,
+        "prompt": "0",
+        "completion": "0",
         "verified_at": time.time(),
-        "context_length": route["max_input_tokens"],
-        "model": LOGICAL_MODEL,
+        "context_length": route.get("max_input_tokens"),
+        "model": model,
         "provider": PROVIDER,
         "endpoint": endpoint,
     }
+
+
+async def route_rates(client, endpoint, key):
+    """ADR 29's route on the proxy: listed once, reading images, and not
+    charged per token, since the subscription pays for it."""
+    route = await listed_route(client, endpoint, key, MODEL, "Terra / ChatGPT")
+    if not route.get("supports_vision"):
+        raise Unavailable("Exact route lacks required input parameters")
+    if any(route.get(f"{side}_cost_per_token") for side in ("input", "output")):
+        raise Unavailable("Exact route charges per token")
+    return subscription_rates(route, LOGICAL_MODEL, endpoint)
 
 
 def within_adopted_rates(rates, adopted=ADOPTED_RATES):
@@ -510,21 +528,81 @@ def retry_after(value):
     return seconds if 0 <= seconds <= 3600 else None
 
 
-def output_tokens(role):
-    # An answer is at most four short statements, written without reasoning.
-    return 2048 if role == QUESTION_ROLE else BACKGROUND_OUTPUT_TOKENS
+# ADR 29 Q15: the ChatGPT route drops `response_format`, so the end of the
+# instructions asks for the required JSON by its schema.
+SCHEMA_REPLY = (
+    "\nReply with only the required JSON: one object, with no Markdown or other "
+    "text, that conforms to this JSON Schema: "
+)
 
 
-def thinking(role):
-    """Xiaomi's own reasoning switch. Its reasoning text comes back beside the
-    content and is never read or retained. A member waits for an Ask this
-    group answer, which is written without it (ADR 59 Q5)."""
-    return {"type": "disabled" if role == QUESTION_ROLE else "enabled"}
+def json_reply(schema):
+    return SCHEMA_REPLY + json.dumps(schema, ensure_ascii=False, separators=(",", ":"))
+
+
+def request_body(system, packet, schema, *, route=MODEL, user, subscription=True):
+    """One generation request as the transport sends it, before any streaming
+    options: the packet as untrusted content with its labelled images."""
+    images = packet.get("images", [])
+    # Guidance belongs to the instructions, never the untrusted content;
+    # so do the calming flag (ADR 53) and the idioms flag (ADR 56).
+    plain = {
+        k: v
+        for k, v in packet.items()
+        if k not in ("images", "guidance", "calm", "sarcastic", "idioms")
+    }
+    content = [{"type": "text", "text": json.dumps(plain, ensure_ascii=False)}]
+    for image in images:
+        content.append(
+            {
+                "type": "text",
+                "text": json.dumps(
+                    dict(attachment="image", native_message_id=image["message_id"])
+                ),
+            }
+        )
+        content.append({"type": "image_url", "image_url": {"url": image["data_url"]}})
+    if subscription:
+        system += json_reply(schema)
+    # No tools are offered, so no tool_choice is sent. No request sends an
+    # extra_body, which would replace the proxy route's own.
+    payload = {
+        "model": route,
+        "user": user,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": content},
+        ],
+    }
+    if not subscription:
+        payload.update(
+            max_tokens=BACKGROUND_OUTPUT_TOKENS,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "enloq",
+                    "strict": True,
+                    "schema": schema,
+                },
+            },
+        )
+    return payload
 
 
 class OpenRouterEngine:
-    name, model, provider = "mimo", LOGICAL_MODEL, PROVIDER
+    """ADR 29's generation route: gpt-6.1-terra on the owner's ChatGPT
+    subscription, through the proxy's ChatGPT route at its default medium
+    effort, with hidden reasoning. The route drops `response_format` and token
+    caps, so the schema travels in the instructions and the reply is validated
+    strictly afterwards. Its receipts record $0, as for Ask this group's writer
+    (ADR 59 Q5). The class keeps its earlier name."""
+
+    name, model, provider = "terra", LOGICAL_MODEL, PROVIDER
     route = MODEL
+    # Muse's route instead takes a strict schema and a token cap, and its
+    # receipts carry the proxy's cost.
+    subscription = True
+    refusals = SUBSCRIPTION_REFUSALS
 
     def __init__(self, settings, *, user, client=None, rates=None):
         key = proxy_key(settings)
@@ -544,10 +622,6 @@ class OpenRouterEngine:
 
     async def verify(self):
         return await route_rates(self.client, self.endpoint, self.key)
-
-    def extra_body(self, role):
-        """The request's own extra body, which replaces the proxy route's."""
-        return {"thinking": thinking(role)}
 
     async def prepare(self, packet):
         if self.rates is None or time.time() - self.rates["verified_at"] > 86400:
@@ -583,56 +657,33 @@ class OpenRouterEngine:
             on_text=on_text,
         )
 
+    def receipted(self, response):
+        """An answered subscription call is receipted at $0, and its answer
+        keeps only its outermost JSON object; Muse's receipt keeps the proxy's
+        cost and its cap."""
+        if not self.subscription:
+            response.usage["output_token_limit"] = BACKGROUND_OUTPUT_TOKENS
+            return response
+        response.usage["cost"], response.actual_nanos = 0, 0
+        # A reply without one JSON object stays as sent and fails validation.
+        if found := OBJECT.search(response.content):
+            response.content = found.group(0)
+        return response
+
     async def structured(self, system, packet, schema, *, role, on_text=None):
         """Use the same qualified transport for a caller-owned bounded schema."""
         if role not in SCHEMAS:
             raise Refused("Unsupported rewrite role")
         if on_text is not None and role not in STREAMED_ROLES:
             raise Refused("This role has no rewrite stream")
-        max_tokens = output_tokens(role)
-        images = packet.get("images", [])
-        # Guidance belongs to the instructions, never the untrusted content;
-        # so do the calming flag (ADR 53) and the idioms flag (ADR 56).
-        plain = {
-            k: v
-            for k, v in packet.items()
-            if k not in ("images", "guidance", "calm", "sarcastic", "idioms")
-        }
-        content = [{"type": "text", "text": json.dumps(plain, ensure_ascii=False)}]
-        for image in images:
-            content.append(
-                {
-                    "type": "text",
-                    "text": json.dumps(
-                        dict(attachment="image", native_message_id=image["message_id"])
-                    ),
-                }
-            )
-            content.append(
-                {"type": "image_url", "image_url": {"url": image["data_url"]}}
-            )
-        # No tools are offered, so no tool_choice is sent: Xiaomi rejects "none".
-        # The request's extra_body replaces the proxy route's own, which only
-        # turns thinking off.
-        payload = {
-            "model": self.route,
-            "user": self.user,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": content},
-            ],
-            "max_tokens": max_tokens,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "enloq",
-                    "strict": True,
-                    "schema": schema,
-                },
-            },
-        }
-        if extra := self.extra_body(role):
-            payload["extra_body"] = extra
+        payload = request_body(
+            system,
+            packet,
+            schema,
+            route=self.route,
+            user=self.user,
+            subscription=self.subscription,
+        )
         if on_text is not None:
             payload.update(stream=True, stream_options={"include_usage": True})
         try:
@@ -646,8 +697,8 @@ class OpenRouterEngine:
         except httpx.ConnectError:
             raise ProviderRefused("Provider connection refused") from None
         try:
-            if response.status_code in (402, 429):
-                # Rate or in-flight spend refusals happen before any provider work.
+            if response.status_code in self.refusals:
+                # Rate, login or spend refusals happen before any provider work.
                 raise ProviderRefused(
                     f"Model provider HTTP {response.status_code}",
                     retry_after=retry_after(response.headers.get("retry-after")),
@@ -657,6 +708,8 @@ class OpenRouterEngine:
                     f"Model provider HTTP {response.status_code}; first attempt retained"
                 )
             if on_text is not None:
+                # An interrupted stream keeps its receipt as read: its outcome,
+                # and so its cost, stays unknown (ADR 15).
                 result = await read_stream(
                     response,
                     self.route,
@@ -667,8 +720,7 @@ class OpenRouterEngine:
                     if role == "incoming_rewrite"
                     else None,
                 )
-                result.usage["output_token_limit"] = max_tokens
-                return result
+                return self.receipted(result)
             # A streamed reply carries its cost in the final usage; this one has
             # it only in the proxy's header.
             charged = response.headers.get("x-litellm-response-cost")
@@ -691,13 +743,13 @@ class OpenRouterEngine:
                 pass  # An unreadable cost stays unknown and keeps the flat estimate.
         usage["receipt_id"] = data.get("id")
         usage["finish_reason"] = data["choices"][0].get("finish_reason")
-        usage["output_token_limit"] = max_tokens
-        actual = cost_nanos(usage)
         # Never retain reasoning fields from the response.
         text = data["choices"][0]["message"]["content"]
         # Keep the original JSON for duplicate-key/framing validation.
         content = text if isinstance(text, str) else ""
-        return EngineResponse(content=content, usage=usage, actual_nanos=actual)
+        return self.receipted(
+            EngineResponse(content=content, usage=usage, actual_nanos=cost_nanos(usage))
+        )
 
 
 class MuseEngine(OpenRouterEngine):
@@ -707,9 +759,8 @@ class MuseEngine(OpenRouterEngine):
 
     name, model, provider = "muse", MUSE, MUSE_PROVIDER
     route = MUSE
+    subscription = False
+    refusals = (402, 429)
 
     async def verify(self):
         return await muse_rates(self.client, self.endpoint, self.key)
-
-    def extra_body(self, role):
-        return None

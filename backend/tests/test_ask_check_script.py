@@ -89,7 +89,8 @@ class Writer(Authored, FakeEngine):
 
     def __init__(self, settings, *, user):
         super().__init__()
-        self.rates = {"prompt": "0.00000014", "completion": "0.00000028"}
+        # ADR 29's route: the subscription records $0.
+        self.rates = {"prompt": "0", "completion": "0"}
 
 
 class Decider(Authored, FakeDecider):

@@ -10,7 +10,7 @@ The owner's LiteLLM proxy (the `codex-litellm` project) runs on the shared VPS
 and answers at `https://llm.globesoul.com`. It holds the provider keys and a
 self-hosted speech service. Enloq calls every model through it, so the
 service holds no provider key of its own. This sets the transport for
-[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s MiMo route,
+[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s generation route,
 [ADR 30](0030-decider-emotion-classification.md)'s Decider route and
 [ADR 37](0037-vps-hosting-and-remote-client-trust.md) Q16's speech model;
 their models, roles and budgets are theirs.
@@ -29,32 +29,32 @@ proxy's OpenAI-compatible base URL, which must be an `https` URL ending in
 caller key that is not an OpenRouter key (`sk-or-`). `./scripts/setup
 proxy-key` saves both. The deployment's endpoint is
 `https://llm.globesoul.com/v1`, and the proxy's pass-through routes sit beside
-`/v1` on the same origin. The reference names predate ADR 29 and are kept.
-Offline mode constructs no live adapter. Later routes, such as Meta's Muse
-Spark 1.3 ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md),
-[ADR 56](0056-idioms-either-signal-hiding-and-memory-off-by-default.md)), use
-the same endpoint and key.
+`/v1` on the same origin. The reference names predate the current routes and
+are kept. Offline mode constructs no live adapter. Later routes, such as Meta's
+Muse Spark 1.3 ([ADR 53](0053-calming-hostile-messages-and-removing-adaptive-tone.md)),
+use the same endpoint and key.
 
-**MiMo.** The generation route is the proxy's `xiaomi_mimo/mimo-v2.6-flash`,
-which calls Xiaomi's own API: the same model and processor at the adopted
-rates ($0.14/M prompt, $0.28/M completion), billed to the proxy's Xiaomi
-account.
+**The generation route.** It is the proxy's `chatgpt/gpt-6.1-terra` (ADR 29):
+LiteLLM's ChatGPT provider, which reaches the owner's ChatGPT subscription
+through the Codex backend at the route's default medium effort.
 
 - **Verification.** The service reads the proxy's `model/info` for exactly
-  one entry of that name, in chat mode, with response schema and vision
-  support, and the per-token rates the proxy charges. ADR 29's adopted-rate
-  ceiling and 24-hour rule apply.
-- **Requests.** They send no OpenRouter `provider` block. Reasoning uses
-  Xiaomi's own switch, `extra_body.thinking`, enabled for the retained
-  incoming, memory, suggestion and group roles. Manual suggestions use the
-  same role as automatic suggestions; outgoing Rewrite is removed (ADR 25). Reasoning text arrives beside the content and
-  is discarded unread; content keeps the 1 MiB capture limit, and the wire may
-  carry up to 16 MiB.
+  one entry of that name, with vision support and no per-token rate. ADR 29's
+  24-hour rule applies.
+- **Requests.** They send no OpenRouter `provider` block, no reasoning
+  setting and no `extra_body`, which would replace the route's own. The route
+  drops `response_format` and token caps, so none is sent: the role's JSON
+  Schema ends the instructions (ADR 29 Q15). Manual suggestions use the same
+  role as automatic suggestions; outgoing Rewrite is removed (ADR 25).
+  Reasoning stays hidden and is discarded unread; content keeps the 1 MiB
+  capture limit, and the wire may carry up to 16 MiB.
 - **Answers.** The response must name the route as its `model`. The private
   `user` pseudonym (one per member, [ADR 48](0048-members-on-the-shared-service.md))
-  reaches Xiaomi as sent.
-- **Receipts.** Costs come from the proxy: `usage.cost` in a stream's final
-  chunk, or the `x-litellm-response-cost` header otherwise.
+  is sent, and LiteLLM's ChatGPT provider does not forward it.
+- **Receipts.** The subscription's receipts are $0, as for Ask this group's
+  writer ([ADR 59](0059-ask-this-group.md) Q5). Muse's costs come from the
+  proxy: `usage.cost` in a stream's final chunk, or the
+  `x-litellm-response-cost` header otherwise.
 - **Route changes.** A change of route restarts the format-failure counts and
   makes group briefings updateable once.
 
@@ -92,8 +92,8 @@ verifies the route and its rates.
 
 **Proxy storage.** The proxy keeps request and response bodies in its spend
 log (`store_prompts_in_spend_logs`). Every adapter sends
-`x-litellm-enable-message-redaction: true`, which keeps MiMo prompts and
-replies and VPS transcripts out of that log. The pass-through routes ignore
+`x-litellm-enable-message-redaction: true`, which keeps generation and Muse
+prompts and replies and VPS transcripts out of that log. The pass-through routes ignore
 it: Decider requests, whose `state` carries message text, are stored with
 their answers. The speech pass-through is not logged. The proxy deletes
 spend-log rows after 30 days (`maximum_spend_logs_retention_period`, for every

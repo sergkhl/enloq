@@ -107,7 +107,8 @@ no softening.
 **The writer.** Softened text uses
 `openrouter/meta/muse-spark-1.3-contributor` through the proxy, with Meta
 pinned and low reasoning hidden, under the adopted route and rates. Every
-other incoming rewrite stays on MiMo. The app keeps bounded no-work retries
+other incoming rewrite stays on
+[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s route. The app keeps bounded no-work retries
 for Muse refusals. Notifications take the original fallback when required
 work cannot proceed, without waiting through those retries; completion
 never adds another alert.

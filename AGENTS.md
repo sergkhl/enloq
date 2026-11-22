@@ -252,17 +252,19 @@ container, before a check.
 
 The adopted routes, which need no further authorization within their roles:
 
-- **MiMo** (`xiaomi_mimo/mimo-v2.6-flash`, Xiaomi's own API, with its
-  `thinking` switch) for image and speech rewriting, Friendly and Professional
-  Response Suggestions (manual and automatic), Reaction Assessment, Person
-  and Account Memory and trait notes
-  ([ADR 29](docs/adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
-  Its accepted terms: no prompt training, 30-day retention,
-  Singapore/Netherlands processing, one private app-level pseudonym as the user
-  identity. Do not claim zero data retention.
+- **Terra** (`chatgpt/gpt-6.1-terra`, the proxy's ChatGPT-subscription route
+  at its default medium effort) for image and speech rewriting, Response
+  Suggestions in every Style, Friendly, Professional and Idioms (manual and
+  automatic), Person and Account Memory, trait notes and Daily Briefings
+  ([ADR 29](docs/adr/0029-mimo-route-and-structured-incoming-rewriting.md),
+  [ADR 56](docs/adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md) Q20).
+  The route drops `response_format`, so each role's schema ends its
+  instructions. Its receipts are $0, so no budget limits these roles; requests
+  reach OpenAI under the owner's plan and its data settings. Do not claim zero
+  data retention. MiMo, the earlier route, is not used.
 - **Muse Spark 1.3** (`openrouter/meta/muse-spark-1.3-contributor` through
-  `meta`, under its accepted Contributor terms) writes softened hostile text and idiom
-  suggestions (ADR 53, ADR 56).
+  `meta`, under its accepted Contributor terms) writes softened hostile text
+  (ADR 53).
 - **Decider V1.2** (`perplexity/pplx-decider-v1.2`, pinned to checkpoint
   `-20261016`, through Perplexity only on OpenRouter's Decisions endpoint via
   the proxy) for hostile-wording screening, Recipient Emotion, Reaction

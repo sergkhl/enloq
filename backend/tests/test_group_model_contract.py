@@ -17,7 +17,6 @@ from enloq.inference.base import (
 )
 from enloq.inference.fake import FakeEngine
 from enloq.inference.openrouter import (
-    BACKGROUND_OUTPUT_TOKENS,
     LOGICAL_MODEL,
     MODEL,
     PROVIDER,
@@ -36,7 +35,7 @@ from enloq.storage.accounts import AccountRegistry
 from fastapi.testclient import TestClient
 
 from backend.tests.auth_helpers import trust_browser
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_group_budgets import accounting, queue
 
 
@@ -260,10 +259,9 @@ async def test_group_requests_use_exact_route_hidden_reasoning_and_separate_stru
     assert len(seen) == 1
     request = seen[0]
     assert request["model"] == MODEL
-    # The proxy route names its provider; no OpenRouter routing is sent.
-    assert "provider" not in request and "reasoning" not in request
-    assert request["extra_body"] == {"thinking": {"type": "enabled"}}
-    assert request["max_tokens"] == BACKGROUND_OUTPUT_TOKENS
+    # The proxy route names its provider and keeps its own reasoning effort;
+    # no OpenRouter routing, extra_body or cap is sent (ADR 29 Q4).
+    assert not {"provider", "reasoning", "extra_body", "max_tokens"} & set(request)
     assert "stream" not in request
     system, user = request["messages"]
     assert "GROUP-OWNER-SENTINEL" in system["content"]
@@ -272,13 +270,14 @@ async def test_group_requests_use_exact_route_hidden_reasoning_and_separate_stru
     assert "guidance" not in content and "memory" not in content
     assert content["messages"][0]["author_peer"] == "user:7"
     assert "GROUP-OWNER-SENTINEL" not in json.dumps(content)
-    properties = request["response_format"]["json_schema"]["schema"]["properties"]
+    properties = request_schema(request)["properties"]
     assert set(properties) == (
         {"image_context"}
         if role == "group_briefing_image"
         else {"contract_version", "outcome", "topics"}
     )
-    assert response.actual_nanos == 2000
+    # The subscription's receipt is $0 whatever the reply reports (ADR 29 Q5).
+    assert response.actual_nanos == 0
     assert "HIDDEN-REASONING" not in str(response)
     assert validated is not None
 
@@ -405,7 +404,7 @@ async def test_only_final_briefing_streams_topic_prefixes_and_still_requires_fin
     assert len(requests) == 1 and requests[0]["stream"] is True
     assert seen[-1] == output["topics"][0]["text"]
     assert any(value != seen[-1] for value in seen)
-    assert response.actual_nanos == 3000
+    assert response.actual_nanos == 0
     assert validate_output("group_briefing", response, packet()).text == seen[-1]
     assert "HIDDEN-REASONING" not in str(response)
     output["topics"][0]["citations"] = [99]

@@ -11,7 +11,7 @@ from enloq.inference.openrouter import MODEL, OpenRouterEngine, output_schema
 from enloq.inference.streaming import PartsPreview, render
 from enloq.inference.work import InvalidOutput, validate_output
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 
 SOURCES = {"messages": [{"text": "Authored source."}]}
 
@@ -293,7 +293,7 @@ async def test_the_adapter_streams_rendered_parts_and_validates_them(tmp_path):
     shown = []
     packet = {"messages": [{"id": 1, "text": "Authored."}], "images": []}
     response = await engine.generate_stream("incoming_rewrite", packet, shown.append)
-    schema = seen[0]["response_format"]["json_schema"]["schema"]
+    schema = request_schema(seen[0])
     assert list(schema["properties"]) == ["parts", "image_context"]
     assert schema["required"] == ["parts", "image_context"]
     assert schema["properties"]["parts"]["minItems"] == 1

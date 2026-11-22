@@ -7,6 +7,7 @@ import stat
 from pathlib import Path
 
 import httpx
+import pytest
 from enloq.config import Settings, private_write
 from enloq.domain import suggestions as domain
 from enloq.inference.decider import MODEL as DECIDER
@@ -38,7 +39,15 @@ def which(text):
     return next(c for c in runner.CASES if all(m in text for m in c["latest"]))
 
 
-async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=None):
+async def run(
+    tmp_path,
+    *,
+    plain=None,
+    foreign=None,
+    refused=None,
+    unreadable=None,
+    writers=runner.WRITERS,
+):
     private_write(tmp_path / "endpoint", ENDPOINT)
     private_write(tmp_path / "key", "sk-authored-placeholder")
     settings = Settings(
@@ -55,7 +64,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
     written, labels, judged, refusing, garbled = [], [], [], [], []
 
     def write(request):
-        """Both writers: MiMo's route and Muse's (ADR 56 Q16)."""
+        """Both writers: Terra's route and Muse's (ADR 56 Q16)."""
         if request.method == "GET":
             if str(request.url) == f"{ENDPOINT}/model/info":
                 return httpx.Response(
@@ -81,7 +90,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
         assert IDIOMS_FRAME in system and "[Owner guidance: idioms]" in system
         assert '"idioms"' not in content
         case = which(content)
-        writer = "muse" if payload["model"] == MUSE else "mimo"
+        writer = "muse" if payload["model"] == MUSE else "terra"
         if (writer, case["name"]) == refused and not refusing:
             refusing.append(payload)
             return httpx.Response(
@@ -101,7 +110,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
             json={
                 "id": f"authored-idioms-{len(written)}",
                 "model": payload["model"],
-                "provider": "meta" if writer == "muse" else "xiaomi",
+                "provider": "meta" if writer == "muse" else "openai",
                 "choices": [
                     {
                         "message": {"content": json.dumps({"options": options})},
@@ -188,6 +197,7 @@ async def run(tmp_path, *, plain=None, foreign=None, refused=None, unreadable=No
             s, r, b, client=mocked(decide)
         ),
         judge_factory=lambda s, r, b: runner.Judge(s, r, b, client=mocked(judge)),
+        writers=writers,
     )
     folder = next((tmp_path / ".local").glob("idioms-check-*"))
     assert json.loads((folder / "report.json").read_text()) == json.loads(
@@ -216,15 +226,15 @@ async def test_both_writers_write_every_case_and_a_tie_goes_to_the_owner(tmp_pat
         assert summary[writer]["expression_met"] == CASES
     assert summary["winner"] == "tie"
     readable = (folder / "sets.md").read_text()
-    assert "## ru_invitation (mimo)" in readable and "Count me in!" in readable
+    assert "## ru_invitation (terra)" in readable and "Count me in!" in readable
 
 
 async def test_the_writer_with_fewer_misses_wins(tmp_path):
-    report, *_ = await run(tmp_path, plain=("mimo", "en_invitation"))
+    report, *_ = await run(tmp_path, plain=("terra", "en_invitation"))
     summary = report["summary"]
     # One set without an expression still meets 9 sets of 10 (11 of 12).
-    assert summary["mimo"]["expression_met"] == CASES - 1
-    assert summary["mimo"]["passed"] and summary["mimo"]["misses"] == 1
+    assert summary["terra"]["expression_met"] == CASES - 1
+    assert summary["terra"]["passed"] and summary["terra"]["misses"] == 1
     assert summary["winner"] == "muse"
 
 
@@ -234,14 +244,14 @@ async def test_a_fixed_rule_miss_fails_its_writer(tmp_path):
     assert not summary["muse"]["passed"] and summary["muse"]["fixed_rule_misses"] == 2
     missed = [s for s in report["sets"] if s["misses"]]
     assert [(s["writer"], s["name"]) for s in missed] == [("muse", "ru_good_news")]
-    assert summary["winner"] == "mimo"
+    assert summary["winner"] == "terra"
 
 
 async def test_a_refusal_is_retried_after_its_delay(tmp_path):
-    report, written, *_ = await run(tmp_path, refused=("mimo", "en_request"))
+    report, written, *_ = await run(tmp_path, refused=("terra", "en_request"))
     assert report["requests"]["writer"] == 2 * CASES + 1
     retried = next(
-        s for s in report["sets"] if (s["writer"], s["name"]) == ("mimo", "en_request")
+        s for s in report["sets"] if (s["writer"], s["name"]) == ("terra", "en_request")
     )
     assert retried["refusals"] == 1 and retried["state"] == "ready"
     assert report["summary"]["winner"] == "tie"
@@ -252,3 +262,20 @@ async def test_an_unreadable_judge_answer_gets_one_more_attempt(tmp_path):
     assert report["requests"]["judge"] == 2 * CASES + 1
     assert all(s.get("verdicts") for s in report["sets"])
     assert report["summary"]["winner"] == "tie"
+
+
+async def test_the_chosen_writer_can_be_checked_alone(tmp_path):
+    # ADR 56 Q20: the owner chose Terra; its own run checks Q17's bar.
+    report, written, labels, judged, _ = await run(tmp_path, writers=("terra",))
+    assert report["writers"] == ["terra"] and "muse" not in report["routes"]
+    assert report["requests"] == {"writer": CASES, "decision": CASES, "judge": CASES}
+    assert all(p["model"] != MUSE for p in written)
+    assert set(report["summary"]) == {"terra", "winner"}
+    assert report["summary"]["terra"]["passed"]
+    assert report["summary"]["winner"] == "terra"
+
+
+async def test_an_unknown_writer_is_refused_before_anything_runs(tmp_path):
+    with pytest.raises(ValueError, match="Unknown idiom writer"):
+        await runner.observe(Settings(), root=tmp_path, writers=("mimo",))
+    assert not (tmp_path / ".local").exists()

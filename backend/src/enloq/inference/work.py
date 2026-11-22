@@ -78,7 +78,7 @@ BACKGROUND = (
     | citation_check.CHECK_ROLES
 )
 # ADR 30: roles answered by the decision model's exact route; every other role
-# uses ADR 29's MiMo route. ADR 49 Q19 adds the labels of suggestions.
+# uses ADR 29's generation route. ADR 49 Q19 adds the labels of suggestions.
 DECIDED = (
     frozenset(
         {

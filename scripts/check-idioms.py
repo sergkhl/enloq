@@ -4,10 +4,11 @@ Idioms guidance is edited.
 
 Twelve wholly authored private chats, half Russian, each in a chat whose
 Suggestions choice is Idioms, go through the application's own dispatch on
-the real routes, once for each writer: MiMo, then Muse Spark 1.3. Each chat's
-latest block carries an authored decision (its emotion, and a yes on
-usefulness unless authored otherwise), so no rewrite or mood decision is
-requested; the decision model labels each written set as the app has it do.
+the real routes, once for each writer: Terra, ADR 29's route (`terra` in the
+report, as in IDIOMS_WRITER), then Muse Spark 1.3, or only the writers named
+with --writer. Each chat's latest block carries an authored decision (its
+emotion, and a yes on usefulness unless authored otherwise), so no rewrite or
+mood decision is requested; the decision model labels each written set as the app has it do.
 A temporary store and a fake Telegram transport read, send and react nothing.
 
 A writer passes with no miss on the fixed rules and the expression rule met
@@ -24,9 +25,10 @@ in at least 9 sets of 10 (Q17 A):
   verb, used in its established meaning. A set with no options meets it and
   is listed for reading.
 
-The writer with fewer misses writes idiom sets (Q16 A); a tie goes to the
-owner with both writers' sets. The owner reads every set before Idioms can be
-chosen (Q17). The service must be stopped: its exclusive owner lock is held
+Of two writers, the one with fewer misses is the gate's winner (Q16 A); a tie
+goes to the owner with both writers' sets. The owner chose Terra for idiom
+sets (Q20), and `--writer terra` checks it alone. The owner reads every set
+(Q17). The service must be stopped: its exclusive owner lock is held
 throughout. At most 30 writer, 30 decision and 48 judge requests, 1,800
 seconds and $0.05 counted across the Daily and Group Briefing Budgets (the
 judge's subscription route spends nothing); a request starts only while the
@@ -38,6 +40,7 @@ private .local folder; the terminal shows counts and their paths, never
 content.
 """
 
+import argparse
 import asyncio
 import json
 import math
@@ -78,7 +81,7 @@ SECONDS, MAX_NANOS = 1800, 50_000_000
 LIMITS = {"writer": 30, "decision": 30, "judge": 48}
 RETRIES, LONGEST_WAIT = 2, 120
 FAMILIES = ("daily", "group_briefing")
-WRITERS = ("mimo", "muse")
+WRITERS = ("terra", "muse")
 # Q17 A: the expression rule holds in at least 9 sets of 10.
 SHARE = 0.9
 JUDGE_MODEL = "chatgpt/gpt-6.1-sol"
@@ -467,7 +470,8 @@ def judge_set(value, record, verdicts):
 
 def summarize(report):
     summary = {}
-    for writer in WRITERS:
+    writers = report.get("writers", WRITERS)
+    for writer in writers:
         sets = [s for s in report["sets"] if s["writer"] == writer]
         judged = [s for s in sets if s.get("expression_met") is not None]
         met = sum(bool(s["expression_met"]) for s in judged)
@@ -488,7 +492,7 @@ def summarize(report):
             and len(judged) == len(sets)
             and met >= needed,
         }
-    passed = [w for w in WRITERS if summary[w]["passed"]]
+    passed = [w for w in writers if summary[w]["passed"]]
     if not passed:
         summary["winner"] = None
     elif len(passed) == 1:
@@ -541,7 +545,11 @@ async def observe(
     muse_factory=ObservedMuse,
     decider_factory=ObservedDecider,
     judge_factory=Judge,
+    writers=WRITERS,
 ):
+    if not writers or not set(writers) <= set(WRITERS):
+        raise ValueError("Unknown idiom writer")
+    writers = tuple(w for w in WRITERS if w in writers)
     settings = settings or Settings.load("personal")
     with OwnerLock(root / ".local/service.owner.lock"):
         registry = AccountRegistry(settings.data)
@@ -558,6 +566,7 @@ async def observe(
             "initial_budget": bounds.initial,
             "defaults_revision": DEFAULTS_REVISION,
             "guidance_version": registry.guidance()["version"],
+            "writers": list(writers),
             "sets": [],
         }
         route = route_factory(settings, registry, bounds)
@@ -577,18 +586,23 @@ async def observe(
 
         try:
             async with asyncio.timeout(SECONDS):
-                # Verifies every exact route and its rates before any request.
+                # Verifies every exact route it uses and its rates before any
+                # request.
                 await route.prepare({})
-                await muse.prepare({})
+                if "muse" in writers:
+                    await muse.prepare({})
                 await decider.prepare({})
                 report["routes"] = {
-                    "mimo": route.rates,
-                    "muse": muse.rates,
+                    "terra": route.rates,
+                    **({"muse": muse.rates} if "muse" in writers else {}),
                     "decision": decider.rates,
                 }
                 if (
                     not within_adopted_rates(route.rates)
-                    or not within_adopted_rates(muse.rates, MUSE_ADOPTED_RATES)
+                    or (
+                        "muse" in writers
+                        and not within_adopted_rates(muse.rates, MUSE_ADOPTED_RATES)
+                    )
                     or not decider_rates_adopted(decider.rates)
                 ):
                     raise Refused("Rate increase requires reviewing finite cost bounds")
@@ -617,7 +631,7 @@ async def observe(
                     work = app.rewriting.work
                     work.guidance, work.admit = registry.guidance, bounds.admit
                     try:
-                        for number, name in enumerate(WRITERS):
+                        for number, name in enumerate(writers):
                             domain.IDIOMS_WRITER = name
                             for index, authored in enumerate(CASES):
                                 value = {**authored, "writer": name}
@@ -717,4 +731,7 @@ async def observe(
 
 if __name__ == "__main__":
     os.umask(0o077)
-    asyncio.run(observe())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--writer", action="append", choices=WRITERS, dest="writers")
+    arguments = parser.parse_args()
+    asyncio.run(observe(writers=arguments.writers or WRITERS))

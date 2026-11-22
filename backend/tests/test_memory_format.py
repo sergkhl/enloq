@@ -17,7 +17,7 @@ from enloq.inference.openrouter import (
 )
 from enloq.inference.work import InvalidOutput, validate_output
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_memory import KEY, conversation, fold, update
 from backend.tests.test_memory_takeaways import retained
 from backend.tests.test_rebuild import fixture
@@ -82,7 +82,7 @@ async def adapter(tmp_path):
         assert str(request.url) == f"{ENDPOINT}/chat/completions"
         payload = json.loads(request.content)
         requests.append(payload)
-        fields = payload["response_format"]["json_schema"]["schema"]["properties"]
+        fields = request_schema(payload)["properties"]
         if "person" in fields:
             output = update()
         elif "image_context" in fields:
@@ -98,7 +98,6 @@ async def adapter(tmp_path):
         choice = {"finish_reason": outcome.finish_reason}
         response = {
             "model": MODEL,
-            "provider": "Xiaomi",
             "id": f"authored-memory-format-receipt-{len(requests)}",
             "usage": {"cost": 0.000001, "completion_tokens": outcome.completion_tokens},
             "choices": [choice],
@@ -123,30 +122,26 @@ async def adapter(tmp_path):
         user="authored-provider-pseudonym",
         client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
         rates={
-            "prompt": "0.00000014",
-            "completion": "0.00000028",
+            "prompt": "0",
+            "completion": "0",
             "verified_at": time.time(),
-            "context_length": 1048576,
+            "context_length": 922000,
         },
     )
     yield engine, requests, outcome
     await engine.client.aclose()
 
 
-# Xiaomi's own thinking switch; its reasoning text is never read or retained.
-HIDDEN = {"type": "enabled"}
-
-
 @pytest.mark.parametrize(
-    "role,stream,expected_limit,expected_thinking",
+    "role,stream",
     [
-        ("chat_memory", False, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
-        ("incoming_rewrite", False, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
-        ("incoming_rewrite", True, BACKGROUND_OUTPUT_TOKENS, HIDDEN),
+        ("chat_memory", False),
+        ("incoming_rewrite", False),
+        ("incoming_rewrite", True),
     ],
 )
-async def test_each_role_has_its_reasoning_and_cap_and_every_receipt_records_it(
-    adapter, role, stream, expected_limit, expected_thinking
+async def test_each_role_keeps_the_routes_reasoning_with_no_cap_and_a_zero_receipt(
+    adapter, role, stream
 ):
     engine, requests, _ = adapter
     packet = (
@@ -166,29 +161,28 @@ async def test_each_role_has_its_reasoning_and_cap_and_every_receipt_records_it(
         else await engine.generate(role, packet)
     )
     assert len(requests) == 1
-    assert requests[0]["max_tokens"] == expected_limit
-    assert requests[0]["extra_body"] == {"thinking": expected_thinking}
-    assert "reasoning" not in requests[0]
-    assert "tool_choice" not in requests[0]
+    # The proxy route keeps its own medium effort, and drops caps (ADR 29 Q4).
+    assert not {"max_tokens", "extra_body", "reasoning", "tool_choice"} & set(
+        requests[0]
+    )
     assert requests[0]["user"] == "authored-provider-pseudonym"
-    assert response.usage["output_token_limit"] == expected_limit
-    assert response.actual_nanos == 1000
+    assert "output_token_limit" not in response.usage
+    # The subscription charges nothing, whatever the reply reports (Q5).
+    assert response.actual_nanos == 0 and response.usage["cost"] == 0
     assert response.usage["finish_reason"] == "stop"
     assert requests[0]["model"] == MODEL
     # The proxy route names its provider; no OpenRouter routing is sent.
     assert "provider" not in requests[0]
     if stream:
         assert shown == ["Authored rewrite."]
-    # The deadline fits a cap-length response: outgoing at the listed 39 tokens
-    # per second, hidden background reasoning at a 32-per-second floor.
-    floor = 39 if role == "outgoing_rewrite" else 32
-    assert engine.attempt_seconds(role) >= expected_limit / floor
+    # The deadline fits a long response after hidden reasoning, at a
+    # 32-per-second floor.
+    assert engine.attempt_seconds(role) >= BACKGROUND_OUTPUT_TOKENS / 32
 
 
-async def test_preparation_ceiling_covers_the_memory_output_cap(adapter):
+async def test_preparation_ceiling_is_zero_on_the_subscription(adapter):
     engine, requests, _ = adapter
-    # 1,048,576 prompt tokens at $0.00000014, plus 16,384 output at $0.00000028.
-    assert await engine.prepare({}) == 151_388_160
+    assert await engine.prepare({}) == 0
     assert not requests
 
 
@@ -319,14 +313,13 @@ async def test_failed_memory_attempt_keeps_previous_facts_and_receipt_until_expl
         )[0]
         usage = json.loads(first_receipt["usage"])
         assert usage["format_failure"] == expected_code
-        assert usage["output_token_limit"] == BACKGROUND_OUTPUT_TOKENS
         assert usage["completion_tokens"] == outcome.completion_tokens
         assert usage["finish_reason"] == outcome.finish_reason
         assert app.store.rows(
             "SELECT state FROM jobs WHERE id=?", (original["id"],)
         ) == [{"state": "failed"}]
         assert app.store.rows("SELECT status,actual FROM reservations") == [
-            {"status": "receipted", "actual": 1000}
+            {"status": "receipted", "actual": 0}
         ]
         for _ in range(2):
             now[0] += 3600
@@ -355,8 +348,8 @@ async def test_failed_memory_attempt_keeps_previous_facts_and_receipt_until_expl
             "SELECT state FROM jobs WHERE id=?", (original["id"],)
         ) == [{"state": "failed"}]
         assert app.store.rows("SELECT status,actual FROM reservations") == [
-            {"status": "receipted", "actual": 1000},
-            {"status": "receipted", "actual": 1000},
+            {"status": "receipted", "actual": 0},
+            {"status": "receipted", "actual": 0},
         ]
     finally:
         app.store.close()
@@ -395,7 +388,6 @@ async def test_large_consolidation_respects_total_allowance_owner_text_and_prove
     try:
         job = await fold(app)
         assert len(requests) == 1
-        assert requests[0]["max_tokens"] == BACKGROUND_OUTPUT_TOKENS
         assert len(app.memory.entries(KEY)) == 40
         kept_owner = next(
             entry for entry in app.memory.entries(KEY) if entry["id"] == owner

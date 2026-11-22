@@ -10,7 +10,7 @@ from enloq.config import Settings, private_write
 from enloq.inference.openrouter import MODEL
 from enloq.storage.accounts import AccountRegistry
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_route_refusals import exact_route, model_info
 
 spec = importlib.util.spec_from_file_location(
@@ -51,28 +51,29 @@ async def test_finite_pass_uses_shared_accounting_and_stops_at_bounds(tmp_path, 
         assert request.headers["Authorization"] == "Bearer sk-authored-placeholder"
         if request.method == "GET":
             assert str(request.url) == f"{ENDPOINT}/model/info"
-            route = exact_route(input_cost_per_token=1e-07, output_cost_per_token=2e-07)
-            return httpx.Response(200, json=model_info(route))
+            return httpx.Response(200, json=model_info(exact_route()))
         payload = json.loads(request.content)
         calls.append(payload)
-        schema = payload["response_format"]["json_schema"]["schema"]
+        schema = request_schema(payload)
         assert set(schema["properties"]) == {"options"}
         options = (
             [{"purpose": "advice", "text": "Do this."}]
             if mode == "format"
             else [{"purpose": "support", "text": f"Authored option {len(calls)}"}]
         )
+        if mode == "unknown":
+            # A call that fails unanswered has an unknown outcome.
+            return httpx.Response(500)
         body = {
             "id": "synthetic-receipt",
             "model": MODEL,
-            "provider": "xiaomi",
             "choices": [
                 {
                     "message": {"content": json.dumps({"options": options})},
                     "finish_reason": "stop",
                 }
             ],
-            "usage": {} if mode == "unknown" else {"cost": 0.00001},
+            "usage": {"cost": 0.00001},
         }
         return httpx.Response(200, json=body)
 
@@ -104,8 +105,9 @@ async def test_finite_pass_uses_shared_accounting_and_stops_at_bounds(tmp_path, 
         "switch_off": 0,
     }[mode]
     assert report["requests"] == len(calls) == expected
+    # The subscription's receipts are $0 whatever a reply reports (ADR 29 Q5).
     assert report["counted_test_nanos"] == expected * (
-        10_000_000 if mode == "unknown" else 10_000
+        10_000_000 if mode == "unknown" else 0
     )
     assert (
         registry.preferences(),
@@ -147,8 +149,10 @@ async def test_finite_pass_uses_shared_accounting_and_stops_at_bounds(tmp_path, 
             assert (state, result["record"]["failure"]) == ("failed", "format")
             usage = json.loads(result["receipts"][0]["usage"])
             assert usage["format_failure"] == "schema"
+        elif mode == "unknown":
+            # A call that fails unanswered counts the flat unknown amount,
+            # which is what stops the pass early.
+            assert state == "failed"
         else:
-            # A response without a cost receipt still publishes; it counts the
-            # flat unknown amount, which is what stops the pass early.
             assert state == "ready" and result["view"]["state"] == "ready"
             assert result["record"]["options"][0]["purpose"] == "support"

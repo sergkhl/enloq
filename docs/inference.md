@@ -4,12 +4,13 @@ Enloq's model work runs in fixed roles, each on one exact Model Route with no
 selector and no fallback to another model or provider; speech's hosted
 fallback is the one adopted exception.
 
-- **Text roles**, written by MiMo: `incoming_rewrite`,
+- **Text roles**, written by gpt-6.1-terra (Terra): `incoming_rewrite`,
   `chat_memory` (Person and Account Memory), `trait_notes`,
   `response_suggestions` and the group roles `group_briefing_image`,
-  `group_briefing_chunk` and `group_briefing`. Muse writes calmed incoming
-  rewrites ([Soften hostile messages](#soften-hostile-messages)) and idiom suggestion sets
-  ([Response suggestions](#response-suggestions)) instead.
+  `group_briefing_chunk` and `group_briefing`, idiom suggestion sets
+  included ([Response suggestions](#response-suggestions)). Muse writes
+  calmed incoming rewrites ([Soften hostile messages](#soften-hostile-messages))
+  instead.
 - **Decision roles**, answered by Perplexity's decision model, which writes no
   text: `hostility_screen`, `emotion_classification`, `reaction_assessment`, `suggestion_labels`,
   `trait_scales`, `group_ad_classification` and `group_bot_classification`
@@ -38,21 +39,20 @@ endpoint's `/v1` with `/openrouter/api/alpha/decisions`,
 `/openrouter/api/v1/audio/transcriptions`, `/openrouter/api/v1/embeddings` and
 `/openrouter/api/v1/rerank`.
 
-- **MiMo.** The proxy's `xiaomi_mimo/mimo-v2.6-flash`, which calls Xiaomi's own
-  API ([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
+- **Terra.** The proxy's `chatgpt/gpt-6.1-terra`, LiteLLM's ChatGPT provider
+  reaching the owner's ChatGPT subscription through the Codex backend at the
+  route's default medium effort
+  ([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)).
   Verification reads the proxy's `/v1/model/info` for exactly one entry of that
-  name, in chat mode, with response-schema and vision support, finite
-  non-negative per-token rates and a context length of at most 1,048,576
-  tokens. That whole-context ceiling is informational; budgets count receipts.
-  The adopted rates are $0.14 per million input and $0.28 per million output
-  tokens. Finite checks refuse higher rates, so their recorded bounds stay
-  valid.
+  name, with vision support, no per-token rate and a context length of at most
+  1,048,576 tokens. That whole-context ceiling is informational; budgets count
+  receipts, which record $0. Finite checks refuse any listed rate, so their
+  recorded bounds stay valid. MiMo V2.6 Flash, the earlier route, is not used.
 - **Muse.** The proxy's `openrouter/meta/muse-spark-1.3-contributor`, which
-  pins `meta` with low reasoning hidden, writes calmed rewrites and idiom sets
-  only. The proxy records no rates for it, so `muse_rates` takes them from
+  pins `meta` with low reasoning hidden, writes calmed rewrites only. The proxy records no rates for it, so `muse_rates` takes them from
   OpenRouter's public listing: exactly one `meta` endpoint at status 0, within
   `MUSE_ADOPTED_RATES` ($0.10 and $0.20 per million input and output tokens),
-  rechecked daily as for MiMo. A higher rate is a no-work refusal.
+  rechecked daily as for Terra. A higher rate is a no-work refusal.
 - **The decision model.** `perplexity/pplx-decider-v1.2` at checkpoint
   `-20261016`, through the proxy's pass-through to OpenRouter's Decisions
   endpoint ([Emotion Classification](#emotion-classification)).
@@ -67,41 +67,54 @@ endpoint's `/v1` with `/openrouter/api/alpha/decisions`,
   Verification reads OpenRouter's public listing at most daily for exactly
   one up endpoint of that provider at no more than the adopted rate.
 
-MiMo and Muse requests ask for strict structured output (`response_format`
-`json_schema` with `strict`), send no `provider` block and send no
-`tool_choice`: no tools are offered, and Xiaomi rejects `none`. Reasoning is
-only on or off, through Xiaomi's `extra_body.thinking`, which replaces the
-proxy route's own (thinking off). Muse requests carry the same pseudonym,
-schema and limits but no `extra_body`, which would replace its route's.
+Terra and Muse requests send no `provider` block, no `tool_choice` (no tools
+are offered) and no `extra_body`, which would replace the proxy route's own.
+The ChatGPT route drops `response_format` and token caps, so a Terra request
+sends neither: its fixed instructions end with the role's JSON Schema, built
+per request with its allowed IDs and bounds, and ask for that one object
+alone (ADR 29 Q15). Text around the reply's outermost JSON object is dropped,
+and the object is validated as strictly as before. Muse requests ask for strict structured
+output (`response_format` `json_schema` with `strict`) with a 16,384-token
+cap, and carry the same pseudonym and schema.
 
-Text generation uses hidden reasoning, 16,384 output tokens and a 540-second
-attempt. Manual and automatic suggestions share those limits. Incoming text
-starts streaming after hidden reasoning, and readiness waits for validation.
-Arrival screening has its own five-second deadline, including queue and route
-preparation, and never streams a preview.
+Text generation uses hidden reasoning at the route's medium effort, no token
+cap and a 540-second attempt. Manual and automatic suggestions share those
+limits. Incoming text starts streaming after hidden reasoning, and readiness
+waits for validation. Arrival screening has its own five-second deadline,
+including queue and route preparation, and never streams a preview.
 
-The response must name the route as its `model`. Reasoning arrives beside the
-content and is discarded unread; content keeps a 1 MiB capture limit, and a
-stream may carry up to 16 MiB on the wire. Receipts keep usage counts only
-(reasoning and cached-token counts when reported), the requested
-`output_token_limit`, the finish reason and the cost: `usage.cost` from a
-stream's final chunk, or the proxy's `x-litellm-response-cost` header
-otherwise. Unknown or malformed responses keep their cost receipts when
-present; failed format has unassessable semantics. Reasoning and request
-bodies are excluded from operational logs and receipts.
+The response must name the route as its `model`. Reasoning stays hidden and
+is discarded unread; content keeps a 1 MiB capture limit, and a stream may
+carry up to 16 MiB on the wire. Receipts keep usage counts only (reasoning and
+cached-token counts when reported), the finish reason and the cost. A Terra
+receipt is $0, the subscription's charge; Muse's keeps its
+`output_token_limit` and its cost: `usage.cost` from a stream's final chunk,
+or the proxy's `x-litellm-response-cost` header otherwise. Unknown or
+malformed responses keep their receipts when present; failed format has
+unassessable semantics. Reasoning and request bodies are excluded from
+operational logs and receipts.
+
+The proxy's ChatGPT routes have no fallback or retry, and the subscription is
+shared with the owner's other callers. An expired login (HTTP 401), a model
+the caller key may not call (403) and the backend's own rate limit (429),
+which answers bursts of about 8 to 12 parallel calls, are no-work refusals
+with the role's ordinary backoff; the service's one concurrency limit (4 by
+default, at most 8) bounds its own share of such a burst. An overload the backend reports inside an
+answer is a failure with Retry.
 
 Every request carries one fixed `user` pseudonym per member
 ([ADR 48](adr/0048-members-on-the-shared-service.md)): 32 random hexadecimal
 characters generated once from a cryptographic source and kept in the shared
 registry's member settings (`provider_user`). It is never logged or derived
-from account, Telegram or key material, and it reaches Xiaomi as sent.
-Xiaomi's listed terms are no prompt training, 30-day retention and processing
-in Singapore and the Netherlands; they are not zero retention. Cancelling local work does not promise provider cancellation or a refund;
-observed receipts and unknown outcomes still count.
+from account, Telegram or key material. LiteLLM's ChatGPT provider does not
+forward it to OpenAI; Muse's route sends it on. Terra's prompts reach OpenAI
+under the owner's ChatGPT plan and its data settings; they are not zero
+retention. Cancelling local work does not promise provider cancellation or a
+refund; observed receipts and unknown outcomes still count.
 
 The proxy keeps request and response bodies in its spend log. Every adapter
-sends `x-litellm-enable-message-redaction: true`, which keeps MiMo prompts and
-replies and VPS transcripts out of it. The pass-through routes ignore that
+sends `x-litellm-enable-message-redaction: true`, which keeps Terra and Muse
+prompts and replies and VPS transcripts out of it. The pass-through routes ignore that
 header, so decision requests, whose `state` carries message text, are stored
 with their answers. The proxy deletes spend-log rows after 30 days.
 
@@ -308,13 +321,13 @@ is unknown, including calls still running. A refusal where the provider did no
 work counts nothing.
 
 - **Receipts.** A receipt counts the larger of its charged `cost` and its
-  `cost_details.upstream_inference_cost`; Xiaomi's receipts have reported a
-  zero charge beside a nonzero upstream cost. It keeps the content-free
+  `cost_details.upstream_inference_cost`, since a receipt can report a zero
+  charge beside a nonzero upstream cost. It keeps the content-free
   `is_byok` flag when reported. Counting spans every route and engine; only
   offline authored fixtures are exempt.
-- **The flat estimate.** $0.01 is a rough upper estimate: at the adopted MiMo
-  rates a cap-length 16,384-token background response costs about $0.0046 of
-  output. Revisit it if rates change materially.
+- **The flat estimate.** $0.01 is a rough upper estimate: a cap-length
+  16,384-token Muse response costs about $0.0033 of output, and a Terra call
+  nothing. Revisit it if rates change materially.
 - **Overshoot.** There are no full-context reservations, so running calls may
   finish slightly past a budget, at most about one call per running slot.
 - **The budget day.** It follows the server's configured timezone and a
@@ -335,8 +348,8 @@ Save, so a delayed read or an older POST snapshot cannot undo an accepted Save.
 ## Group briefings
 
 [ADR 34](adr/0034-group-chats-and-daily-briefings.md) gives each opted-in group
-one briefing per calendar day in the configured timezone, written by MiMo and
-paid from the Group Briefing Budget.
+one briefing per calendar day in the configured timezone, written by Terra and
+receipted in the Group Briefing Budget.
 
 ### Group briefing inputs and contracts
 
@@ -527,7 +540,7 @@ owns lifecycle commands. It dispatches no classifier requests.
 
 The ceilings are 12 model requests, 1,200 seconds and $0.10 counted cost within
 the current Group Briefing Budget; command-line options only lower them. A
-fresh exact MiMo reading must satisfy the adopted rate ceiling. Before each
+fresh exact Terra reading must list no per-token rate. Before each
 dispatch, a conservative bound covers the prepared instructions, packet,
 schema, complete image URL, image expansion and the role's output cap. The
 larger of that bound and the ordinary $0.01 unknown estimate must fit both the
@@ -584,7 +597,7 @@ access, not Telegram's connection, and a question ends when its client goes.
   request; and twelve tool calls. A call past a bound gets an error result
   and runs nothing; an unknown tool or invalid arguments fails the reply's
   format as `tool_calls`. Only a writer whose engine declares tools gets
-  them; MiMo, where no subscription writer is attached, reads the 25 alone.
+  them; Terra, where no subscription writer is attached, reads the 25 alone.
 - **Check.** Each statement goes through the citation check as
   `group_answer_check`. The answer returns each statement's kept and
   unsupported citations and whether the whole statement is supported. The
@@ -715,8 +728,8 @@ establishes broad semantic quality or the owner's adoption decision.
 [ADR 56](adr/0056-idioms-either-signal-hiding-and-memory-off-by-default.md)
 own automatic and manual `response_suggestions`. Both share the account
 member's Daily Budget, receipts, unknown-cost accounting, concurrency, Account
-AI switch and enabled memory. MiMo writes Friendly and Professional; Muse
-writes Idioms. There is no provider fallback.
+AI switch and enabled memory. Terra writes every Style, Idioms included
+(ADR 56 Q20). There is no provider fallback.
 
 Each private chat has independent **Automatic suggestions** (Off by default
 since [ADR 62](adr/0062-the-ai-menu-and-private-chat-ai-off-by-default.md)
@@ -865,7 +878,7 @@ fixed `REMINDERS_FRAME` follows the manual instructions; brackets in a draft
 or a Message Idea instruct the writer, and an option with bracketed text
 then fails format. Ideas and Kept Messages also supply typography literals.
 
-The existing Style, MiMo/Muse writers, Decider labels, memory restrictions,
+The existing Style, Terra writer, Decider labels, memory restrictions,
 Daily Budget, capacity, twelve-hour validity, replacement, Undo and
 pending-send guards apply. Choosing an option marks the draft with the set's
 occurrences; edits keep the mark, Undo and clearing drop it, and Send
@@ -929,12 +942,13 @@ with Perplexity's decision model, which writes no text: it reads a `state` and
 answers named questions with probabilities. The exact route is
 `perplexity/pplx-decider-v1.2` through Perplexity only, on OpenRouter's
 Decisions endpoint ([ADR 49](adr/0049-useful-response-suggestions.md) Q1), with
-fallbacks disabled and no fallback to MiMo, to an earlier Decider or to a later
+fallbacks disabled and no fallback to Terra, to an earlier Decider or to a later
 model. Requests go to the proxy's pass-through (the endpoint with `/v1`
 replaced by `/openrouter/api/alpha/decisions`), which forwards the body
 unchanged with the proxy's OpenRouter key; the proxy stores these request
 bodies for 30 days. The engine (`backend/src/enloq/inference/decider.py`)
-reuses the MiMo endpoint and key binding and sends the same member pseudonym.
+reuses the generation route's endpoint and key binding and sends the same
+member pseudonym.
 
 - **Verification.** It re-reads OpenRouter's public
   `/models/perplexity/pplx-decider-v1.2/endpoints` under the same 24-hour rule
@@ -1177,7 +1191,7 @@ chat** switch starts Off
 A chat that is Off teaches neither memory, reads neither and collects no
 traits; what memory already holds stays visible, editable and clearable.
 
-- **One fold, two change sets.** A chat's update (`chat_memory`, MiMo) returns
+- **One fold, two change sets.** A chat's update (`chat_memory`, Terra) returns
   `person` and `account` changes after a fixed core that names whose list each
   note belongs to: cited additions, removals of superseded model entries and
   "possibly outdated" flags on owner entries. Account notes cite (chat,
@@ -1248,7 +1262,7 @@ shown only to the owner; no model reads them.
   list (`domain/traits.py`) with an evidence question each; a value shows at
   evidence 0.7 or more and keeps its last level otherwise. The owner can set
   or clear a scale, and the model never changes one they set.
-- **Notes.** `trait_notes` (MiMo) runs at most daily: each note cites three or
+- **Notes.** `trait_notes` (Terra) runs at most daily: each note cites three or
   more of the subject's own messages on two days, keeps their script and
   carries no IDs in its text.
 - **Habits** are counted on reading, without a model.
@@ -1352,6 +1366,22 @@ Authored offline coverage: `backend/tests/test_message_actions.py` and
 
 ## Retained acceptance limits
 
+- **The Terra route: Low quality.** ADR 29 Q13's three checks on
+  `chatgpt/gpt-6.1-terra` returned all 28 first attempts well formed: 26
+  streamed media rewrites, one memory update and one suggestion set. The
+  memory update merged the two redundant trip notes and noted the tickets and
+  hotel agreement, but left out the authored 14 to 16 November dates and that
+  the hotel was already booked. A forwarded notice's rewrite gained the
+  forward's date beside its author, and one run of the rambling voice note
+  kept the doubtful name as "Miroslava or Miroslav" but dropped the sender's
+  "I'm not sure which".
+
+- **Idioms on Terra: Low quality.** ADR 56's gate on Terra alone found no
+  fixed-rule miss in its 12 sets, but an expression in every option in only 8
+  of them, against the 11 Q17 needs: four sets had an option with none, and
+  some expressions were weak, such as a plain courtesy phrase. The owner chose
+  Terra for idiom sets (ADR 56 Q20) and reads them in ordinary use.
+
 - **Reminder check-ins: Low quality.** An empty-draft Friendly set answered
   an old request and included an unsupplied commitment instead of offering
   check-ins. Format and labels passed; Professional and Idioms additions
@@ -1406,9 +1436,10 @@ checks never establishes semantic acceptance.
   the sender's own "I'm not sure", a self-correction note survived, one detail
   became its own paragraph instead of joining its topic, and a mixed-language
   block gained a generic lead-in question.
-- **Memory.** MiMo can read figurative Russian idioms literally, and a
-  memory-informed suggestion has asked about a past event as if it were still
-  under way; Muse is the follow-up if literal readings show up in real chats. An update has kept a redundant generated note beside the
+- **Memory.** MiMo, the earlier route, could read figurative Russian idioms
+  literally, and a memory-informed suggestion has asked about a past event as
+  if it were still under way; Muse is the follow-up if literal readings show
+  up in real chats. An update has kept a redundant generated note beside the
   one it merged into.
 - **Response suggestions.** Options have asserted the owner's own feelings
   ("Really happy for you"), in Russian with masculine and feminine forms

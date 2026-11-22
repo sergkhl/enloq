@@ -486,11 +486,11 @@ def test_format_counts_restart_per_role_when_only_that_route_changes(tmp_path):
         registry.record_format("chat_memory", False)
     registry.record_format("emotion_classification", False)
     AccountManager(Settings(mode="personal", data=tmp_path))
-    # MiMo roles keep their counts; only the decided role restarts.
+    # Generation roles keep their counts; only the decided role restarts.
     assert registry.format_failures() == {"chat_memory": 3}
     assert registry.paused_roles() == {"chat_memory"}
     assert ROUTES["emotion_classification"] == f"{LOGICAL_MODEL}@{PROVIDER}"
-    assert ROUTES["chat_memory"] == "xiaomi_mimo/mimo-v2.6-flash@xiaomi"
+    assert ROUTES["chat_memory"] == "chatgpt/gpt-6.1-terra@openai"
     assert not registry.bind_routes(ROUTES)
     assert registry.bind_routes(
         {**ROUTES, "chat_memory": "another/model@provider"}

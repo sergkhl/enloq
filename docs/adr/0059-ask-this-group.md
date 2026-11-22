@@ -111,7 +111,7 @@ requests and spend at most $1.00, within the live test allowance.
 ## Consequences
 
 - Group messages reach the chosen embedding provider, and the reranker if one
-  is adopted, besides MiMo and the decision model, which briefings already
+  is adopted, besides OpenAI and the decision model, which briefings already
   use. Both new routes are zero data retention.
 - The first question in a busy group pays for its messages' vectors.
 - Members' questions run on the owner's ChatGPT subscription with no budget

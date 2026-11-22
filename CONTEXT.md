@@ -892,8 +892,8 @@ a neutral exchange or an ending. Groups and Saved Messages have none.
   previous draft, and choosing never sends. Folding is shared across clients
   until the next set arrives.
 
-MiMo writes Friendly and Professional; Muse Spark 1.3 writes Idioms. All
-requests count in the account member's Daily Budget and shared capacity.
+gpt-6.1-terra writes every Style. All requests count in the account member's
+Daily Budget and shared capacity.
 Language follows the conversation; a draft's own wording supplies the
 language of options developed from it, and bracketed instructions never
 choose it.
@@ -924,7 +924,7 @@ real idiom, proverb, set expression or, in English, phrasal verb in its right
 meaning and the chat's language. A set may have fewer options or none when
 none fits. Idioms may give gentle advice through a proverb or voice pleasure
 or sympathy through a common expression, within the fixed evidence limits.
-They look like other options. Muse writes them under the owner's Idioms
+They look like other options. Terra writes them under the owner's Idioms
 guidance and a fixed frame.
 
 **Typography Normalization**:
@@ -949,7 +949,7 @@ message removes it without a model call. The owner sees, adds, edits, removes
 and clears entries, and the model never changes theirs. It holds at most 40
 entries and about 3,000 bytes, each generated entry at most 150 characters
 (an owner entry 300 UTF-8 bytes), in the language it was said in, kept until
-cleared or the account's local data is removed. MiMo updates it after 30 quiet
+cleared or the account's local data is removed. Terra updates it after 30 quiet
 minutes in the chat, while no rewrite or transcription waits, one memory call
 at a time across the server, from the chat's new messages, which it reads
 itself whatever the chat's other switches say: text, captions and the
@@ -985,7 +985,7 @@ no model reads them (ADR 55). They come in three kinds:
   friction. A scale shows while a yes/no evidence question says yes at 0.7 or
   more, as its likeliest level with that level's probability; one that loses
   its evidence keeps its last level and date.
-- **Notes** MiMo writes freely, each cited from at least three of the person's
+- **Notes** Terra writes freely, each cited from at least three of the person's
   own messages on at least two days, at most 10.
 - **Habits** counted without a model: reply time, active hours, the share of
   voice notes and who starts conversations.
@@ -1378,12 +1378,13 @@ configuration (`MUSE_ENDPOINT_REF`) (ADR 29, ADR 30, ADR 39). Its listing and
 rates are verified before dispatch. There is no model selector, fallback or
 automatic resampling, and unavailability is a no-work refusal under the role's ordinary handling;
 notification delivery uses its explicit original fallback. The routes:
-- **MiMo V2.6 Flash** (`xiaomi_mimo/mimo-v2.6-flash`, Xiaomi's own API):
-  incoming media rewrites, image meanings, Friendly and Professional suggestions,
-  memory updates, trait notes and Daily Briefings. Its terms are no prompt
-  training and 30-day retention.
+- **gpt-6.1-terra** (`chatgpt/gpt-6.1-terra`, the proxy's ChatGPT-subscription
+  route, medium effort): incoming media rewrites, image meanings, Response
+  Suggestions in every Style, Idiom Suggestions included, memory updates,
+  trait notes and Daily Briefings.
+  Its receipts record $0, and requests reach OpenAI under the owner's plan.
 - **Muse Spark 1.3** (`openrouter/meta/muse-spark-1.3-contributor`, through
-  Meta, with low reasoning hidden): softened rewrites and Idiom Suggestions.
+  Meta, with low reasoning hidden): softened rewrites.
 - **Decider V1.2** (`perplexity/pplx-decider-v1.2` at checkpoint `-20261016`,
   Perplexity only, on OpenRouter's Decisions endpoint): hostile-wording screening,
   Emotion Classification, Reaction Assessment, suggestion usefulness and

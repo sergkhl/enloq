@@ -7,7 +7,7 @@ DDL = [
     "CREATE TABLE IF NOT EXISTS trait_scales (subject TEXT NOT NULL, trait TEXT NOT NULL, value TEXT, "
     "probability REAL, evidence REAL, judged REAL NOT NULL, source TEXT NOT NULL, "
     "PRIMARY KEY (subject, trait))",
-    # MiMo's cited notes and the owner's own.
+    # The generation route's cited notes (ADR 29) and the owner's own.
     "CREATE TABLE IF NOT EXISTS trait_notes (id TEXT PRIMARY KEY, subject TEXT NOT NULL, text TEXT NOT NULL, "
     "citations TEXT NOT NULL, confidence REAL, source TEXT NOT NULL, created REAL NOT NULL, guidance INTEGER, "
     "defaults INTEGER)",

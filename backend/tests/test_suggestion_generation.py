@@ -320,13 +320,9 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
     import httpx
     from enloq.config import Settings, private_write
     from enloq.inference.guidance import SUGGESTIONS_CORE
-    from enloq.inference.openrouter import (
-        BACKGROUND_OUTPUT_TOKENS,
-        MODEL,
-        OpenRouterEngine,
-    )
+    from enloq.inference.openrouter import MODEL, OpenRouterEngine
 
-    from backend.tests.proxy_helpers import ENDPOINT
+    from backend.tests.proxy_helpers import ENDPOINT, request_schema
     from backend.tests.test_route_refusals import exact_route, model_info
 
     app, _ = rig(tmp_path)
@@ -338,7 +334,7 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
             return httpx.Response(200, json=model_info(exact_route()))
         payload = json.loads(request.content)
         requests.append(payload)
-        properties = payload["response_format"]["json_schema"]["schema"]["properties"]
+        properties = request_schema(payload)["properties"]
         content = (
             OPTIONS
             if "options" in properties
@@ -408,10 +404,12 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
     assert [m["id"] for m in data["context"]] == [1]
     assert data["context"][0]["outgoing"] is True
     assert len(user["content"]) == 1  # No image bytes.
-    schema = suggestion["response_format"]["json_schema"]
-    assert schema["strict"] is True
-    assert schema["schema"]["properties"]["options"]["maxItems"] == 3
-    option = schema["schema"]["$defs"]["SuggestionOption"]
+    # The route drops response_format; the schema ends the instructions
+    # (ADR 29 Q15).
+    assert "response_format" not in suggestion
+    schema = request_schema(suggestion)
+    assert schema["properties"]["options"]["maxItems"] == 3
+    option = schema["$defs"]["SuggestionOption"]
     assert option["properties"]["purpose"]["enum"] == [
         "acknowledge",
         "support",
@@ -425,12 +423,11 @@ async def test_provider_packet_carries_both_memories_at_dispatch(tmp_path):
     # No character limit (ADR 25 Q1): only the output-token bound applies.
     assert "maxLength" not in option["properties"]["text"]
     assert set(option["required"]) == {"purpose", "text"}
-    # The proxy route names its provider; no OpenRouter routing is sent.
+    # The proxy route names its provider and keeps its own reasoning effort;
+    # no OpenRouter routing, extra_body or cap is sent.
     assert suggestion["model"] == MODEL and "provider" not in suggestion
-    assert suggestion["max_tokens"] == BACKGROUND_OUTPUT_TOKENS
     assert "stream" not in suggestion and "tool_choice" not in suggestion
-    assert "reasoning" not in suggestion
-    assert suggestion["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert not {"reasoning", "extra_body", "max_tokens"} & set(suggestion)
     assert app.suggestions.view(KEY).state == "ready"
     await app.engine.client.aclose()
 

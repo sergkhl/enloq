@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Finite first-attempt ADR 29 checks of the exact MiMo/Xiaomi Model Route.
+"""Finite first-attempt ADR 29 checks of the exact Terra Model Route.
 
 --check 1: the new route with the current guidance, covering every role it
 serves: at most 16 requests, 1,800 seconds and $0.05 counted test spending.
@@ -15,7 +15,7 @@ accounting are held throughout. Every case is wholly authored; none copies a
 real message, name, number, date, link or identifier. A fake transport means
 no Telegram read, send or reaction, and voice notes carry authored transcripts
 through a stand-in recognizer, so no audio exists or reaches the provider.
-Since ADR 54 MiMo rewrites only incoming blocks with an image, a voice note
+Since ADR 54 Terra rewrites only incoming blocks with an image, a voice note
 or a Video Circle (softened text is Muse's), so every incoming case holds a
 voice note or an image, and typed messages in the same block are rewritten
 with it. The suggestion case's text block is held and decided as text is, an

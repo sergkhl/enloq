@@ -22,7 +22,7 @@ from enloq.inference.work import FLAT_UNKNOWN
 from enloq.storage.accounts import AccountRegistry
 from enloq.storage.lock import OwnerLock
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_route_refusals import exact_route, model_info, priced
 
 spec = importlib.util.spec_from_file_location(
@@ -116,7 +116,10 @@ async def run(
         number = len(calls)
         if number == refused_at:
             return httpx.Response(429)
-        schema = payload["response_format"]["json_schema"]["schema"]
+        if number == unknown_at:
+            # A call that fails unanswered has an unknown outcome.
+            return httpx.Response(500)
+        schema = request_schema(payload)
         parts = schema["properties"]["parts"]
         image_field = schema["properties"]["image_context"]
         identities = (
@@ -138,7 +141,7 @@ async def run(
             },
             ensure_ascii=False,
         )
-        usage = {} if number == unknown_at else {"cost": cost}
+        usage = {"cost": cost}
         if upstream is not None:
             usage["cost_details"] = {"upstream_inference_cost": upstream}
         events = []
@@ -146,7 +149,6 @@ async def run(
             event = {
                 "id": f"authored-threshold-receipt-{number}",
                 "model": MODEL,
-                "provider": "Xiaomi",
                 "usage": usage if index else {},
                 "choices": [
                     {
@@ -212,7 +214,8 @@ async def test_three_first_streamed_attempts_preserve_owner_settings_and_format_
     assert report["requests"] == len(calls) == len(runner.CASES) == 3
     assert len(listings) == 1
     assert report["bounds"] == runner.BOUNDS
-    assert report["counted_test_nanos"] == 30_000
+    # The subscription's receipts are $0 whatever a reply reports (ADR 29 Q5).
+    assert report["counted_test_nanos"] == 0
     assert report["telegram_calls"] == 0
     assert report["defaults_revision"] == DEFAULTS_REVISION
     assert before == after
@@ -232,10 +235,9 @@ async def test_three_first_streamed_attempts_preserve_owner_settings_and_format_
     for payload, observation in zip(calls, observed):
         assert payload["stream"] and payload["stream_options"]["include_usage"]
         assert payload["model"] == MODEL
-        # The proxy route names its provider; no OpenRouter routing is sent.
-        assert "provider" not in payload and "reasoning" not in payload
-        assert payload["extra_body"] == {"thinking": {"type": "enabled"}}
-        assert payload["max_tokens"] == BACKGROUND_OUTPUT_TOKENS
+        # The proxy route names its provider and keeps its own reasoning
+        # effort; no OpenRouter routing, extra_body or cap is sent.
+        assert not {"provider", "reasoning", "extra_body", "max_tokens"} & set(payload)
         assert observation["request_bound_nanos"] >= FLAT_UNKNOWN
         assert (
             observation["request_bound_nanos"] >= observation["conservative_cost_nanos"]
@@ -268,7 +270,7 @@ async def test_unknown_outcome_counts_and_stops_without_another_case(
         tmp_path, unknown_at=unknown_at
     )
     assert report["requests"] == len(calls) == unknown_at
-    assert report["counted_test_nanos"] == FLAT_UNKNOWN + (unknown_at - 1) * 10_000
+    assert report["counted_test_nanos"] == FLAT_UNKNOWN
     assert report["stopped"].startswith("Unknown provider outcome")
     assert not report["format_verified"] and report["within_bounds"]
     assert before == after and registry.budget()["unknown"] == 1
@@ -300,7 +302,7 @@ async def test_deadline_cancellation_retains_partial_second_outcome_and_spending
     )
     assert len(calls) == report["requests"] == 2
     assert report["stopped"].startswith("Deadline reached")
-    assert report["counted_test_nanos"] == FLAT_UNKNOWN + 10_000
+    assert report["counted_test_nanos"] == FLAT_UNKNOWN
     assert registry.budget()["unknown"] == 1 and before == after
     partial = report["results"][1]
     assert partial["calls"][0]["raw"].startswith('{"parts":')
@@ -324,21 +326,22 @@ async def test_shared_day_allowance_must_cover_the_unknown_bound_before_dispatch
     assert len(report["unverified_cases"]) == 3
 
 
-async def test_shared_day_remaining_stops_after_one_known_receipt(tmp_path):
+async def test_zero_receipts_leave_the_shared_day_allowance(tmp_path):
+    # Each answered call is $0 (ADR 29 Q5), so one flat estimate's room is
+    # enough for every case.
     report, calls, _, before, after, registry = await run(tmp_path, budget=FLAT_UNKNOWN)
-    assert len(calls) == 1 and report["counted_test_nanos"] == 10_000
-    assert report["stopped"].startswith("Remaining Daily Budget")
-    assert report["final_budget"]["spent"] == 10_000
+    assert len(calls) == 3 and report["counted_test_nanos"] == 0
+    assert "stopped" not in report and report["format_verified"]
+    assert report["final_budget"]["spent"] == 0
     assert registry.budget()["unknown"] == 0 and before == after
-    assert len(report["unverified_cases"]) == 2 and report["within_bounds"]
 
 
 async def test_finite_remaining_must_cover_the_next_unknown_bound(tmp_path):
-    report, calls, *_ = await run(tmp_path, counted_nanos=FLAT_UNKNOWN + 9_999)
-    assert len(calls) == report["requests"] == 1
+    report, calls, *_ = await run(tmp_path, counted_nanos=FLAT_UNKNOWN - 1)
+    assert not calls and report["requests"] == 0
     assert report["stopped"].startswith("Remaining finite allowance")
-    assert report["counted_test_nanos"] == 10_000
-    assert len(report["unverified_cases"]) == 2 and report["within_bounds"]
+    assert report["counted_test_nanos"] == 0
+    assert len(report["unverified_cases"]) == 3 and report["within_bounds"]
 
 
 async def test_normal_older_work_quarter_reserve_is_preserved(tmp_path):
@@ -383,7 +386,7 @@ async def test_bad_first_outcomes_are_retained_without_sampling_the_case_again(
         "failed" if kind == "malformed" else "refused"
     )
     assert len(first["calls"]) == 1
-    assert report["counted_test_nanos"] == (30_000 if kind == "malformed" else 20_000)
+    assert report["counted_test_nanos"] == 0
     if kind == "malformed":
         assert first["calls"][0]["raw"] == '{"parts": [], "image_context": []}'
         assert "omitted_target_text" in first["receipts"][0]["usage"]
@@ -392,18 +395,17 @@ async def test_bad_first_outcomes_are_retained_without_sampling_the_case_again(
         assert first["reservations"] == [{"status": "refused", "actual": 0}]
 
 
-async def test_upstream_inference_cost_counts_when_charged_cost_is_zero(tmp_path):
-    report, calls, *_ = await run(tmp_path, cost=0, upstream=0.00002)
-    assert len(calls) == 3 and report["counted_test_nanos"] == 60_000
-    assert report["format_verified"]
-
-
-async def test_unexpected_receipt_above_prepared_bound_stops_the_pass(tmp_path):
-    report, calls, *_ = await run(tmp_path, cost=0.012)
-    assert len(calls) == report["requests"] == 1
-    assert report["stopped"].startswith("Receipt exceeded the conservative")
-    assert report["counted_test_nanos"] == 12_000_000
-    assert not report["format_verified"] and report["within_bounds"]
+@pytest.mark.parametrize(
+    "cost,upstream", [(0, 0.00002), (0.012, None)], ids=["upstream", "dear"]
+)
+async def test_a_subscription_receipt_counts_nothing_whatever_it_reports(
+    tmp_path, cost, upstream
+):
+    # A reported cost, even one above the prepared bound, is not the
+    # subscription's charge (ADR 29 Q5).
+    report, calls, *_ = await run(tmp_path, cost=cost, upstream=upstream)
+    assert len(calls) == 3 and report["counted_test_nanos"] == 0
+    assert report["format_verified"] and "stopped" not in report
 
 
 async def test_lower_request_bound_records_partial_unverified_cases(tmp_path):
@@ -450,9 +452,7 @@ async def test_exclusive_service_owner_lock_prevents_even_route_verification(tmp
 
 
 @pytest.mark.parametrize("ceiling", ["run", "day"])
-async def test_conservative_image_input_bound_larger_than_flat_must_fit(
-    tmp_path, ceiling
-):
+async def test_a_prepared_image_request_needs_room_for_its_bound(tmp_path, ceiling):
     settings = settings_at(tmp_path)
     registry = AccountRegistry(settings.data)
     packet = {
@@ -465,7 +465,9 @@ async def test_conservative_image_input_bound_larger_than_flat_must_fit(
     schema = output_schema(runner.ROLE, packet)
     system = instructions(runner.ROLE, packet, snapshot())
     bound = runner.conservative_request_bound(system, packet, schema, ADOPTED_RATES)
-    assert bound["request_bound_nanos"] > FLAT_UNKNOWN
+    # At the subscription's $0 rates the flat unknown estimate is the bound.
+    assert bound["conservative_cost_nanos"] == 0
+    assert bound["request_bound_nanos"] == FLAT_UNKNOWN
     assert bound["prepared_request_bytes"] > 100_000
     assert (
         bound["input_token_bound"]

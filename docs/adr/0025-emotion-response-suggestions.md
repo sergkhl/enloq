@@ -139,9 +139,10 @@ in the chat it came from (ADR 55 Q15, Q16). No older history is scanned, and
 suggestions turn no emotion into a profile.
 
 **A separate request.** Each set is its own bounded request: automatic work
-follows the decision, and manual work is queued on the click. MiMo writes
-Friendly and Professional sets and Muse Spark 1.3 writes Idioms
-(ADR 56 Q20); one decision request then labels the replies. Incoming
+follows the decision, and manual work is queued on the click.
+[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s route writes
+every Style's sets, Idioms included (ADR 56 Q20); one decision request then
+labels the replies. Incoming
 rewriting has priority over suggestions, which run ahead of idle memory work. Only complete,
 validated sets are published. Incoming text, readiness, unseen state and
 notifications never wait for suggestions, and a failed set leaves the

@@ -9,7 +9,6 @@ no other limit.
 """
 
 import json
-import re
 import time
 
 import httpx
@@ -26,7 +25,16 @@ from ..domain.group_questions import (
 from ..domain.models import Refused, Unavailable
 from .base import EngineResponse, ProviderRefused
 from .guidance import QUESTION_CORE, QUESTION_TOOLS
-from .openrouter import PRIVATE, proxy_endpoint, proxy_key, retry_after
+from .openrouter import (
+    OBJECT,
+    PRIVATE,
+    SUBSCRIPTION_REFUSALS,
+    listed_route,
+    proxy_endpoint,
+    proxy_key,
+    retry_after,
+    subscription_rates,
+)
 
 MODEL = "chatgpt/gpt-6.1-sol"
 SECONDS = 120
@@ -35,7 +43,6 @@ JSON_REPLY = (
     '"citations": [at most ten message ids, the ones it rests on most]}]}, with no '
     "statements when the messages do not address the question."
 )
-OBJECT = re.compile(r"\{.*\}", re.S)
 USAGE = {"prompt_tokens", "completion_tokens", "total_tokens"}
 
 
@@ -145,23 +152,13 @@ class SubscriptionEngine:
         return SECONDS
 
     async def prepare(self, packet):
-        """The proxy still serves the exact route, checked at most daily."""
+        """The proxy still serves the exact route, checked at most daily, as
+        for ADR 29's route on the same subscription."""
         if self.rates is None or time.time() - self.rates["verified_at"] > 86400:
-            response = await self.client.get(
-                f"{self.endpoint}/model/info",
-                headers={"Authorization": f"Bearer {self.key}"},
+            route = await listed_route(
+                self.client, self.endpoint, self.key, MODEL, "gpt-6.1-sol"
             )
-            if response.status_code != 200:
-                raise ProviderRefused(
-                    f"Model proxy HTTP {response.status_code}",
-                    retry_after=retry_after(response.headers.get("retry-after")),
-                )
-            routes = [
-                r for r in response.json()["data"] if r.get("model_name") == MODEL
-            ]
-            if len(routes) != 1:
-                raise ProviderRefused("Exact gpt-6.1-sol route unavailable")
-            self.rates = {"verified_at": time.time(), "prompt": "0", "completion": "0"}
+            self.rates = subscription_rates(route, MODEL, self.endpoint)
         return 0
 
     async def generate(self, role, packet):
@@ -181,7 +178,7 @@ class SubscriptionEngine:
             )
         except httpx.ConnectError:
             raise ProviderRefused("Provider connection refused") from None
-        if response.status_code in (401, 402, 403, 429):
+        if response.status_code in SUBSCRIPTION_REFUSALS:
             raise ProviderRefused(
                 f"Model provider HTTP {response.status_code}",
                 retry_after=retry_after(response.headers.get("retry-after")),

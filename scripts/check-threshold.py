@@ -3,8 +3,8 @@
 
 At most three requests, 600 seconds and $0.05 counted spending, inside the
 existing Daily Budget. The service must be stopped: its exclusive OwnerLock
-is held throughout. The exact MiMo/Xiaomi listing and rates are refreshed
-before any model call. Every dispatch needs room for the larger of its
+is held throughout. The exact Terra listing is refreshed before any model
+call. Every dispatch needs room for the larger of its
 conservative prepared-request/output bound and the ordinary unknown estimate;
 an unknown outcome stops the pass. There is no automatic retry or resampling.
 
@@ -42,11 +42,10 @@ from enloq.config import ROOT, Settings, private_write
 from enloq.domain.models import Chat, MediaInfo, Message, Refused
 from enloq.inference.guidance import DEFAULTS_REVISION, instructions
 from enloq.inference.openrouter import (
-    MODEL,
+    BACKGROUND_OUTPUT_TOKENS,
     OpenRouterEngine,
     output_schema,
-    output_tokens,
-    thinking,
+    request_body,
     within_adopted_rates,
 )
 from enloq.inference.work import FLAT_UNKNOWN
@@ -104,46 +103,17 @@ def conservative_request_bound(system, packet, schema, rates):
     allowances; hidden reasoning is already inside the ordinary output cap.
     """
     images = packet.get("images", [])
-    plain = {
-        k: v
-        for k, v in packet.items()
-        if k not in ("images", "guidance", "calm", "sarcastic")
-    }
-    content = [{"type": "text", "text": json.dumps(plain, ensure_ascii=False)}]
-    for image in images:
-        content.extend(
-            [
-                {
-                    "type": "text",
-                    "text": json.dumps(
-                        dict(attachment="image", native_message_id=image["message_id"])
-                    ),
-                },
-                {"type": "image_url", "image_url": {"url": image["data_url"]}},
-            ]
-        )
-    cap = output_tokens(ROLE)
-    payload = {
-        "model": MODEL,
+    # The request as the transport sends it. The route takes no token cap; the
+    # bound still allows 16,384 output tokens for reasoning and the answer.
+    cap = BACKGROUND_OUTPUT_TOKENS
+    payload = request_body(
+        system,
+        packet,
+        schema,
         # The largest permitted pseudonym length, without retaining its value.
-        "user": "x" * 128,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": content},
-        ],
-        "max_tokens": cap,
-        "extra_body": {"thinking": thinking(ROLE)},
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "enloq",
-                "strict": True,
-                "schema": schema,
-            },
-        },
-        "stream": True,
-        "stream_options": {"include_usage": True},
-    }
+        user="x" * 128,
+    )
+    payload.update(stream=True, stream_options={"include_usage": True})
     size = len(json.dumps(payload, ensure_ascii=False).encode())
     tokens = size + FRAMING_TOKENS + IMAGE_TOKENS * len(images)
     cost = math.ceil(

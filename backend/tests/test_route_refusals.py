@@ -9,9 +9,9 @@ import pytest
 from enloq.application.accounts import AccountManager
 from enloq.config import Settings, private_write
 from enloq.domain.models import Chat
-from enloq.inference.openrouter import MODEL, OpenRouterEngine
+from enloq.inference.openrouter import MODEL, MUSE, OpenRouterEngine
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_memory import KEY, conversation
 from backend.tests.test_rebuild import picture
 
@@ -22,20 +22,21 @@ pytestmark = pytest.mark.usefixtures("calming_off", "remember_on")
 
 ROLES = ("incoming_rewrite", "chat_memory")
 # The same model through another provider: never a fallback for the exact route.
-LOOKALIKE = "openrouter/xiaomi/mimo-v2.6-flash"
+LOOKALIKE = "openrouter/openai/gpt-6.1-terra"
 
 
 def exact_route(name=MODEL, **changes):
-    """One entry of the proxy's GET /model/info, as it lists the MiMo route."""
+    """One entry of the proxy's GET /model/info: the Terra route as it lists
+    the ChatGPT subscription, with no per-token rates, or Muse's chat route."""
     return {
         "model_name": name,
         "model_info": {
-            "mode": "chat",
+            "mode": "chat" if name == MUSE else "responses",
             "supports_response_schema": True,
             "supports_vision": True,
-            "input_cost_per_token": 1.4e-07,
-            "output_cost_per_token": 2.8e-07,
-            "max_input_tokens": 1048576,
+            "input_cost_per_token": None,
+            "output_cost_per_token": None,
+            "max_input_tokens": 1048576 if name == MUSE else 922000,
             **changes,
         },
     }
@@ -93,7 +94,7 @@ async def rig(tmp_path):
         assert str(request.url) == f"{ENDPOINT}/chat/completions"
         payload = json.loads(request.content)
         state.calls.append(payload)
-        properties = payload["response_format"]["json_schema"]["schema"]["properties"]
+        properties = request_schema(payload)["properties"]
         content = (
             {
                 "person": {"add": [], "remove": [], "outdated": []},
@@ -191,14 +192,15 @@ def finished(rig, role):
         ]
     assert len(rig.calls) == 1
     assert rig.calls[0]["model"] == MODEL
-    # The proxy route names its provider; no OpenRouter routing is sent.
-    assert "provider" not in rig.calls[0]
-    assert rig.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
+    # The proxy route names its provider and keeps its own reasoning effort;
+    # no OpenRouter routing or extra_body is sent.
+    assert "provider" not in rig.calls[0] and "extra_body" not in rig.calls[0]
+    # The subscription's receipt is $0 whatever the reply reports (ADR 29 Q5).
     assert rig.manager.registry.rows(
         "SELECT status,actual FROM model_reservations"
-    ) == [{"status": "receipted", "actual": 1000}]
+    ) == [{"status": "receipted", "actual": 0}]
     budget = rig.manager.registry.budget(clock=rig.app.store.clock)
-    assert budget["spent"] == 1000 and budget["unknown"] == 0
+    assert budget["spent"] == 0 and budget["unknown"] == 0
 
 
 @pytest.mark.parametrize("role", ROLES)
@@ -341,16 +343,17 @@ async def test_off_and_budget_waits_keep_pending_route_retry_without_spending(
     "route",
     [
         exact_route(supports_vision=False),
-        exact_route(supports_response_schema=False),
-        exact_route(mode="completion"),
+        # Any listed rate means the route is no longer the subscription.
+        exact_route(input_cost_per_token=1.4e-07),
+        exact_route(output_cost_per_token=2.8e-07),
         exact_route(input_cost_per_token="NaN"),
         exact_route(output_cost_per_token="Infinity"),
         exact_route(input_cost_per_token=-1e-07),
     ],
     ids=[
         "missing-vision",
-        "missing-response-schema",
-        "not-chat",
+        "charged-input",
+        "charged-output",
         "nan",
         "infinite",
         "negative",

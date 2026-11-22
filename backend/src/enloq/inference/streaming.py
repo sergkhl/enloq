@@ -34,9 +34,10 @@ def nanos(value):
 
 
 def cost_nanos(usage):
-    """The larger of the charged and the upstream inference cost. Xiaomi's
-    receipts report a zero ``cost`` beside a nonzero upstream cost, so the Daily
-    Budget never counts less than the provider's inference charge (ADR 29)."""
+    """The larger of the charged and the upstream inference cost. A receipt
+    can report a zero ``cost`` beside a nonzero upstream cost, as Xiaomi's did,
+    so the Daily Budget never counts less than the provider's inference charge
+    (ADR 15)."""
     details = usage.get("cost_details")
     upstream = (
         details.get("upstream_inference_cost") if isinstance(details, dict) else None

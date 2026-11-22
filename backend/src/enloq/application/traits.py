@@ -3,9 +3,9 @@ and of the account's holder, collected from launch and shown only to the
 owner. No model reads them.
 
 Three kinds: scales the decision model scores from the starter list, each
-shown while its evidence question says yes at 0.7 or more; notes MiMo writes,
-each cited from at least three of the subject's own messages on two days; and
-habits counted without a model. Scales are judged at every memory update and
+shown while its evidence question says yes at 0.7 or more; notes ADR 29's
+generation route writes, each cited from at least three of the subject's own
+messages on two days; and habits counted without a model. Scales are judged at every memory update and
 notes at most once a day, both from the cached month, as low-priority memory
 work behind every rewrite, decision and suggestion.
 """

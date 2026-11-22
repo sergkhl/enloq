@@ -5,7 +5,7 @@ Every request goes through the real Decider engine, the application's own
 classification, assessment and group ad-filter stages and the ordinary shared
 accounting, on authored conversations only: none copies a real message, name,
 number or identifier. A fake transport means no Telegram read, send or
-reaction, and no MiMo request is made. A text block is held as it arrives and,
+reaction, and no Terra request is made. A text block is held as it arrives and,
 once its quiet has passed, decided from its originals by the app's own held
 decision path, as the app decides text (ADR 54, ADR 49 Q3); the authored pass
 skips the quiet. A block with an image or a voice note is decided after its
@@ -542,7 +542,7 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                     transport = FakeTransport()
 
                     class NoRewrites:
-                        """This check makes no MiMo request."""
+                        """This check makes no Terra request."""
 
                         name, model, provider = "none", "none", "none"
 
@@ -815,7 +815,7 @@ async def observe(settings=None, *, root=ROOT, engine_factory=ObservedDecider):
                         """ADR 30: a block with an image or a voice note is
                         decided after its rewrite publishes. Deliberate cached
                         processing prepares it; an authored rewrite stands in
-                        for MiMo's."""
+                        for Terra's."""
                         engine.current["path"] = "rewritten"
                         meanings = ingest(peer, messages)
                         app.rewriting.process_older(key)

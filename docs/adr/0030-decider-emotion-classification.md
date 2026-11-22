@@ -49,15 +49,15 @@ million input tokens with free output.
 - **Provider and path.** Perplexity only, on OpenRouter's Decisions endpoint
   (`/api/alpha/decisions`), reached through the owner's LiteLLM proxy's
   pass-through ([ADR 39](0039-litellm-proxy-and-vps-speech.md)). Fallbacks are
-  disabled: no fallback to MiMo or another Decider, and no automatic move to a
-  later checkpoint.
+  disabled: no fallback to the generation route or another Decider, and no
+  automatic move to a later checkpoint.
 - **Verification.** OpenRouter's public listing is verified before dispatch:
   exactly one Perplexity endpoint at status 0, within the adopted rates.
 - **Unavailability.** An unavailable route is a no-work refusal that leaves
   emotion unavailable; Settings → AI then shows the owner that the decision
   model is unavailable (ADR 49 Q14).
 - **Identity.** Requests carry the same private app-level `user` pseudonym as
-  MiMo requests.
+  generation requests.
 - **Terms.** Perplexity publishes no retention or training terms for this API,
   and OpenRouter lists none. The owner accepted the route without reviewing
   retention. The proxy's pass-through ignores the redaction request, so

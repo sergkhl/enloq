@@ -1085,7 +1085,7 @@ class Suggestions:
             # source, so a changed memory never regenerates options.
             if memory := self.app.memory.for_suggestions(key):
                 packet["memory"] = memory
-            # ADR 56: an idiom set, written by the gate's winner (Q16).
+            # ADR 56: an idiom set, written by the owner's chosen writer (Q20).
             engine = self.app.engine
             if record.get("idioms"):
                 packet["idioms"] = True

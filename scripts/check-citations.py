@@ -10,12 +10,12 @@ application's own check packet and the decision model, and gpt-6.1-sol, the
 proxy's subscription route, grades the same claim as a second grader.
 
 Part B, live briefings. Each BRIEFED day runs as yesterday's messages of its
-own group through the real GroupBriefings path: MiMo writes the final and the
+own group through the real GroupBriefings path: Terra writes the final and the
 citation check checks it. The judge grades its topics; they are labelled
 afterwards (--labels re-scores a saved report without any request).
 
 The service must be stopped; its owner lock is held throughout. At most
-DECISIONS decision, WRITES MiMo and JUDGED judge requests, SECONDS seconds and
+DECISIONS decision, WRITES Terra and JUDGED judge requests, SECONDS seconds and
 MAX_NANOS counted in the Group Briefing ledger; a request starts only while
 the flat unknown estimate still fits. One first attempt each, with no retry
 or resampling, and owner settings never change. The report stays in a private
@@ -102,7 +102,7 @@ class ObservedDecider(DeciderEngine):
 
 
 class ObservedRoute(OpenRouterEngine):
-    """MiMo for the briefing stages only, timed per request."""
+    """ADR 29's route for the briefing stages only, timed per request."""
 
     def __init__(self, settings, registry, bounds, *, client=None):
         super().__init__(settings, user=registry.provider_user(), client=client)

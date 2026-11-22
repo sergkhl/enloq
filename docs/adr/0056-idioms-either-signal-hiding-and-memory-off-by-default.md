@@ -125,10 +125,11 @@ marks or explains the expression.
 expression in its right meaning; when none fits, a set has fewer options or
 none.
 
-**The writer (Q16).** The idioms gate compares MiMo and Muse Spark 1.3 on the
-same authored chats, and Q20 settled the choice: Muse writes idiom sets, and
-Friendly and Professional sets stay on MiMo. Muse's other role is softened
-hostile text.
+**The writer (Q16).** The idioms gate compares writers on the same authored
+chats, and Q20 settles the choice: Terra,
+[ADR 29](0029-mimo-route-and-structured-incoming-rewriting.md)'s route, writes
+idiom sets as it writes Friendly and Professional sets. Muse's one role is
+softened hostile text.
 
 **The idioms gate (Q17).** `scripts/check-idioms.py` runs authored Russian
 and English chats through the real path, and a judge model
@@ -150,11 +151,17 @@ score just over 0.5, while blocks that need a reply score far higher. Not
 adopted: the 0.5 bar. Otherwise valid one-sided sets are shown under ADR 49
 Q20 rather than hidden or failed.
 
-**Idioms launched with Muse (Q20).** No writer passed Q17's bar, Muse came
-closest, and the owner chose to let Idioms be chosen with Muse writing idiom
-sets. Muse's 🥳 written as the escape `\u0001F973` is read as its emoji; a
-suggestion with any other control character fails. Not adopted: calibrating
-the judge and rerunning, more refining, and keeping Idioms hidden.
+**Terra writes idiom sets (Q20).** No writer has passed Q17's bar, and the
+owner chose to let Idioms be chosen anyway. Idioms launched with Muse, which
+came closest to the bar of the two writers then compared, MiMo and Muse: in
+three gate runs Muse had 4, 10 and 17 fixed-rule misses, with an expression in
+every option in 12, 10 and 11 sets of 12. When ADR 29's route became Terra, the
+owner moved idiom sets to Terra too. On Terra the gate found no fixed-rule
+miss, but an expression in every option in only 8 sets of 12, against the 11
+needed: four sets had an option with no expression. A Muse-style 🥳 written as
+the escape `\u0001F973` is read as its emoji; a suggestion with any other
+control character fails. Not adopted: calibrating the judge and rerunning,
+more refining, keeping Idioms hidden, and keeping Muse for idiom sets.
 
 ## Consequences
 
@@ -168,8 +175,8 @@ the judge and rerunning, more refining, and keeping Idioms hidden.
 
 ## Known limits and open owner gates
 
-- **Idiom sets' misses.** Muse launched without passing Q17's bar: its idioms
-  sometimes imply claims the chat doesn't make. The owner judges them in
-  ordinary use.
+- **Idiom sets' misses.** Terra writes idiom sets without passing Q17's bar:
+  an option sometimes uses no expression, or a weak one such as a plain
+  courtesy phrase. The owner judges them in ordinary use.
 - Switching memory on in the chats they want, and trying Idioms, are the
   owner's.

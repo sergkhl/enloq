@@ -8,9 +8,9 @@ reranker over the best fusion: recall at 5, 10 and 25, MRR and nDCG at 10,
 against the relevant messages labelled before any run.
 
 Answers. On the chosen retrieval the application's own steps answer every
-question with MiMo and check each statement; gpt-6.1-sol, the proxy's
-subscription route, answers the same retrieved messages as a comparison
-only. The judge, on the same route, grades both answers against the authored
+question with ADR 29's route and check each statement; gpt-6.1-sol, the
+proxy's subscription route, answers the same retrieved messages as a
+comparison only. The judge, on the same route, grades both answers against the authored
 answer.
 
 Tools (--tools, ADR 60). The application's own steps answer every question
@@ -372,8 +372,8 @@ def statement_view(statement, check):
 
 
 async def answers(app, judge, bounds, settings, registry, report, save, groups, chosen):
-    """MiMo through the application's steps, gpt-6.1-sol on the same messages,
-    then the judge's grades."""
+    """ADR 29's route through the application's steps (`mimo` in the report),
+    gpt-6.1-sol on the same messages, then the judge's grades."""
     best, reranker, fused, reranked_by = chosen
     writer = ObservedWriter(settings, user=registry.provider_user()).watch(bounds)
     decider = ObservedDecider(settings, user=registry.provider_user()).watch(bounds)

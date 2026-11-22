@@ -138,7 +138,7 @@ Q26): `scripts/check-memory.py`. Rerun it whenever the Person memory or
 Account memory guidance is edited. Wholly authored chats, half Russian, go
 through the application's stages on the real routes in three groups:
 
-- **Cares about.** Four chats fold once each (MiMo). The judge reads every
+- **Cares about.** Four chats fold once each (Terra). The judge reads every
   note against its chat: a Person Memory note must concern the other person
   and an Account Memory note the owner, each supported by the messages. A note
   naming an authored date or amount keeps it, Russian chats keep Russian
@@ -221,19 +221,20 @@ Q16, Q17): `scripts/check-idioms.py`. Rerun it whenever the Idioms guidance is
 edited. Twelve authored private chats, half Russian, each with an authored
 decision on its latest block (no rewrite or mood decision is requested), go
 through the app's own suggestion dispatch in a chat set to Idioms, once with
-MiMo writing and once with Muse Spark 1.3; the decision model labels each set
-as the app has it do. Code checks each option's language, and the app's own
+Terra writing and once with Muse Spark 1.3, or with the writers named by
+`--writer` alone; the decision model labels each set as the app has it do. Code checks each option's language, and the app's own
 validation catches a malformed set; one-sided sets are valid under ADR 49 Q20.
 The judge reads every set:
 the expression each option uses, whether it is real and in its established
 meaning, and whether the option invents facts, admits fault, pressures or
 commits the owner beyond a plain yes. A writer passes with no miss on those
 fixed rules and the expression rule met in at least 9 sets of 10; the one with
-fewer misses wins, and a tie goes to the owner. Muse writes idiom sets (Q20).
+fewer misses wins, and a tie goes to the owner. The owner chose Terra to write
+idiom sets (Q20); `--writer terra` checks it alone.
 The owner reads every set in `sets.md` beside the private
 `.local/idioms-check-*/report.json`. A provider refusal is retried after its
 delay (at most two minutes), at most twice per set; an unreadable judge answer
-gets one more attempt. It verifies the MiMo, Muse and decision routes and
+gets one more attempt. It verifies the routes it uses and
 allows at most 30 writer, 30 decision and 48 judge requests, 1,800 seconds and
 $0.05 counted.
 
@@ -250,7 +251,7 @@ Each text block is held and decided from its originals by the app's held
 path, as text is ([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md));
 each block with an image or a voice note stands in an authored rewrite and
 image meaning where the rewrite would publish them and then runs the real
-classification job. No MiMo request is made. Reactions run the real
+classification job. No Terra request is made. Reactions run the real
 assessment path and ad cases the real group filter, which never judges bots
 here. Its chats have Emotion, Voice and images and Automatic suggestions On
 and softening Off, so decisions ask the emotion and usefulness
@@ -266,13 +267,13 @@ receipts; `within_bounds` in the report records whether every bound held.
 Malformed answers and route failures are listed as `blocking`; weak but
 well-formed results are recorded for review.
 
-**MiMo route** ([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)):
-`scripts/check-route.py --check 1` covers every role on the MiMo route with the
+**Terra route** ([ADR 29](adr/0029-mimo-route-and-structured-incoming-rewriting.md)):
+`scripts/check-route.py --check 1` covers every role on the Terra route with the
 current guidance, except the decision roles above (at most 16 requests, 1,800
 seconds and $0.05 counted); `--check 2` covers structured incoming and speech
 rewriting (at most 12 requests, 1,200 seconds and $0.03); `--check 3` runs all
 thirteen authored incoming cases of both (at most 16 requests, 1,800 seconds
-and $0.03). Every incoming case holds a voice note or an image, since MiMo
+and $0.03). Every incoming case holds a voice note or an image, since Terra
 rewrites only such blocks
 ([ADR 54](adr/0054-incoming-text-combined-not-rewritten.md)), and typed
 messages in the same block are rewritten with it; Check 1's suggestion follows
@@ -310,8 +311,8 @@ citation check, [ADR 59](adr/0059-ask-this-group.md) Q11):
 `scripts/authored_group_days.py`, labelled before any run, once through the
 application's check packet and the decision model, and the judge grades the
 same claim. Part B briefs six authored days as today's messages of their own
-groups through a deliberate update: MiMo writes each final and the check checks
-it, and the judge grades its topics. At most 110 decision, 12 MiMo and 110
+groups through a deliberate update: Terra writes each final and the check checks
+it, and the judge grades its topics. At most 110 decision, 12 Terra and 110
 judge requests, 3,600 seconds and $0.30 counted within the Group Briefing
 Budget. `--labels REPORT LABELS` scores a saved report against labels set after
 the run, without any request. The report is
@@ -323,10 +324,10 @@ question by keywords alone, by each candidate embedder alone and fused with
 keywords, and by each candidate reranker over the best fusion, then reports
 recall at 5, 10 and 25, MRR and nDCG at 10 against the labelled relevant
 messages. On the chosen retrieval it answers every question through the
-application's own steps with MiMo and the check, has gpt-6.1-sol answer the
+application's own steps with Terra and the check, has gpt-6.1-sol answer the
 same retrieved messages for comparison, and has the judge grade both. Voyage's
 rerankers, which have no zero-retention endpoint, see only these authored
-messages. At most 60 embedding, 245 rerank, 102 MiMo, 180 check, 102
+messages. At most 60 embedding, 245 rerank, 102 Terra, 180 check, 102
 comparison and 102 judge requests, 5,400 seconds and $0.60. A candidate that
 fails leaves its row empty and the rest run. The report is
 `.local/ask-check-*/report.json`.
@@ -1500,7 +1501,7 @@ before the Group Briefing Budget count as Daily. Content deletion never resets
 counted spending. Historical import refuses a different saved family rather
 than moving costs or deleting the original evidence.
 
-The exact MiMo and Decider routes and rates are refreshed before dispatch when
+The exact Terra and Decider routes and rates are refreshed before dispatch when
 needed. While decision requests fail at the route, the owner's Settings → AI
 says since when, and one push announced the start (ADR 49 Q14). Look first at
 the public model listing and at the proxy's log (`docker logs codex-litellm`):

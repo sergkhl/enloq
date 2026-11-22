@@ -29,9 +29,9 @@ container's `/app` on the VPS).
 | `PERSONAL_SESSION_REF`, `EXPECTED_ACCOUNT_ID` | `.local/personal/personal.session` | Registration of the first (legacy) account only. |
 
 Personal mode uses only the `PERSONAL_*` application pair and never falls back
-to the prepared one. Every live adapter (MiMo, the Decider and speech) calls
-the proxy with its caller key, and the provider keys stay in the proxy; the
-application reads no OpenRouter or other provider key. The proxy keeps request
+to the prepared one. Every live adapter (Terra, Muse, the Decider and
+speech) calls the proxy with its caller key, and the provider keys stay in the
+proxy; the application reads no OpenRouter or other provider key. The proxy keeps request
 bodies in its spend log for 30 days; the adapters ask it to redact them, which
 its pass-through routes (the Decider's among them) ignore. The adapters
 enforce the endpoint and key binding, the exact Model Routes and bounded

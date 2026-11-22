@@ -3,7 +3,7 @@
 
 At most twelve provider requests, 1,200 seconds and $0.10 counted spending,
 inside the shared Group Briefing Budget. The stopped service's OwnerLock is
-held throughout. Refresh exact MiMo/Xiaomi availability and rates before any
+held throughout. Refresh exact Terra availability and rates before any
 dispatch, and require the remaining run/day allowance to cover the larger of
 the conservative prepared-request/output cost and the ordinary unknown amount.
 Stop at an unknown, failed first outcome or bound; never retry or resample.
@@ -52,11 +52,10 @@ from enloq.inference.audio import WHISPER
 from enloq.inference.base import ProviderRefused
 from enloq.inference.guidance import DEFAULTS_REVISION, instructions
 from enloq.inference.openrouter import (
-    MODEL,
+    BACKGROUND_OUTPUT_TOKENS,
     OpenRouterEngine,
     output_schema,
-    output_tokens,
-    thinking,
+    request_body,
     within_adopted_rates,
 )
 from enloq.inference.work import FLAT_UNKNOWN
@@ -158,39 +157,10 @@ CASES = authored_cases()
 def conservative_request_bound(system, packet, schema, rates, *, role, streamed):
     """Bound the exact role, prepared input, schema, image URLs and output cap."""
     images = packet.get("images", [])
-    plain = {k: v for k, v in packet.items() if k not in {"images", "guidance"}}
-    content = [{"type": "text", "text": json.dumps(plain, ensure_ascii=False)}]
-    for image in images:
-        content.extend(
-            [
-                {
-                    "type": "text",
-                    "text": json.dumps(
-                        dict(attachment="image", native_message_id=image["message_id"])
-                    ),
-                },
-                {"type": "image_url", "image_url": {"url": image["data_url"]}},
-            ]
-        )
-    cap = output_tokens(role)
-    payload = {
-        "model": MODEL,
-        "user": "x" * 128,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": content},
-        ],
-        "max_tokens": cap,
-        "extra_body": {"thinking": thinking(role)},
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "enloq",
-                "strict": True,
-                "schema": schema,
-            },
-        },
-    }
+    # The request as the transport sends it. The route takes no token cap; the
+    # bound still allows 16,384 output tokens for reasoning and the answer.
+    cap = BACKGROUND_OUTPUT_TOKENS
+    payload = request_body(system, packet, schema, user="x" * 128)
     if streamed:
         payload.update(stream=True, stream_options={"include_usage": True})
     size = len(json.dumps(payload, ensure_ascii=False).encode())

@@ -106,9 +106,9 @@ Act only if they recur or grow.
   refusals become common, a key of our own with Meta is the remedy.
 - **Memory updates** ([ADR 55](../adr/0055-person-and-account-memory-and-traits.md)):
   a large first update can spend all its output tokens on hidden reasoning
-  and fail as incomplete; smaller first batches are the remedy. If MiMo's
-  literal readings of figurative Russian show up in real chats, trial Muse
-  Spark 1.3 for the memory update (Q28).
+  and fail as incomplete; smaller first batches are the remedy. MiMo, the
+  earlier route, read figurative Russian literally; if Terra does so in real
+  chats, trial Muse Spark 1.3 for the memory update (Q28).
 
 ## Waiting on the owner
 
@@ -199,4 +199,4 @@ Act only if they recur or grow.
 ## Live test allowance
 
 The owner allows live test requests without asking first, up to 10,000 in
-total; 5,649 are used. Add each check's requests here.
+total; 5,720 are used. Add each check's requests here.

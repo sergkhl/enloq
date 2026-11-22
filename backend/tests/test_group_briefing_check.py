@@ -12,12 +12,12 @@ import pytest
 from enloq.config import Settings, private_write
 from enloq.domain.models import Refused
 from enloq.inference.guidance import DEFAULTS_REVISION
-from enloq.inference.openrouter import BACKGROUND_OUTPUT_TOKENS, LOGICAL_MODEL, MODEL
+from enloq.inference.openrouter import LOGICAL_MODEL, MODEL
 from enloq.inference.work import FLAT_UNKNOWN
 from enloq.storage.accounts import AccountRegistry
 from enloq.storage.lock import OwnerLock
 
-from backend.tests.proxy_helpers import ENDPOINT
+from backend.tests.proxy_helpers import ENDPOINT, request_schema
 from backend.tests.test_route_refusals import exact_route, model_info, priced
 
 spec = importlib.util.spec_from_file_location(
@@ -142,8 +142,11 @@ async def run(
         number = len(calls)
         if number == refused_at:
             return httpx.Response(429)
+        if number == unknown_at:
+            # A call that fails unanswered has an unknown outcome.
+            return httpx.Response(500)
         packet = json.loads(payload["messages"][1]["content"][0]["text"])
-        schema = payload["response_format"]["json_schema"]["schema"]
+        schema = request_schema(payload)
         if "image_context" in schema["properties"]:
             identities = schema["$defs"]["BriefingImageContext"]["properties"][
                 "message_id"
@@ -180,7 +183,7 @@ async def run(
         content = (
             "{" if number == malformed_at else json.dumps(output, ensure_ascii=False)
         )
-        usage = {} if number == unknown_at else {"cost": cost}
+        usage = {"cost": cost}
         if upstream is not None:
             usage["cost_details"] = {"upstream_inference_cost": upstream}
         if number == deadline_at:
@@ -202,7 +205,6 @@ async def run(
                 json={
                     "id": f"authored-group-{number}",
                     "model": MODEL,
-                    "provider": "Xiaomi",
                     "usage": usage,
                     "choices": [
                         {"message": {"content": content}, "finish_reason": "stop"}
@@ -217,7 +219,6 @@ async def run(
                     {
                         "id": f"authored-group-{number}",
                         "model": MODEL,
-                        "provider": "Xiaomi",
                         "usage": usage if index else {},
                         "choices": [
                             {
@@ -299,7 +300,8 @@ async def test_real_image_chunk_streamed_final_and_no_substance_path(
     assert report["requests"] == len(calls)
     assert report["generative_requests"] == len(calls)
     assert report["classifier_requests"] == 0
-    assert report["counted_test_nanos"] == 10_000 * len(calls)
+    # The subscription's receipts are $0 whatever a reply reports (ADR 29 Q5).
+    assert report["counted_test_nanos"] == 0
     assert report["budget_family"] == "group_briefing"
     assert (
         report["telegram_calls"]
@@ -354,10 +356,9 @@ async def test_real_image_chunk_streamed_final_and_no_substance_path(
     assert all(1 not in c["packet"]["covered_ids"] for c in observed)
     for payload, observation in zip(calls, observed):
         assert payload["model"] == MODEL
-        # The proxy route names its provider; no OpenRouter routing is sent.
-        assert "provider" not in payload and "reasoning" not in payload
-        assert payload["extra_body"] == {"thinking": {"type": "enabled"}}
-        assert payload["max_tokens"] == BACKGROUND_OUTPUT_TOKENS
+        # The proxy route names its provider and keeps its own reasoning
+        # effort; no OpenRouter routing, extra_body or cap is sent.
+        assert not {"provider", "reasoning", "extra_body", "max_tokens"} & set(payload)
         assert payload.get("stream", False) == (observation["role"] == "group_briefing")
         assert observation["request_bound_nanos"] >= max(
             FLAT_UNKNOWN, observation["conservative_cost_nanos"]
@@ -389,7 +390,7 @@ async def test_real_image_chunk_streamed_final_and_no_substance_path(
     shared_receipts = registry.rows("SELECT family,model,provider FROM model_receipts")
     assert len(shared_receipts) == len(rows)
     assert all(
-        r == {"family": "group_briefing", "model": LOGICAL_MODEL, "provider": "xiaomi"}
+        r == {"family": "group_briefing", "model": LOGICAL_MODEL, "provider": "openai"}
         for r in shared_receipts
     )
     terminal = capsys.readouterr().out
@@ -407,13 +408,14 @@ async def test_unknown_first_receipt_stops_every_further_stage_and_keeps_ledger(
 ):
     report, calls, _, registry = await run(tmp_path, unknown_at=unknown_at)
     assert len(calls) == report["requests"] == unknown_at
-    assert report["counted_test_nanos"] == FLAT_UNKNOWN + (unknown_at - 1) * 10_000
+    assert report["counted_test_nanos"] == FLAT_UNKNOWN
     assert report["stopped"].startswith("Unknown provider outcome")
     assert not report["format_source_verified"] and len(report["unverified_cases"]) == 2
     assert registry.budget(family=runner.FAMILY)["unknown"] == 1
     stage = report["results"][0]["stages"][-1]
     assert stage["source_valid"] and stage["format_valid"] is None
-    assert stage["calls"][0]["raw"]
+    # The call failed unanswered, so nothing came back.
+    assert stage["calls"][0]["raw"] is None
     assert stage["reservations"][0]["status"] == "unknown"
 
 
@@ -423,7 +425,7 @@ async def test_bad_first_output_keeps_receipt_and_source_proof_without_resamplin
     tmp_path, failure, number
 ):
     report, calls, _, registry = await run(tmp_path, **{failure: number})
-    assert len(calls) == number and report["counted_test_nanos"] == number * 10_000
+    assert len(calls) == number and report["counted_test_nanos"] == 0
     assert report["stopped"].startswith("First stage did not complete")
     assert not report["format_source_verified"]
     stage = report["results"][0]["stages"][-1]
@@ -442,7 +444,7 @@ async def test_zero_work_refusal_stops_without_automatic_route_retry(tmp_path, n
     report, calls, _, registry = await run(tmp_path, refused_at=number)
     assert len(calls) == number
     assert report["stopped"].startswith("First provider attempt refused")
-    assert report["counted_test_nanos"] == (number - 1) * 10_000
+    assert report["counted_test_nanos"] == 0
     assert registry.rows(
         "SELECT status,actual FROM model_reservations WHERE status='refused'"
     ) == [{"status": "refused", "actual": 0}]
@@ -451,7 +453,7 @@ async def test_zero_work_refusal_stops_without_automatic_route_retry(tmp_path, n
 
 async def test_interrupted_stream_preserves_first_partial_and_unknown_cost(tmp_path):
     report, calls, *_ = await run(tmp_path, incomplete_final=True)
-    assert len(calls) == 4 and report["counted_test_nanos"] == FLAT_UNKNOWN + 30_000
+    assert len(calls) == 4 and report["counted_test_nanos"] == FLAT_UNKNOWN
     assert report["stopped"].startswith("Unknown provider outcome")
     stage = report["results"][0]["stages"][-1]
     assert (
@@ -465,7 +467,7 @@ async def test_deadline_cancels_stream_cleans_fixture_and_retains_unknown_attemp
     tmp_path,
 ):
     report, calls, _, registry = await run(tmp_path, hanging_final=True, seconds=2)
-    assert len(calls) == 4 and report["counted_test_nanos"] == FLAT_UNKNOWN + 30_000
+    assert len(calls) == 4 and report["counted_test_nanos"] == FLAT_UNKNOWN
     assert report["stopped"].startswith("Deadline reached")
     assert registry.budget(family=runner.FAMILY)["unknown"] == 1
     assert report["results"][0]["stages"][-1]["calls"][0]["raw"].startswith(
@@ -487,35 +489,31 @@ async def test_group_budget_must_cover_unknown_allowance_before_any_dispatch(
 
 
 @pytest.mark.parametrize("pool", ["run", "day"])
-async def test_actual_prepared_image_bound_can_refuse_after_unknown_admission(
+async def test_a_zero_rate_request_is_bounded_by_the_flat_unknown_estimate(
     tmp_path, pool
 ):
-    # The complete authored image request costs more than the flat unknown
-    # estimate. Admission passes, but the exact prepared cap must stop HTTP.
+    # At the subscription's $0 rates even the complete authored image request
+    # needs only the flat unknown estimate's room, and its $0 receipts leave
+    # that room for every stage.
     kwargs = (
         {"counted_nanos": FLAT_UNKNOWN}
         if pool == "run"
         else {"group_budget": FLAT_UNKNOWN}
     )
     report, calls, _, registry = await run(tmp_path, **kwargs)
-    assert not calls and report["requests"] == 0
-    stage = report["results"][0]["stages"][-1]
-    assert stage["stage"] == "image" and stage["request_bound_nanos"] > FLAT_UNKNOWN
-    assert not stage["reservations"] and not registry.rows(
-        "SELECT id FROM model_reservations"
-    )
-    assert report["stopped"].startswith(
-        "Remaining finite" if pool == "run" else "Remaining Group Briefing Budget"
-    )
+    assert report["format_source_verified"] and len(calls) == 5
+    (stage,) = [s for s in report["results"][0]["stages"] if s["stage"] == "image"]
+    assert stage["calls"][0]["request_bound_nanos"] == FLAT_UNKNOWN
+    assert report["counted_test_nanos"] == 0
 
 
 async def test_shared_group_spending_from_other_account_restricts_this_pass(tmp_path):
     report, calls, _, registry = await run(
-        tmp_path, group_budget=20_000_000, prior_group_spent=9_000_000
+        tmp_path, group_budget=20_000_000, prior_group_spent=10_000_001
     )
     assert not calls and report["counted_test_nanos"] == 0
     assert report["stopped"].startswith("Remaining Group Briefing Budget")
-    assert registry.budget(family=runner.FAMILY)["spent"] == 9_000_000
+    assert registry.budget(family=runner.FAMILY)["spent"] == 10_000_001
 
 
 async def test_separate_daily_ceiling_and_old_quarter_reserve_do_not_gate_group_work(
@@ -529,20 +527,23 @@ async def test_separate_daily_ceiling_and_old_quarter_reserve_do_not_gate_group_
         prior_daily_spent=70_000_000,
     )
     assert report["format_source_verified"] and len(calls) == 5
-    assert report["final_budget"]["spent"] == 150_050_000
+    assert report["final_budget"]["spent"] == 150_000_000
     assert registry.budget()["spent"] == 70_000_000
     assert registry.budget()["limit"] == 0
 
 
 @pytest.mark.parametrize(
-    "charged,upstream", [(0.00001, 0.00002), (0.00002, 0.00001), (0, 0)]
+    "charged,upstream",
+    [(0.00001, 0.00002), (0.00002, 0.00001), (0, 0), (0.012, None)],
 )
-async def test_larger_known_receipt_counted_in_both_shared_and_local_ledgers(
+async def test_a_subscription_receipt_counts_nothing_in_either_ledger(
     tmp_path, charged, upstream
 ):
+    # Whatever a reply reports, even above the prepared bound, the
+    # subscription charges nothing (ADR 29 Q5).
     report, calls, _, registry = await run(tmp_path, cost=charged, upstream=upstream)
-    actual = round(max(charged, upstream) * 1_000_000_000)
-    assert report["format_source_verified"]
+    actual = 0
+    assert report["format_source_verified"] and len(calls) == 5
     assert (
         report["counted_test_nanos"]
         == report["final_budget"]["spent"]
@@ -568,18 +569,9 @@ async def test_run_allowance_remains_across_immutable_dispatch_days(tmp_path):
     assert report["format_source_verified"] and len(calls) == 5
     assert len({r["bucket"] for r in rows}) == 2
     assert rows[0]["bucket"] != rows[1]["bucket"]
-    assert report["counted_test_nanos"] == 50_000
-    assert report["final_budget"]["spent"] == 40_000
-    assert report["initial_budget"]["day"] != report["final_budget"]["day"]
-
-
-async def test_new_day_cannot_replenish_the_finite_run_cap(tmp_path):
-    report, calls, *_ = await run(
-        tmp_path, rollover_at=1, cost=0.003, counted_nanos=12_000_000
-    )
-    assert len(calls) == 1 and report["counted_test_nanos"] == 3_000_000
+    assert report["counted_test_nanos"] == 0
     assert report["final_budget"]["spent"] == 0
-    assert report["stopped"].startswith("Remaining finite allowance")
+    assert report["initial_budget"]["day"] != report["final_budget"]["day"]
 
 
 @pytest.mark.parametrize("limit", [1, 4, 5])
@@ -599,15 +591,8 @@ async def test_request_limit_records_first_outcomes_and_unfinished_cases(
 async def test_elapsed_time_stops_before_next_stage(tmp_path):
     report, calls, *_ = await run(tmp_path, deadline_at=1)
     assert len(calls) == 1 and report["stopped"].startswith("Finite time bound")
-    assert report["counted_test_nanos"] == 10_000
+    assert report["counted_test_nanos"] == 0
     assert not report["within_bounds"]
-
-
-async def test_receipt_exceeding_prepared_bound_stops_every_remaining_stage(tmp_path):
-    report, calls, *_ = await run(tmp_path, cost=0.012)
-    assert len(calls) == 1 and report["counted_test_nanos"] == 12_000_000
-    assert report["stopped"].startswith("Receipt exceeded")
-    assert report["within_bounds"] and not report["format_source_verified"]
 
 
 @pytest.mark.parametrize("kind", ["missing", "raised", "nonfinite"])
